@@ -377,8 +377,10 @@
 
 	function renderFinalResults() {
 		showView("final-view");
+		const standings = currentSession.standings || [];
+		document.querySelector("#final-wait").hidden = standings.length !== 0;
 		const list = document.querySelector("#standings-list");
-		list.replaceChildren(...(currentSession.standings || []).map(createStandingRow));
+		list.replaceChildren(...standings.map(createStandingRow));
 	}
 
 	function createStandingRow(standing) {

@@ -2,12 +2,13 @@ package gd.safety.Quiz.websocket;
 
 import java.net.URI;
 
+import org.springframework.boot.tomcat.servlet.TomcatServletWebServerFactory;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
-import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 
 import gd.safety.Quiz.config.GameSessionProperties;
 import gd.safety.Quiz.config.WebSocketProperties;
@@ -38,10 +39,13 @@ public class WebSocketConfiguration implements WebSocketConfigurer {
 	}
 
 	@Bean
-	ServletServerContainerFactoryBean webSocketContainer(WebSocketProperties properties) {
-		ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean();
-		container.setMaxTextMessageBufferSize(properties.maxMessageBytes());
-		container.setMaxBinaryMessageBufferSize(1_024);
-		return container;
+	WebServerFactoryCustomizer<TomcatServletWebServerFactory> webSocketBufferLimits(
+			WebSocketProperties properties) {
+		return factory -> factory.addContextCustomizers(context -> {
+			context.addParameter(
+					"org.apache.tomcat.websocket.textBufferSize",
+					String.valueOf(properties.maxMessageBytes()));
+			context.addParameter("org.apache.tomcat.websocket.binaryBufferSize", "1024");
+		});
 	}
 }

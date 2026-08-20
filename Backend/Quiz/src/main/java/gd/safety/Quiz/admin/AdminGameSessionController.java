@@ -1,6 +1,7 @@
 package gd.safety.Quiz.admin;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,8 +14,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import gd.safety.Quiz.session.GameSessionRegistry;
+import gd.safety.Quiz.session.GameSessionRegistry.PlayerNotFoundException;
 import gd.safety.Quiz.session.GameSessionRegistry.QuizNotFoundException;
 import gd.safety.Quiz.session.GameSessionRegistry.SessionNotFoundException;
 import gd.safety.Quiz.session.GameSessionSnapshot;
@@ -102,6 +105,23 @@ public final class AdminGameSessionController {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 		} catch (InvalidGameTransitionException exception) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT);
+		}
+	}
+
+	@GetMapping(value = "/{codehash}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public SseEmitter events(@PathVariable String codehash) {
+		return realtimePublisher.subscribePresenter(requireSession(codehash));
+	}
+
+	@PostMapping("/{codehash}/players/{playerId}/kick")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void kickPlayer(@PathVariable String codehash, @PathVariable UUID playerId) {
+		try {
+			GameSessionSnapshot updated = sessionRegistry.kickPlayer(codehash, playerId);
+			realtimePublisher.disconnectKickedPlayer(codehash, playerId);
+			realtimePublisher.publish(updated);
+		} catch (SessionNotFoundException | PlayerNotFoundException exception) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 		}
 	}
 

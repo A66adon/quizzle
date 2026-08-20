@@ -249,6 +249,24 @@ public final class GameSessionRegistry {
 		return new PlayerConnection(updated, findPlayerByToken(updated, reconnectToken));
 	}
 
+	public GameSessionSnapshot kickPlayer(String codehash, UUID playerId) {
+		GameSessionAggregate aggregate = requireAggregate(codehash);
+		long nowEpochMs = System.currentTimeMillis();
+		return aggregate.update(current -> {
+			List<PlayerSnapshot> players = new ArrayList<>(current.players());
+			int playerIndex = findPlayerIndexById(players, playerId);
+			if (playerIndex < 0) {
+				throw new PlayerNotFoundException(codehash, playerId);
+			}
+			if (players.get(playerIndex).connectionStatus() == ConnectionStatus.KICKED) {
+				return current;
+			}
+			players.set(playerIndex, players.get(playerIndex).withConnectionStatus(
+					ConnectionStatus.KICKED, nowEpochMs));
+			return current.withPlayers(players, nowEpochMs);
+		}, snapshotRepository::save);
+	}
+
 	public Optional<GameSessionSnapshot> disconnectPlayer(String codehash, UUID playerId) {
 		GameSessionAggregate aggregate = sessions.get(codehash);
 		if (aggregate == null) {
@@ -369,6 +387,13 @@ public final class GameSessionRegistry {
 
 		public SessionNotFoundException(String codehash) {
 			super("No session exists for codehash " + codehash);
+		}
+	}
+
+	public static final class PlayerNotFoundException extends RuntimeException {
+
+		public PlayerNotFoundException(String codehash, UUID playerId) {
+			super("No player " + playerId + " exists in session " + codehash);
 		}
 	}
 

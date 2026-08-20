@@ -140,6 +140,7 @@
 		const link = card.querySelector(".session-link");
 		link.href = session.joinUrl;
 		link.textContent = session.joinUrl;
+		card.querySelector(".session-presenter").href = `/admin/sessions/${session.codehash}`;
 		card.querySelector(".session-qr").src = session.qrUrl;
 		return card;
 	}

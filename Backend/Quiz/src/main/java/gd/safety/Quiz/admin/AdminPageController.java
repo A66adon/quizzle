@@ -56,6 +56,11 @@ public final class AdminPageController {
 		return "forward:/admin.html";
 	}
 
+	@GetMapping("/admin/sessions/{codehash}")
+	public String presenterPage() {
+		return "forward:/presenter.html";
+	}
+
 	@PostMapping("/admin/logout")
 	public String logout(HttpServletRequest request, HttpServletResponse response) {
 		HttpSession session = request.getSession(false);

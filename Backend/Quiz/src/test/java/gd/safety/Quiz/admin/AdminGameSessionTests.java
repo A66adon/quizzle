@@ -7,9 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -94,6 +97,21 @@ class AdminGameSessionTests {
 				.session(adminSession)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"quizFileName\":\"missing.yaml\"}"))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void servesThePresenterPageAndRejectsUnknownParticipants() throws Exception {
+		MockHttpSession adminSession = login();
+		String codehash = createSession(adminSession);
+
+		mockMvc.perform(get("/admin/sessions/{codehash}", codehash).session(adminSession))
+				.andExpect(status().isOk())
+				.andExpect(forwardedUrl("/presenter.html"));
+		mockMvc.perform(get("/admin/sessions/{codehash}", codehash))
+				.andExpect(status().is3xxRedirection());
+		mockMvc.perform(post("/admin/api/sessions/{codehash}/players/{playerId}/kick",
+				codehash, UUID.randomUUID()).session(adminSession))
 				.andExpect(status().isNotFound());
 	}
 

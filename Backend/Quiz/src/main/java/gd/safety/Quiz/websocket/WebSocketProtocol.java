@@ -157,6 +157,9 @@ public final class WebSocketProtocol {
 			String quizTitle,
 			String quizDescription,
 			int currentQuestionIndex,
+			int questionCount,
+			boolean podiumOpen,
+			long serverEpochMs,
 			long serverStartEpochMs,
 			long durationMs,
 			long receivedAnswerCount,
@@ -185,6 +188,9 @@ public final class WebSocketProtocol {
 					snapshot.quiz().title(),
 					snapshot.quiz().description(),
 					snapshot.currentQuestionIndex(),
+					snapshot.quiz().questions().size(),
+					snapshot.podiumOpen(),
+					System.currentTimeMillis(),
 					snapshot.serverStartEpochMs(),
 					durationMs,
 					receivedAnswerCount,
@@ -192,8 +198,7 @@ public final class WebSocketProtocol {
 					snapshot.state() == gd.safety.Quiz.session.GameState.RESULTS
 							? ResultsView.from(snapshot, currentQuestion) : null,
 					participants,
-					snapshot.state() == gd.safety.Quiz.session.GameState.FINAL_RESULTS
-							? StandingView.from(snapshot) : List.of());
+					snapshot.podiumOpen() ? StandingView.from(snapshot) : List.of());
 		}
 	}
 

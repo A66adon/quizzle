@@ -22,6 +22,7 @@ body {
 
 button, input { font: inherit; }
 button { cursor: pointer; }
+[hidden] { display: none !important; }
 button:disabled { cursor: not-allowed; opacity: .55; }
 button:focus-visible, input:focus-visible, .answer-tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 h1, h2, p { margin-top: 0; }

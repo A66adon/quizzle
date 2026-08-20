@@ -19,6 +19,10 @@
 	box-sizing: border-box;
 }
 
+[hidden] {
+	display: none !important;
+}
+
 body {
 	margin: 0;
 	min-width: 320px;
@@ -502,6 +506,17 @@ h2 {
 .primary-button:hover {
 	transform: translateY(-1px);
 	box-shadow: 0 13px 26px rgba(4, 0, 102, 0.24);
+}
+
+.link-button {
+	display: inline-block;
+	text-align: center;
+	text-decoration: none;
+}
+
+.session-presenter {
+	margin-top: 1rem;
+	padding-inline: 1.4rem;
 }
 
 @media (max-width: 620px) {

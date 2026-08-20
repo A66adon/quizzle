@@ -55,6 +55,11 @@ public final class WebSocketConnectionHub {
 		return List.copyOf(connectionsBySocket.values());
 	}
 
+	public Optional<ClientConnection> findPlayer(String codehash, UUID playerId) {
+		Map<UUID, ClientConnection> room = activePlayersByRoom.get(codehash);
+		return Optional.ofNullable(room == null ? null : room.get(playerId));
+	}
+
 	public void broadcast(String codehash, String payload) {
 		Map<UUID, ClientConnection> room = activePlayersByRoom.get(codehash);
 		if (room == null) {

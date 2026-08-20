@@ -2,6 +2,7 @@ package gd.safety.Quiz.session;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -26,6 +27,8 @@ import gd.safety.Quiz.persistence.SqliteSnapshotRepository;
 import gd.safety.Quiz.quiz.catalog.QuizCatalog;
 import gd.safety.Quiz.quiz.catalog.QuizDefinitionValidator;
 import gd.safety.Quiz.quiz.catalog.QuizYamlParser;
+import gd.safety.Quiz.session.GameSessionRegistry.PlayerConnection;
+import gd.safety.Quiz.session.GameSessionRegistry.ReconnectRejectedException;
 import tools.jackson.databind.json.JsonMapper;
 
 class GameSessionRegistryTests {
@@ -87,6 +90,22 @@ class GameSessionRegistryTests {
 		assertTrue(restored.serverStartEpochMs() >= rebootStartedAt);
 		assertNotEquals(oldTimer, restored.serverStartEpochMs());
 		assertEquals(restored, repository.loadAll().getFirst());
+	}
+
+	@Test
+	void kickedPlayerIsMarkedFinalAndCannotReconnect() throws Exception {
+		SqliteSnapshotRepository repository = createRepository();
+		GameSessionRegistry registry = createRegistry(createCatalog(prepareQuizDirectory()), repository);
+		registry.rehydrate();
+		GameSessionSnapshot created = registry.create("safety.yaml");
+		PlayerConnection joined = registry.joinPlayer(created.codehash(), "Robin");
+
+		GameSessionSnapshot kicked = registry.kickPlayer(created.codehash(), joined.player().playerId());
+
+		assertEquals(ConnectionStatus.KICKED, kicked.players().getFirst().connectionStatus());
+		assertEquals(kicked, repository.loadAll().getFirst());
+		assertThrows(ReconnectRejectedException.class, () ->
+				registry.reconnectPlayer(created.codehash(), joined.player().reconnectToken()));
 	}
 
 	private Path prepareQuizDirectory() throws Exception {

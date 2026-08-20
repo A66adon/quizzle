@@ -16,7 +16,7 @@ public class AdminWebConfiguration implements WebMvcConfigurer {
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
 		registry.addInterceptor(adminSessionInterceptor)
-				.addPathPatterns("/admin", "/admin/", "/admin.html", "/admin/**")
+				.addPathPatterns("/admin", "/admin/", "/admin.html", "/presenter.html", "/admin/**")
 				.excludePathPatterns("/admin/login");
 	}
 }
