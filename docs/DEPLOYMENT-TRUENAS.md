@@ -94,7 +94,9 @@ proxy, the proxy must:
 
 - forward WebSocket upgrades (`Upgrade` and `Connection` headers) for `/{codehash}/data`,
 - not buffer `text/event-stream` responses – the presenter view uses Server-Sent Events for
-  `/admin/api/sessions/{codehash}/events`,
+  `/admin/api/sessions/{codehash}/events`. Quizzle sends `X-Accel-Buffering: no` on that response,
+  which nginx honours automatically; other proxies may need `proxy_buffering off` (or their
+  equivalent) explicitly.
 - allow long-lived connections (a quiz session keeps one socket open for its whole duration).
 
 Nginx example:
@@ -155,5 +157,5 @@ Everything worth keeping lives in the mounted datasets:
 | Catalog is empty | `QUIZ_FOLDER` does not point at the mounted dataset, or it contains no `.yaml` / `.yml` files. |
 | QR code leads nowhere | `PUBLIC_BASE_URL` still points at `localhost` or an internal address. |
 | Participants show "Connection lost" in a loop | The reverse proxy does not forward WebSocket upgrades. |
-| Presenter view stays on "Reconnecting" | The reverse proxy buffers `text/event-stream`. |
+| Presenter view stays blank on "Connecting" | The reverse proxy buffers `text/event-stream`; a warning appears in the view after a few seconds. |
 | Sessions gone after a restart | `/data/db` is not persisted, or `QUIZ_DATABASE_PATH` points outside the mount. |

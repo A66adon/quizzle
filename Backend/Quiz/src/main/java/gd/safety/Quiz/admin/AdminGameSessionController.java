@@ -109,8 +109,11 @@ public final class AdminGameSessionController {
 	}
 
 	@GetMapping(value = "/{codehash}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-	public SseEmitter events(@PathVariable String codehash) {
-		return realtimePublisher.subscribePresenter(requireSession(codehash));
+	public ResponseEntity<SseEmitter> events(@PathVariable String codehash) {
+		GameSessionSnapshot session = requireSession(codehash);
+		return ResponseEntity.ok()
+				.header("X-Accel-Buffering", "no")
+				.body(realtimePublisher.subscribePresenter(session));
 	}
 
 	@PostMapping("/{codehash}/players/{playerId}/kick")

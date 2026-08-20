@@ -30,6 +30,7 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 	let countdownTimer = null;
 	let pendingKickPlayerId = null;
 	let pendingClosingCommand = "ABORT";
+	let feedWatchdog = null;
 
 	if (!codehash) {
 		showMessage("This presenter link is invalid.", true);
@@ -75,6 +76,7 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 
 	function subscribe() {
 		eventSource = new EventSource(`/admin/api/sessions/${codehash}/events`);
+		startFeedWatchdog();
 		eventSource.addEventListener("open", () => setFeedStatus("live", "Live"));
 		eventSource.addEventListener("state", event => {
 			setFeedStatus("live", "Live");
@@ -84,6 +86,17 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 			setFeedStatus("offline", "Reconnecting");
 			verifyAdminSession();
 		});
+	}
+
+	// A proxy that buffers text/event-stream leaves this view blank with no error of its own.
+	function startFeedWatchdog() {
+		window.clearTimeout(feedWatchdog);
+		feedWatchdog = window.setTimeout(() => {
+			if (!session) {
+				showMessage("No live updates received. If Quizzle runs behind a reverse proxy, check that "
+					+ "it does not buffer text/event-stream responses.", true);
+			}
+		}, 8_000);
 	}
 
 	function applyState(rawState) {
@@ -96,6 +109,7 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 		}
 		if (received?.type !== "STATE" || received.payload?.codehash !== codehash) return;
 		session = received.payload;
+		window.clearTimeout(feedWatchdog);
 		serverClockOffsetMs = Number(session.serverEpochMs) - Date.now();
 		hideMessage();
 		render();
