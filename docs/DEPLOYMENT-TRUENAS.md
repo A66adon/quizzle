@@ -72,7 +72,7 @@ services:
         if [ -d /workspace/quizzle/.git ]; then
           git -C /workspace/quizzle pull --ff-only
         else
-          git clone --depth 1 https://github.com/A66adon/quizzle.git /workspace/quizzle
+          git clone --depth 1 https://git.olli.info/Oliver/quizzle.git /workspace/quizzle
         fi
         cd /workspace/quizzle/Backend/Quiz
         gradle --no-daemon bootJar
@@ -80,6 +80,7 @@ services:
 ```
 
 Replace `ADMIN_PASSWORD` and `PUBLIC_BASE_URL` before starting, then install.
+
 
 The first start downloads the Gradle dependencies and takes a few minutes. Because
 `GRADLE_USER_HOME` points into the persistent workspace, later restarts only rebuild what changed.
@@ -133,7 +134,7 @@ rebuilds the jar.
 To pin a specific version instead of always tracking `main`, replace the clone line with a tag:
 
 ```bash
-git clone --depth 1 --branch v1.0.0 https://github.com/A66adon/quizzle.git /workspace/quizzle
+git clone --depth 1 --branch v1.0.0 https://git.olli.info/Oliver/quizzle.git /workspace/quizzle
 ```
 
 ## Backup
@@ -150,6 +151,7 @@ Everything worth keeping lives in the mounted datasets:
 | Symptom | Cause |
 | --- | --- |
 | App exits immediately, log says `ADMIN_PASSWORD must be set` | `ADMIN_PASSWORD` is empty in the YAML. |
+| App never starts, log ends in a `git clone` error | TrueNAS cannot reach `git.olli.info`, does not trust its certificate, or the repository needs a token. |
 | Catalog is empty | `QUIZ_FOLDER` does not point at the mounted dataset, or it contains no `.yaml` / `.yml` files. |
 | QR code leads nowhere | `PUBLIC_BASE_URL` still points at `localhost` or an internal address. |
 | Participants show "Connection lost" in a loop | The reverse proxy does not forward WebSocket upgrades. |
