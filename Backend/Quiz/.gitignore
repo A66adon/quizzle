@@ -1,6 +1,13 @@
 HELP.md
 .gradle
 build/
+data/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+!.env.example
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/

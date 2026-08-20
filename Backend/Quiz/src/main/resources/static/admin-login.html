@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title>Admin login · Safety Quiz</title>
+	<link rel="stylesheet" href="/assets/admin.css">
+	<script src="/assets/admin-login.js" defer></script>
+</head>
+<body class="login-page">
+	<main class="login-shell">
+		<section class="login-card" aria-labelledby="login-title">
+			<div class="brand-mark" aria-hidden="true">G+D</div>
+			<p class="eyebrow">Safety Quiz</p>
+			<h1 id="login-title">Admin access</h1>
+			<p class="muted">Sign in to choose and present a quiz.</p>
+
+			<p class="form-error" id="login-error" role="alert" hidden>
+				The password is incorrect. Please try again.
+			</p>
+
+			<form action="/admin/login" method="post" class="login-form">
+				<label for="password">Admin password</label>
+				<input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+				<button type="submit" class="primary-button">Sign in</button>
+			</form>
+		</section>
+	</main>
+</body>
+</html>

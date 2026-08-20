@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title>Quiz sessions · Safety Quiz</title>
+	<link rel="stylesheet" href="/assets/admin.css">
+	<script src="/assets/admin.js" defer></script>
+</head>
+<body>
+	<header class="site-header">
+		<a class="brand" href="/admin" aria-label="Safety Quiz admin home">
+			<span class="brand-mark" aria-hidden="true">G+D</span>
+			<span>Safety Quiz</span>
+		</a>
+		<form action="/admin/logout" method="post">
+			<button class="text-button" type="submit">Sign out</button>
+		</form>
+	</header>
+
+	<main class="page-shell">
+		<section class="page-heading" aria-labelledby="catalog-title">
+			<div>
+				<p class="eyebrow">Administration</p>
+				<h1 id="catalog-title">Quiz sessions</h1>
+				<p class="muted">Choose a validated quiz or resume a session restored from SQLite.</p>
+			</div>
+			<div class="summary-pill" aria-live="polite">
+				<strong id="quiz-count">—</strong>
+				<span>ready</span>
+			</div>
+		</section>
+
+		<p class="status-card" id="catalog-status" role="status">Loading quiz catalog…</p>
+		<p class="status-card" id="action-status" role="status" hidden></p>
+
+		<section id="session-section" aria-labelledby="session-heading" hidden>
+			<div class="section-heading">
+				<h2 id="session-heading">Current sessions</h2>
+				<span id="session-count" class="session-count"></span>
+			</div>
+			<div id="session-grid" class="session-grid"></div>
+			<p id="session-empty" class="empty-card" hidden>
+				No sessions yet. Choose a quiz below to create one.
+			</p>
+		</section>
+
+		<section id="quiz-section" class="catalog-section" aria-labelledby="quiz-heading" hidden>
+			<div class="section-heading">
+				<h2 id="quiz-heading">Available quizzes</h2>
+				<p id="loaded-at" class="small muted"></p>
+			</div>
+			<div id="quiz-grid" class="quiz-grid"></div>
+			<p id="quiz-empty" class="empty-card" hidden>
+				No valid YAML quizzes were found. Add a <code>.yaml</code> or <code>.yml</code> file and restart the server.
+			</p>
+		</section>
+
+		<section id="issue-section" class="issue-section" aria-labelledby="issue-heading" hidden>
+			<div class="section-heading">
+				<h2 id="issue-heading">Files requiring attention</h2>
+				<span id="issue-count" class="error-count"></span>
+			</div>
+			<p class="small muted">These files were skipped. Valid quizzes above remain available.</p>
+			<div id="issue-list" class="issue-list"></div>
+		</section>
+	</main>
+
+	<template id="quiz-template">
+		<article class="quiz-card">
+			<div class="quiz-card-topline">
+				<span class="ready-chip">Ready</span>
+				<span class="question-count"></span>
+			</div>
+			<h3 class="quiz-title"></h3>
+			<p class="quiz-description"></p>
+			<div class="quiz-meta">
+				<span class="quiz-author"></span>
+				<code class="quiz-file"></code>
+			</div>
+			<button class="primary-button create-session-button" type="button">Create session</button>
+		</article>
+	</template>
+
+	<template id="session-template">
+		<article class="session-card">
+			<img class="session-qr" width="160" height="160" alt="Join this quiz session">
+			<div class="session-details">
+				<div class="quiz-card-topline">
+					<span class="session-state"></span>
+					<span class="session-created small muted"></span>
+				</div>
+				<h3 class="session-title"></h3>
+				<p class="session-code-label">Join code</p>
+				<code class="session-code"></code>
+				<a class="session-link" target="_blank" rel="noopener noreferrer"></a>
+			</div>
+		</article>
+	</template>
+
+	<template id="issue-template">
+		<article class="issue-card">
+			<code class="issue-file"></code>
+			<p class="issue-reason"></p>
+		</article>
+	</template>
+</body>
+</html>
+
