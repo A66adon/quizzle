@@ -1,1 +1,0 @@
-					"https://api.dicebear.com/9.x/" + player.avatarStyle()    // TODO: change to local library (https://github.com/dicebear/dicebear)

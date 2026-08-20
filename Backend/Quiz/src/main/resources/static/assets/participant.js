@@ -1,3 +1,5 @@
+import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
+
 (() => {
 	"use strict";
 
@@ -11,7 +13,6 @@
 	const answerDialog = document.querySelector("#answer-dialog");
 	const confirmMultipleButton = document.querySelector("#confirm-multiple-button");
 	const submitMultipleButton = document.querySelector("#submit-multiple-button");
-	const fallbackAvatar = "/assets/avatar-fallback.svg";
 
 	const codehash = readCodehash();
 	const cookieName = `quiz_reconnect_${codehash}`;
@@ -37,7 +38,7 @@
 	if (!codehash) {
 		showTerminal("This quiz link is invalid.", false);
 	} else {
-		connect();
+		preloadAvatarStyles().then(connect);
 	}
 
 	joinForm.addEventListener("submit", event => {
@@ -261,7 +262,7 @@
 		setText("#lobby-title", currentSession.quizTitle);
 		setText("#lobby-description", currentSession.quizDescription);
 		setText("#my-name", currentParticipant.name);
-		setAvatar(document.querySelector("#my-avatar"), currentParticipant.avatarUrl);
+		setAvatar(document.querySelector("#my-avatar"), currentParticipant);
 		const participants = (currentSession.participants || [])
 			.filter(participant => participant.connectionStatus !== "EXPIRED");
 		const grid = document.querySelector("#participant-grid");
@@ -276,7 +277,7 @@
 		if (participant.connectionStatus !== "CONNECTED") card.classList.add("disconnected");
 		const avatar = document.createElement("img");
 		avatar.alt = `${participant.name}'s avatar`;
-		setAvatar(avatar, participant.avatarUrl);
+		setAvatar(avatar, participant);
 		const name = document.createElement("strong");
 		name.textContent = participant.name;
 		card.append(avatar, name);
@@ -478,18 +479,12 @@
 		document.querySelector(selector).textContent = value == null ? "" : String(value);
 	}
 
-	function setAvatar(image, candidateUrl) {
+	function setAvatar(image, participant) {
 		image.onerror = () => {
 			image.onerror = null;
-			image.src = fallbackAvatar;
+			image.src = FALLBACK_AVATAR;
 		};
-		try {
-			const url = new URL(candidateUrl);
-			image.src = url.protocol === "https:" && url.hostname === "api.dicebear.com"
-				? url.href : fallbackAvatar;
-		} catch {
-			image.src = fallbackAvatar;
-		}
+		image.src = avatarFor(participant?.avatarStyle, participant?.playerId);
 	}
 
 	function readCodehash() {

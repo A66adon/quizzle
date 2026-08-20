@@ -1,0 +1,194 @@
+title: "Mission Mars: Das galaktische Quiz"
+description: "Ein humorvolles Quiz über Raumfahrt, Planeten und das Leben an Bord eines Raumschiffs."
+author: "G+D Space Academy"
+
+questions:
+  - id: "red-planet"
+    text: "Welcher Planet wird auch als der Rote Planet bezeichnet?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    answers:
+      - id: "mars"
+        text: "Mars"
+        correct: true
+      - id: "venus"
+        text: "Venus"
+        correct: false
+      - id: "tomato-planet"
+        text: "Der geheimnisvolle Tomatenplanet"
+        correct: false
+      - id: "sunburn-earth"
+        text: "Die Erde nach einem zu langen Sonnenbad"
+        correct: false
+
+  - id: "moon-gravity"
+    text: "Warum können Astronauten auf dem Mond besonders hoch springen?"
+    points: 1200
+    timeSeconds: 20
+    multiple: false
+    answers:
+      - id: "lower-gravity"
+        text: "Weil die Schwerkraft auf dem Mond geringer ist"
+        correct: true
+      - id: "special-boots"
+        text: "Weil Raumanzüge geheime Sprungfedern enthalten"
+        correct: false
+      - id: "moon-cheese"
+        text: "Weil der Boden aus elastischem Käse besteht"
+        correct: false
+      - id: "astronaut-training"
+        text: "Weil Astronauten grundsätzlich niemals einen Beintag auslassen"
+        correct: false
+
+  - id: "space-equipment"
+    text: "Welche Gegenstände sind für einen Außeneinsatz im Weltraum wichtig?"
+    points: 1500
+    timeSeconds: 30
+    multiple: true
+    answers:
+      - id: "space-suit"
+        text: "Ein geeigneter Raumanzug"
+        correct: true
+      - id: "oxygen"
+        text: "Eine funktionierende Sauerstoffversorgung"
+        correct: true
+      - id: "flip-flops"
+        text: "Bequeme Flip-Flops für den Weltraumspaziergang"
+        correct: false
+      - id: "umbrella"
+        text: "Ein Regenschirm gegen vorbeifliegende Sternschnuppen"
+        correct: false
+
+  - id: "floating-tools"
+    text: "Ein Schraubenschlüssel schwebt durch die Raumstation. Was solltest du tun?"
+    points: 1200
+    timeSeconds: 20
+    multiple: false
+    answers:
+      - id: "secure-tool"
+        text: "Den Schraubenschlüssel einfangen und sicher verstauen"
+        correct: true
+      - id: "tool-pet"
+        text: "Ihm einen Namen geben und ihn als Haustier behalten"
+        correct: false
+      - id: "space-baseball"
+        text: "Eine spontane Runde schwereloses Baseball beginnen"
+        correct: false
+      - id: "ignore-orbit"
+        text: "Ignorieren und auf eine stabile Umlaufbahn hoffen"
+        correct: false
+
+  - id: "solar-system"
+    text: "Welche Objekte gehören zu unserem Sonnensystem?"
+    points: 1500
+    timeSeconds: 30
+    multiple: true
+    answers:
+      - id: "earth"
+        text: "Die Erde"
+        correct: true
+      - id: "jupiter"
+        text: "Jupiter"
+        correct: true
+      - id: "moon"
+        text: "Der Mond"
+        correct: true
+      - id: "death-star"
+        text: "Ein voll funktionsfähiger Todesstern"
+        correct: false
+
+  - id: "space-food"
+    text: "Warum werden Lebensmittel für Raumflüge speziell verpackt?"
+    points: 1500
+    timeSeconds: 30
+    multiple: false
+    answers:
+      - id: "safe-storage"
+        text: "Damit sie lange haltbar, sicher und in Schwerelosigkeit verwendbar sind"
+        correct: true
+      - id: "alien-protection"
+        text: "Damit Außerirdische die Snacks nicht riechen können"
+        correct: false
+      - id: "food-fashion"
+        text: "Weil gewöhnliche Verpackungen nicht futuristisch genug aussehen"
+        correct: false
+      - id: "cookie-orbit"
+        text: "Damit Kekse keine eigene Umlaufbahn entwickeln"
+        correct: false
+
+  - id: "alien-signal"
+    text: "Die Raumstation empfängt ein unbekanntes Signal. Was wäre eine sinnvolle Reaktion?"
+    points: 1800
+    timeSeconds: 30
+    multiple: true
+    answers:
+      - id: "record-signal"
+        text: "Das Signal aufzeichnen und analysieren"
+        correct: true
+      - id: "inform-team"
+        text: "Das zuständige Team informieren"
+        correct: true
+      - id: "reply-emoji"
+        text: "Sofort mit einem Daumen-hoch-Emoji antworten"
+        correct: false
+      - id: "alien-calendar"
+        text: "Direkt einen Termin mit den Außerirdischen einstellen"
+        correct: false
+
+  - id: "black-hole"
+    text: "Was ist ein Schwarzes Loch?"
+    points: 2000
+    timeSeconds: 30
+    multiple: false
+    answers:
+      - id: "dense-object"
+        text: "Ein extrem dichtes astronomisches Objekt mit sehr starker Gravitation"
+        correct: true
+      - id: "universe-trash"
+        text: "Der verlorene Papierkorb des Universums"
+        correct: false
+      - id: "space-tunnel"
+        text: "Ein garantierter Abkürzungstunnel zum nächsten Urlaubsziel"
+        correct: false
+      - id: "night-without-stars"
+        text: "Ein Stück Nachthimmel, bei dem die Sterne vergessen wurden"
+        correct: false
+
+  - id: "space-emergency"
+    text: "Während des Flugs leuchtet eine unbekannte Warnanzeige auf. Was ist zu tun?"
+    points: 2000
+    timeSeconds: 30
+    multiple: false
+    answers:
+      - id: "follow-procedure"
+        text: "Die vorgesehenen Prüf- und Notfallverfahren befolgen"
+        correct: true
+      - id: "cover-light"
+        text: "Die Anzeige mit einem Aufkleber abdecken"
+        correct: false
+      - id: "restart-universe"
+        text: "Das gesamte Universum aus- und wieder einschalten"
+        correct: false
+      - id: "press-buttons"
+        text: "Alle Knöpfe gleichzeitig drücken und selbstbewusst schauen"
+        correct: false
+
+  - id: "mission-commander"
+    text: "Welche Eigenschaften braucht eine gute Weltraumcrew?"
+    points: 2500
+    timeSeconds: 30
+    multiple: true
+    answers:
+      - id: "teamwork"
+        text: "Gute Zusammenarbeit"
+        correct: true
+      - id: "communication"
+        text: "Klare Kommunikation"
+        correct: true
+      - id: "problem-solving"
+        text: "Strukturiertes Lösen von Problemen"
+        correct: true
+      - id: "dramatic-cape"
+        text: "Mindestens ein dramatisch flatterndes Weltraumcape"
+        correct: false

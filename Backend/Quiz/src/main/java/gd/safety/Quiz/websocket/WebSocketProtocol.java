@@ -279,7 +279,6 @@ public final class WebSocketProtocol {
 			UUID playerId,
 			String name,
 			String avatarStyle,
-			String avatarUrl,
 			String connectionStatus) {
 
 		static ParticipantView from(PlayerSnapshot player) {
@@ -287,8 +286,6 @@ public final class WebSocketProtocol {
 					player.playerId(),
 					player.name(),
 					player.avatarStyle(),
-					"https://api.dicebear.com/9.x/" + player.avatarStyle()
-							+ "/svg?seed=" + player.playerId(),
 					player.connectionStatus().name());
 		}
 	}

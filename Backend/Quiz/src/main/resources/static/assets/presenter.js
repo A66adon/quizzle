@@ -1,3 +1,5 @@
+import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
+
 (() => {
 	"use strict";
 
@@ -10,7 +12,6 @@
 	const standingsToggle = document.querySelector("#standings-toggle");
 	const standingsList = document.querySelector("#standings-list");
 	const podium = document.querySelector("#podium");
-	const fallbackAvatar = "/assets/avatar-fallback.svg";
 	const closingCommands = {
 		ABORT: {
 			heading: "Abort this quiz?",
@@ -35,7 +36,7 @@
 	} else {
 		document.querySelector("#session-code-chip").textContent = codehash;
 		loadJoinDetails();
-		subscribe();
+		preloadAvatarStyles().then(subscribe);
 	}
 
 	document.querySelector("#start-button").addEventListener("click", () => sendCommand("START"));
@@ -139,7 +140,7 @@
 
 		const avatar = document.createElement("img");
 		avatar.alt = "";
-		setAvatar(avatar, participant.avatarUrl);
+		setAvatar(avatar, participant);
 		const name = document.createElement("strong");
 		name.textContent = participant.name;
 		name.title = participant.name;
@@ -158,7 +159,7 @@
 		row.className = "offline-row";
 		const avatar = document.createElement("img");
 		avatar.alt = "";
-		setAvatar(avatar, participant.avatarUrl);
+		setAvatar(avatar, participant);
 		const name = document.createElement("strong");
 		name.textContent = participant.name;
 		const status = document.createElement("span");
@@ -282,7 +283,7 @@
 			place.querySelector(".podium-name").textContent = standing.name;
 			place.querySelector(".podium-points").textContent =
 				`${Math.round(Number(standing.totalPoints) || 0)} points`;
-			setAvatar(place.querySelector(".podium-avatar"), avatarUrlFor(standing.playerId));
+			setAvatar(place.querySelector(".podium-avatar"), participantFor(standing.playerId));
 		}
 		podium.hidden = standings.length === 0;
 		standingsList.replaceChildren(...standings.map(createStandingRow));
@@ -304,9 +305,9 @@
 		return row;
 	}
 
-	function avatarUrlFor(playerId) {
-		const participant = (session.participants || []).find(entry => entry.playerId === playerId);
-		return participant ? participant.avatarUrl : fallbackAvatar;
+	function participantFor(playerId) {
+		return (session.participants || []).find(entry => entry.playerId === playerId)
+			?? { playerId, avatarStyle: DEFAULT_AVATAR_STYLE };
 	}
 
 	function startCountdown() {
@@ -417,10 +418,10 @@
 		feedStatus.textContent = label;
 	}
 
-	function setAvatar(image, url) {
-		image.src = url || fallbackAvatar;
+	function setAvatar(image, participant) {
+		image.src = avatarFor(participant?.avatarStyle, participant?.playerId);
 		image.addEventListener("error", () => {
-			image.src = fallbackAvatar;
+			image.src = FALLBACK_AVATAR;
 		}, { once: true });
 	}
 

@@ -67,9 +67,8 @@ class AdminAuthenticationTests {
 		mockMvc.perform(get("/admin/api/quizzes").session(session))
 				.andExpect(status().isOk())
 				.andExpect(header().string("Cache-Control", "no-store"))
-				.andExpect(jsonPath("$.quizzes[0].fileName").value("safety-basics.yaml"))
-				.andExpect(jsonPath("$.quizzes[0].questionCount").value(2))
-				.andExpect(jsonPath("$.quizzes[0].questions").doesNotExist())
+				.andExpect(jsonPath("$.quizzes[?(@.fileName=='safety-basics.yaml')].questionCount").value(2))
+				.andExpect(jsonPath("$.quizzes[*].questions").doesNotExist())
 				.andExpect(content().string(not(containsString("phase-one-secret"))))
 				.andExpect(content().string(not(containsString("correct"))));
 	}

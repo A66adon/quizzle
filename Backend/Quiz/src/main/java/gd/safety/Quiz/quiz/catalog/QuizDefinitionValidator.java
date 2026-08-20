@@ -38,9 +38,8 @@ public final class QuizDefinitionValidator {
 		}
 
 		Set<String> questionIds = new HashSet<>();
-		Set<String> answerIds = new HashSet<>();
 		for (int questionIndex = 0; questionIndex < quiz.questions().size(); questionIndex++) {
-			validateQuestion(quiz.questions().get(questionIndex), questionIndex, questionIds, answerIds, errors);
+			validateQuestion(quiz.questions().get(questionIndex), questionIndex, questionIds, errors);
 		}
 		return List.copyOf(errors);
 	}
@@ -49,7 +48,6 @@ public final class QuizDefinitionValidator {
 			QuestionDefinition question,
 			int questionIndex,
 			Set<String> questionIds,
-			Set<String> answerIds,
 			List<String> errors) {
 		String path = "questions[" + questionIndex + "]";
 		validateId(question.id(), path + ".id", questionIds, "question", errors);
@@ -66,6 +64,7 @@ public final class QuizDefinitionValidator {
 		}
 
 		int correctAnswerCount = 0;
+		Set<String> answerIds = new HashSet<>();
 		for (int answerIndex = 0; answerIndex < question.answers().size(); answerIndex++) {
 			AnswerDefinition answer = question.answers().get(answerIndex);
 			String answerPath = path + ".answers[" + answerIndex + "]";

@@ -1,5 +1,6 @@
 package gd.safety.Quiz.quiz.catalog;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -58,8 +59,26 @@ class QuizDefinitionValidatorTests {
 		assertContains(errors, "questions[0].answers must contain at least one correct answer");
 		assertContains(errors, "questions[1].id duplicates question id 'duplicate-question'");
 		assertContains(errors, "questions[1].points is 100001; maximum is 100000");
-		assertContains(errors, "questions[1].answers[0].id duplicates answer id 'shared-answer'");
 		assertContains(errors, "questions[1] has multiple=false and must contain exactly one correct answer");
+		assertNotContains(errors, "questions[1].answers[0].id duplicates answer id 'shared-answer'");
+	}
+
+	@Test
+	void rejectsAnswerIdsThatRepeatWithinTheSameQuestion() {
+		QuestionDefinition question = new QuestionDefinition(
+				"question",
+				"Which options are correct?",
+				100,
+				20,
+				true,
+				List.of(
+						new AnswerDefinition("a", "One", true),
+						new AnswerDefinition("a", "Two", false)));
+
+		List<String> errors = validator.validate(new QuizDefinition(
+				"Safety", "Description", "Author", List.of(question)));
+
+		assertContains(errors, "questions[0].answers[1].id duplicates answer id 'a'");
 	}
 
 	@Test
@@ -84,5 +103,9 @@ class QuizDefinitionValidatorTests {
 
 	private void assertContains(List<String> errors, String expectedError) {
 		assertTrue(errors.contains(expectedError), () -> "Expected error not found: " + expectedError + " in " + errors);
+	}
+
+	private void assertNotContains(List<String> errors, String unexpectedError) {
+		assertFalse(errors.contains(unexpectedError), () -> "Unexpected error reported: " + unexpectedError);
 	}
 }
