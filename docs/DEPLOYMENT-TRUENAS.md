@@ -102,7 +102,8 @@ proxy, the proxy must:
 - not buffer `text/event-stream` responses – the presenter view uses Server-Sent Events for
   `/admin/api/sessions/{codehash}/events`. Quizzle sends `X-Accel-Buffering: no` on that response,
   which nginx honours automatically; other proxies may need `proxy_buffering off` (or their
-  equivalent) explicitly.
+  equivalent) explicitly. If the stream stays silent, the presenter view falls back to polling
+  `/admin/api/sessions/{codehash}/state` and shows `Live (polling)`.
 - allow long-lived connections (a quiz session keeps one socket open for its whole duration).
 
 Nginx example:
@@ -164,5 +165,5 @@ Everything worth keeping lives in the mounted datasets:
 | Catalog is empty | `QUIZ_FOLDER` does not point at the mounted dataset, or it contains no `.yaml` / `.yml` files. |
 | QR code leads nowhere | `PUBLIC_BASE_URL` still points at `localhost` or an internal address. |
 | Participants show "Connection lost" in a loop | The reverse proxy does not forward WebSocket upgrades. |
-| Presenter view stays blank on "Connecting" | The reverse proxy buffers `text/event-stream`; a warning appears in the view after a few seconds. |
+| Presenter view shows "Live (polling)" | The reverse proxy buffers or blocks `text/event-stream`; the view keeps working through polling, but fix the proxy for instant updates. |
 | Sessions gone after a restart | `/data/db` is not persisted, or `QUIZ_DATABASE_PATH` points outside the mount. |

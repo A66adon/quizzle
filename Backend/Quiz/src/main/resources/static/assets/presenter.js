@@ -15,6 +15,8 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	const podium = document.querySelector("#podium");
 	const COLUMN_STAGGER_MS = 320;
 	const COLUMN_GROW_MS = 1_100;
+	const SSE_GRACE_MS = 6_000;
+	const POLL_INTERVAL_MS = 2_000;
 	const closingCommands = {
 		ABORT: {
 			heading: "Abort this quiz?",
@@ -34,6 +36,8 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	let pendingKickPlayerId = null;
 	let pendingClosingCommand = "ABORT";
 	let feedWatchdog = null;
+	let pollTimer = null;
+	let lastStateAtMs = 0;
 	let chartedQuestionId = null;
 	let resultsRevealTimer = null;
 	let confettiShown = false;
@@ -89,32 +93,52 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			applyState(event.data);
 		});
 		eventSource.addEventListener("error", () => {
+			if (pollTimer) return;
 			setFeedStatus("offline", "Reconnecting");
+			startFeedWatchdog();
 			verifyAdminSession();
 		});
 	}
 
-	// A proxy that buffers text/event-stream leaves this view blank with no error of its own.
+	// A proxy that buffers or blocks text/event-stream never delivers a state, so switch to polling.
 	function startFeedWatchdog() {
+		if (pollTimer) return;
 		window.clearTimeout(feedWatchdog);
 		feedWatchdog = window.setTimeout(() => {
-			if (!session) {
-				showMessage("No live updates received. If Quizzle runs behind a reverse proxy, check that "
-					+ "it does not buffer text/event-stream responses.", true);
-			}
-		}, 8_000);
+			if (Date.now() - lastStateAtMs >= SSE_GRACE_MS) startPolling();
+		}, SSE_GRACE_MS);
+	}
+
+	function startPolling() {
+		if (pollTimer) return;
+		window.clearTimeout(feedWatchdog);
+		eventSource?.close();
+		eventSource = null;
+		pollState();
+		pollTimer = window.setInterval(pollState, POLL_INTERVAL_MS);
+	}
+
+	async function pollState() {
+		try {
+			applyStateMessage(await requestJson(`/admin/api/sessions/${codehash}/state`));
+			setFeedStatus("live", "Live (polling)");
+		} catch {
+			setFeedStatus("offline", "Reconnecting");
+		}
 	}
 
 	function applyState(rawState) {
-		let received;
 		try {
-			received = JSON.parse(rawState);
+			applyStateMessage(JSON.parse(rawState));
 		} catch {
 			showMessage("The server sent an unreadable state update.", true);
-			return;
 		}
+	}
+
+	function applyStateMessage(received) {
 		if (received?.type !== "STATE" || received.payload?.codehash !== codehash) return;
 		session = received.payload;
+		lastStateAtMs = Date.now();
 		window.clearTimeout(feedWatchdog);
 		serverClockOffsetMs = Number(session.serverEpochMs) - Date.now();
 		hideMessage();
@@ -415,6 +439,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 				body: JSON.stringify({ command })
 			});
 			hideMessage();
+			if (pollTimer) pollState();
 		} catch (error) {
 			showMessage(error.status === 409
 				? "That step is not possible in the current quiz state."
@@ -429,6 +454,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		try {
 			await requestJson(`/admin/api/sessions/${codehash}/players/${playerId}/kick`, { method: "POST" });
 			hideMessage();
+			if (pollTimer) pollState();
 		} catch {
 			showMessage("The participant could not be removed.", true);
 		} finally {

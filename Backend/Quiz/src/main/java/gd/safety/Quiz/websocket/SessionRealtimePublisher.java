@@ -33,6 +33,10 @@ public final class SessionRealtimePublisher {
 		return emitter;
 	}
 
+	public String stateJson(GameSessionSnapshot snapshot) {
+		return protocol.state(snapshot);
+	}
+
 	public void disconnectKickedPlayer(String codehash, UUID playerId) {
 		connectionHub.findPlayer(codehash, playerId).ifPresent(connection -> {
 			try {

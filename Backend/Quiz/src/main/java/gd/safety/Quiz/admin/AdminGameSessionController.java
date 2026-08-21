@@ -3,6 +3,7 @@ package gd.safety.Quiz.admin;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -114,6 +115,15 @@ public final class AdminGameSessionController {
 		return ResponseEntity.ok()
 				.header("X-Accel-Buffering", "no")
 				.body(realtimePublisher.subscribePresenter(session));
+	}
+
+	// Fallback for networks where a proxy buffers or blocks the SSE stream.
+	@GetMapping(value = "/{codehash}/state", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<String> state(@PathVariable String codehash) {
+		GameSessionSnapshot session = requireSession(codehash);
+		return ResponseEntity.ok()
+				.cacheControl(CacheControl.noStore())
+				.body(realtimePublisher.stateJson(session));
 	}
 
 	@PostMapping("/{codehash}/players/{playerId}/kick")

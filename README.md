@@ -296,4 +296,5 @@ java -jar Quiz-0.0.1-SNAPSHOT.jar
 Make sure the reverse proxy in front of Quizzle forwards WebSocket upgrades (`Upgrade` and
 `Connection` headers) and does not buffer `text/event-stream`, otherwise the presenter view will not
 receive live updates. Quizzle sends `X-Accel-Buffering: no` on the event stream, which nginx honours
-on its own.
+on its own. If the stream still delivers nothing within six seconds, the presenter view falls back
+to polling `/admin/api/sessions/{codehash}/state` every two seconds and shows `Live (polling)`.
