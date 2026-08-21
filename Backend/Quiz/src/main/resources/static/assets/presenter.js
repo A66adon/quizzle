@@ -39,6 +39,9 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	let pollTimer = null;
 	let lastStateAtMs = 0;
 	let chartedQuestionId = null;
+	let renderedStateSignature = null;
+	let renderedLeaderboardSignature = null;
+	let renderedFinalSignature = null;
 	let resultsRevealTimer = null;
 	let confettiShown = false;
 
@@ -142,15 +145,26 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		window.clearTimeout(feedWatchdog);
 		serverClockOffsetMs = Number(session.serverEpochMs) - Date.now();
 		hideMessage();
+		const signature = stateSignature(session);
+		if (signature === renderedStateSignature) return;
+		renderedStateSignature = signature;
 		render();
+	}
+
+	// Polling repeats the same state; only the server clock differs, so it must not count as a change.
+	function stateSignature(payload) {
+		const { serverEpochMs, ...rest } = payload;
+		return JSON.stringify(rest);
 	}
 
 	function render() {
 		stopCountdown();
 		if (session.state !== "FINAL_RESULTS") {
 			confettiShown = false;
+			renderedFinalSignature = null;
 			stopConfetti();
 		}
+		if (session.state !== "LEADERBOARD") renderedLeaderboardSignature = null;
 		switch (session.state) {
 			case "LOBBY": renderLobby(); break;
 			case "QUESTION_OPEN": renderQuestion(); break;
@@ -330,8 +344,12 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		const standings = session.standings || [];
 		setText("#leaderboard-progress",
 			`After question ${session.currentQuestionIndex + 1} of ${session.questionCount}`);
-		document.querySelector("#leaderboard-list").replaceChildren(
-			...standings.map((standing, index) => createStandingRow(standing, index)));
+		const signature = JSON.stringify(standings);
+		if (renderedLeaderboardSignature !== signature) {
+			renderedLeaderboardSignature = signature;
+			document.querySelector("#leaderboard-list").replaceChildren(
+				...standings.map((standing, index) => createStandingRow(standing, index)));
+		}
 		renderedQuestionId = null;
 		chartedQuestionId = null;
 	}
@@ -343,6 +361,13 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		standingsToggle.hidden = standings.length === 0;
 
 		setText("#final-subtitle", standings.length === 0 ? "Nobody took part in this quiz." : "");
+		renderedQuestionId = null;
+
+		// Reapplying the podium would restart its reveal, so the winner screen is built once.
+		const signature = JSON.stringify(standings);
+		if (renderedFinalSignature === signature) return;
+		renderedFinalSignature = signature;
+
 		// Third place opens the reveal, so the delays follow the occupied places, not the fixed markup order.
 		let revealIndex = 0;
 		for (const placeNumber of [3, 2, 1]) {
@@ -358,7 +383,6 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			setAvatar(place.querySelector(".podium-avatar"), participantFor(standing.playerId));
 		}
 		standingsList.replaceChildren(...standings.map((standing, index) => createStandingRow(standing, index)));
-		renderedQuestionId = null;
 		if (standings.length !== 0 && !confettiShown) {
 			confettiShown = true;
 			window.setTimeout(() => launchConfetti(), revealIndex * 1_700 + 900);
