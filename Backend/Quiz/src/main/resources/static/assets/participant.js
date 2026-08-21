@@ -420,7 +420,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		const own = standings.find(standing => standing.playerId === currentParticipant.playerId);
 		setText("#own-place", own
 			? (own.rank === 1
-				? "That is you - congratulations!"
+				? "Congratulations!"
 				: `You finished #${own.rank} with ${Math.round(Number(own.totalPoints) || 0)} points.`)
 			: "");
 		if (!confettiShown) {

@@ -26,6 +26,10 @@ public final class BrandingAssetsController {
 	public ResponseEntity<String> stylesheet() {
 		Branding branding = catalog.branding();
 		StringBuilder css = new StringBuilder(":root {\n");
+		// Special case to get correct path of mark
+		css.append("    --mark: url(\"./images/")
+				.append(branding.mark())
+				.append("\");\n");
 		appendVariable(css, "primary", branding.primary());
 		appendVariable(css, "primary-soft", branding.primarySoft());
 		appendVariable(css, "accent", branding.accent());

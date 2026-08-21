@@ -80,17 +80,13 @@ h2 {
 }
 
 .brand-mark {
-	display: inline-grid;
-	place-items: center;
-	min-width: 3.25rem;
-	height: 2rem;
-	padding: 0 0.55rem;
-	border-radius: 0.5rem;
-	color: var(--primary);
-	background: var(--accent);
-	font-size: 0.8rem;
-	font-weight: 900;
-	letter-spacing: 0.04em;
+	content:  var(--mark);
+	display: inline-block;
+	vertical-align: middle;
+	margin-right: 8px;
+	max-height: 3rem;
+	max-width: 5rem;
+
 }
 
 .site-header {
@@ -112,6 +108,11 @@ h2 {
 	font-weight: 800;
 	text-decoration: none;
 }
+
+.brand [data-brand-name] {
+	font-size: 2rem;
+}
+
 
 .text-button {
 	padding: 0.6rem 0.9rem;
@@ -435,14 +436,23 @@ h2 {
 	border-radius: 1.25rem;
 	background: var(--surface);
 	box-shadow: var(--shadow);
+
 }
 
 .login-card .brand-mark {
-	margin-bottom: 2.5rem;
+	margin-bottom: 1rem;
+	display: block;
+	width: fit-content;
+	margin-left: auto;
+	margin-right: auto;
 }
 
 .login-card h1 {
-	font-size: clamp(2rem, 10vw, 2.75rem);
+	font-size: clamp(2.2rem, 10vw, 2.5rem);
+	margin-bottom: 2.5rem;
+	align-items: center;
+	display: flex;
+	flex-direction: column;
 }
 
 .form-error {

@@ -14,8 +14,8 @@
 	<main class="login-shell">
 		<section class="login-card" aria-labelledby="login-title">
 			<div class="brand-mark" data-brand-mark aria-hidden="true"></div>
-			<p class="eyebrow" data-brand-name></p>
-			<h1 id="login-title">Admin access</h1>
+			<h1 class="brand-name"><span data-brand-name></span></h1>
+			<h2 id="login-title">Admin access</h2>
 			<p class="muted">Sign in to choose and present a quiz.</p>
 
 			<p class="form-error" id="login-error" role="alert" hidden>
@@ -23,7 +23,7 @@
 			</p>
 
 			<form action="/admin/login" method="post" class="login-form">
-				<label for="password">Admin password</label>
+				<label for="password">Password</label>
 				<input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
 				<button type="submit" class="primary-button">Sign in</button>
 			</form>

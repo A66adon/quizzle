@@ -27,8 +27,8 @@ public record Branding(
 
 	public static Branding defaults() {
 		return new Branding(
-				"Safety Quiz",
-				"G+D",
+				"Quizzle",
+				"GD_Logo.png",
 				"#040066",
 				"#ececff",
 				"#00d4ff",

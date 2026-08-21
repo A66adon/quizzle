@@ -24,9 +24,8 @@
 	<main class="page-shell">
 		<section class="page-heading" aria-labelledby="catalog-title">
 			<div>
-				<p class="eyebrow">Administration</p>
-				<h1 id="catalog-title">Quiz sessions</h1>
-				<p class="muted">Choose a validated quiz or resume a session restored from SQLite.</p>
+				<h1 id="catalog-title">Administration</h1>
+				<p class="muted">Choose a quiz to play or resume a running session.</p>
 			</div>
 			<div class="summary-pill" aria-live="polite">
 				<strong id="quiz-count">—</strong>
@@ -39,7 +38,7 @@
 
 		<section id="session-section" aria-labelledby="session-heading" hidden>
 			<div class="section-heading">
-				<h2 id="session-heading">Current sessions</h2>
+				<h2 id="session-heading">Sessions</h2>
 				<span id="session-count" class="session-count"></span>
 			</div>
 			<div id="session-grid" class="session-grid"></div>
@@ -50,12 +49,12 @@
 
 		<section id="quiz-section" class="catalog-section" aria-labelledby="quiz-heading" hidden>
 			<div class="section-heading">
-				<h2 id="quiz-heading">Available quizzes</h2>
+				<h2 id="quiz-heading">Quizzes</h2>
 				<p id="loaded-at" class="small muted"></p>
 			</div>
 			<div id="quiz-grid" class="quiz-grid"></div>
 			<p id="quiz-empty" class="empty-card" hidden>
-				No valid YAML quizzes were found. Add a <code>.yaml</code> or <code>.yml</code> file and restart the server.
+				No quizzes were found. Add a <code>.yaml</code> or <code>.yml</code> file and restart the server.
 			</p>
 		</section>
 
@@ -97,7 +96,7 @@
 				<p class="session-code-label">Join code</p>
 				<code class="session-code"></code>
 				<a class="session-link" target="_blank" rel="noopener noreferrer"></a>
-				<a class="primary-button link-button session-presenter">Open presenter view</a>
+				<a class="primary-button link-button session-presenter">Open Quiz</a>
 			</div>
 		</article>
 	</template>
