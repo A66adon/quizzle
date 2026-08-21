@@ -375,10 +375,11 @@
 	--shape: "\25A0";
 }
 
+/* The mirrored trailing column keeps every marker on the same left edge while the text stays centred. */
 .option-tile {
-	display: flex;
+	display: grid;
+	grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
 	align-items: center;
-	justify-content: center;
 	gap: 1rem;
 	min-height: 6.5rem;
 	padding: 1.35rem;
@@ -395,7 +396,6 @@
 .option-marker {
 	display: grid;
 	place-items: center;
-	flex: none;
 	width: 2.75rem;
 	height: 2.75rem;
 	border-radius: 0.8rem;
