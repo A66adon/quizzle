@@ -114,6 +114,7 @@ questions:
     points: 1000
     timeSeconds: 20
     multiple: false
+    shuffle_answers: true   # optional, defaults to true
     answers:
       - id: "a"
         text: "Leave by the nearest safe emergency exit"
@@ -126,6 +127,10 @@ questions:
         correct: false
 ```
 
+Answers are shuffled once per session, so the correct option is not always in the same place and the
+order stays identical on every screen, after a reveal, a reconnect and a server restart. Set
+`shuffle_answers: false` on a question whose answers must keep their file order (for example a chronological list).
+
 Rules enforced before a quiz enters the catalog:
 
 - `title`, `description` and `author` are present and within the configured length limits.
@@ -136,6 +141,7 @@ Rules enforced before a quiz enters the catalog:
 - Each question has at least two answers and at least one correct answer.
 - With `multiple: false` there must be exactly one correct answer.
 - `points` and `timeSeconds` are positive and within their configured maximums.
+- `shuffle_answers` is optional and must be `true` or `false`.
 
 A file that fails any of these checks is skipped and shown in the admin view with the reason, so a
 single broken quiz never blocks the rest of the catalog. Duplicate YAML keys are rejected with the
@@ -166,6 +172,8 @@ stateDiagram-v2
 - While a question is open the presenter sees the number of answers received, never the
   distribution. The bar chart appears in `RESULTS`.
 - `ABORT` and `CLOSE` are behind a confirmation dialog in the presenter view.
+- A session that reaches `CLOSED` is dropped from the registry and deleted from the snapshot store
+  right away, so it disappears from the admin list and does not come back after a restart.
 
 ## Scoring
 
@@ -202,7 +210,8 @@ participant receives a final message, deletes its token and stops retrying.
 Sessions are written to SQLite on every state change and additionally flushed on a timer. After a
 restart the registry rehydrates all sessions: previously connected players become
 `TEMPORARILY_DISCONNECTED` so their cookies still work, and a question that was open when the server
-went down gets a fresh timer instead of an already-expired one.
+went down gets a fresh timer instead of an already-expired one. Closed sessions are deleted instead
+of restored.
 
 ## Avatars
 

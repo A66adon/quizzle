@@ -82,7 +82,7 @@ h2 { color: var(--primary); }
 #confirm-multiple-button { width: 100%; margin-top: 1rem; }
 
 .centered-card { max-width: 38rem; margin: 8vh auto; text-align: center; }
-.waiting-pulse { width: 4rem; height: 4rem; margin: 0 auto 1.5rem; border: .45rem solid #e7e8f2; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+.waiting-pulse { width: 4rem; height: 4rem; margin: 0 auto 1.5rem; border: .45rem solid #e7e8f2; border-top-color: var(--accent); border-radius: 50%; animation: spin 2.6s cubic-bezier(.65,0,.35,1) infinite; }
 .results-list, .standings-list { display: grid; gap: .75rem; }
 .result-card { padding: 1rem; border: 1px solid var(--border); border-radius: .9rem; background: #fff; }
 .result-card.correct { border-color: #8fcfab; background: #f1fbf5; }
@@ -95,11 +95,21 @@ h2 { color: var(--primary); }
 .standing-row.me { border-color: var(--accent); background: #effcff; }
 .standing-rank, .standing-points { color: var(--primary); font-weight: 900; }
 
-.answer-dialog { width: min(32rem, calc(100% - 2rem)); padding: 0; border: 0; border-radius: 1rem; color: #17162d; box-shadow: 0 22px 60px rgba(4,0,102,.23); }
-.answer-dialog::backdrop { background: rgba(11,11,30,.5); }
-.answer-dialog form { padding: 1.6rem; }
-.answer-dialog li { margin-bottom: .4rem; }
-.dialog-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: .7rem; margin-top: 1.4rem; }
+.results-verdict { display: grid; gap: .3rem; margin-bottom: 1rem; padding: 1rem 1.1rem; border: 2px solid var(--border); border-radius: .9rem; background: #fff; animation: verdict-in .5s cubic-bezier(.22,1,.36,1) both; }
+.results-verdict strong { font-size: 1.3rem; }
+.results-verdict[data-result="correct"] { border-color: #8fcfab; background: #f1fbf5; }
+.results-verdict[data-result="correct"] strong { color: var(--green); }
+.results-verdict[data-result="wrong"] { border-color: #f0b3bd; background: #fdf3f4; }
+.results-verdict[data-result="wrong"] strong { color: var(--danger); }
+.results-verdict[data-result="missed"] { border-color: var(--border); }
+.results-verdict[data-result="missed"] strong { color: var(--muted); }
+
+.winner-card { display: grid; justify-items: center; gap: .4rem; margin: 1.5rem 0 2rem; padding: 1.8rem 1.2rem; border: 2px solid var(--accent); border-radius: 1.1rem; background: linear-gradient(180deg, #effcff, #fff); text-align: center; animation: verdict-in .7s cubic-bezier(.22,1,.36,1) both; }
+.winner-avatar { width: 6.5rem; height: 6.5rem; border: 3px solid var(--accent); border-radius: 50%; background: #fff; }
+.winner-card h2 { margin: 0; color: var(--primary); overflow-wrap: anywhere; }
+.winner-points { margin: 0; color: var(--primary); font-weight: 850; }
+
+@keyframes verdict-in { from { opacity: 0; transform: translateY(.9rem) scale(.97); } }
 
 @keyframes pulse { 50% { opacity: .35; } }
 @keyframes spin { to { transform: rotate(360deg); } }

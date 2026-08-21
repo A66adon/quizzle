@@ -60,7 +60,7 @@
 				<p id="question-mode" class="eyebrow"></p>
 				<h1 id="question-text"></h1>
 				<div id="answer-grid" class="answer-grid" role="group" aria-label="Answer choices"></div>
-				<button id="confirm-multiple-button" class="primary-button" type="button" hidden>Confirm selection</button>
+				<button id="confirm-multiple-button" class="primary-button" type="button" hidden>Submit answer</button>
 			</article>
 		</section>
 
@@ -76,6 +76,10 @@
 				<div><p class="eyebrow">Results</p><h1 id="results-title"></h1></div>
 				<span id="results-answer-count" class="count-chip"></span>
 			</div>
+			<div id="results-verdict" class="results-verdict" role="status" hidden>
+				<strong id="verdict-title"></strong>
+				<span id="verdict-detail" class="muted"></span>
+			</div>
 			<div id="results-list" class="results-list"></div>
 			<p class="waiting-copy">Waiting for the next question…</p>
 		</section>
@@ -84,6 +88,13 @@
 			<p class="eyebrow">Final results</p>
 			<h1 id="final-title">Quiz complete</h1>
 			<p id="final-wait" class="waiting-copy" hidden>Waiting for the presenter to reveal the scores…</p>
+			<article id="winner-card" class="winner-card" hidden>
+				<p class="eyebrow">Winner</p>
+				<img id="winner-avatar" class="winner-avatar" src="/assets/avatar-fallback.svg" alt="">
+				<h2 id="winner-name"></h2>
+				<p id="winner-points" class="winner-points"></p>
+				<p id="own-place" class="muted"></p>
+			</article>
 			<div id="standings-list" class="standings-list"></div>
 		</section>
 
@@ -92,18 +103,6 @@
 			<h1 id="closed-title">Thanks for playing</h1>
 		</section>
 	</main>
-
-	<dialog id="answer-dialog" class="answer-dialog">
-		<form method="dialog">
-			<p class="eyebrow">Confirm answers</p>
-			<h2>Submit this selection?</h2>
-			<ul id="selected-answer-list"></ul>
-			<div class="dialog-actions">
-				<button class="secondary-button" value="cancel">Go back</button>
-				<button id="submit-multiple-button" class="primary-button" value="default">Submit answer</button>
-			</div>
-		</form>
-	</dialog>
 </body>
 </html>
 

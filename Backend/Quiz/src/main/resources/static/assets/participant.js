@@ -10,9 +10,7 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 	const joinForm = document.querySelector("#join-form");
 	const nameInput = document.querySelector("#player-name");
 	const joinButton = document.querySelector("#join-button");
-	const answerDialog = document.querySelector("#answer-dialog");
 	const confirmMultipleButton = document.querySelector("#confirm-multiple-button");
-	const submitMultipleButton = document.querySelector("#submit-multiple-button");
 
 	const codehash = readCodehash();
 	const cookieName = `quiz_reconnect_${codehash}`;
@@ -64,21 +62,6 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 
 	confirmMultipleButton.addEventListener("click", () => {
 		if (selectedAnswerIds.size === 0) return;
-		const list = document.querySelector("#selected-answer-list");
-		list.replaceChildren();
-		for (const answerId of selectedAnswerIds) {
-			const option = currentSession?.question?.answers?.find(answer => answer.id === answerId);
-			if (!option) continue;
-			const item = document.createElement("li");
-			item.textContent = option.text;
-			list.append(item);
-		}
-		answerDialog.showModal();
-	});
-
-	submitMultipleButton.addEventListener("click", event => {
-		event.preventDefault();
-		answerDialog.close();
 		submitAnswer([...selectedAnswerIds]);
 	});
 
@@ -352,7 +335,25 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 		const maximumVotes = Math.max(1, ...options.map(option => Number(option.voteCount) || 0));
 		const list = document.querySelector("#results-list");
 		list.replaceChildren(...options.map(option => createResultCard(option, ownAnswers, maximumVotes)));
+		renderVerdict(options, ownAnswers, answeredQuestions.has(results?.questionId));
 		renderedQuestionId = null;
+	}
+
+	function renderVerdict(options, ownAnswers, answered) {
+		const verdict = document.querySelector("#results-verdict");
+		const correct = options.filter(option => option.correct);
+		const correctTexts = correct.map(option => option.text).join(", ");
+		const exactlyCorrect = answered
+			&& ownAnswers.size === correct.length
+			&& correct.every(option => ownAnswers.has(option.answerId));
+		verdict.dataset.result = answered ? (exactlyCorrect ? "correct" : "wrong") : "missed";
+		setText("#verdict-title", answered
+			? (exactlyCorrect ? "Correct!" : "Not quite")
+			: "No answer received");
+		setText("#verdict-detail", exactlyCorrect
+			? "Points were awarded for how fast you answered."
+			: `Correct answer: ${correctTexts}`);
+		verdict.hidden = false;
 	}
 
 	function createResultCard(option, ownAnswers, maximumVotes) {
@@ -379,9 +380,27 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 	function renderFinalResults() {
 		showView("final-view");
 		const standings = currentSession.standings || [];
-		document.querySelector("#final-wait").hidden = standings.length !== 0;
+		const revealed = standings.length !== 0;
+		document.querySelector("#final-wait").hidden = revealed;
+		document.querySelector("#winner-card").hidden = !revealed;
 		const list = document.querySelector("#standings-list");
 		list.replaceChildren(...standings.map(createStandingRow));
+		if (!revealed) return;
+
+		const winner = standings[0];
+		setText("#winner-name", winner.name);
+		setText("#winner-points", `${Math.round(Number(winner.totalPoints) || 0)} points`);
+		setAvatar(document.querySelector("#winner-avatar"), participantFor(winner.playerId));
+		const own = standings.find(standing => standing.playerId === currentParticipant.playerId);
+		setText("#own-place", own
+			? (own.rank === 1
+				? "That is you - congratulations!"
+				: `You finished #${own.rank} with ${Math.round(Number(own.totalPoints) || 0)} points.`)
+			: "");
+	}
+
+	function participantFor(playerId) {
+		return (currentSession.participants || []).find(entry => entry.playerId === playerId) || null;
 	}
 
 	function createStandingRow(standing) {

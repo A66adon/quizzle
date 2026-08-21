@@ -28,6 +28,7 @@ final class QuizTestFixtures {
 						1_000,
 						20,
 						false,
+						true,
 						List.of(
 								new AnswerDefinition("a1", "Leave safely", true),
 								new AnswerDefinition("a2", "Ignore the alarm", false)))));

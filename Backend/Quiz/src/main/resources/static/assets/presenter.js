@@ -12,6 +12,8 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 	const standingsToggle = document.querySelector("#standings-toggle");
 	const standingsList = document.querySelector("#standings-list");
 	const podium = document.querySelector("#podium");
+	const COLUMN_STAGGER_MS = 320;
+	const COLUMN_GROW_MS = 1_100;
 	const closingCommands = {
 		ABORT: {
 			heading: "Abort this quiz?",
@@ -31,6 +33,8 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 	let pendingKickPlayerId = null;
 	let pendingClosingCommand = "ABORT";
 	let feedWatchdog = null;
+	let chartedQuestionId = null;
+	let resultsRevealTimer = null;
 
 	if (!codehash) {
 		showMessage("This presenter link is invalid.", true);
@@ -213,12 +217,12 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 		startCountdown();
 	}
 
-	function createOptionTile(option, index) {
+	function createOptionTile(option) {
 		const tile = document.createElement("article");
 		tile.className = "option-tile";
 		const marker = document.createElement("span");
 		marker.className = "option-marker";
-		marker.textContent = String.fromCharCode(65 + index);
+		marker.setAttribute("aria-hidden", "true");
 		const text = document.createElement("span");
 		text.textContent = option.text;
 		tile.append(marker, text);
@@ -236,40 +240,58 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 		document.querySelector("#next-button").textContent = lastQuestion
 			? "Finish quiz"
 			: "Next question";
-
-		const highestVoteCount = Math.max(1, ...options.map(option => Number(option.voteCount) || 0));
-		document.querySelector("#results-chart").replaceChildren(
-			...options.map(option => createResultRow(option, highestVoteCount)));
 		renderedQuestionId = null;
+
+		// Rebuilding on every state push would restart the reveal, so each question is charted once.
+		const questionId = session.results?.questionId ?? null;
+		if (chartedQuestionId === questionId) return;
+		chartedQuestionId = questionId;
+
+		const chart = document.querySelector("#results-chart");
+		const highestVoteCount = Math.max(1, ...options.map(option => Number(option.voteCount) || 0));
+		chart.classList.remove("revealed");
+		chart.replaceChildren(
+			...options.map((option, index) => createResultColumn(option, index, highestVoteCount)));
+
+		window.clearTimeout(resultsRevealTimer);
+		const revealDelayMs = COLUMN_STAGGER_MS * Math.max(0, options.length - 1) + COLUMN_GROW_MS + 250;
+		resultsRevealTimer = window.setTimeout(() => chart.classList.add("revealed"), revealDelayMs);
 	}
 
-	function createResultRow(option, highestVoteCount) {
-		const row = document.createElement("article");
-		row.className = option.correct ? "result-row correct" : "result-row";
+	function createResultColumn(option, index, highestVoteCount) {
+		const column = document.createElement("article");
+		column.className = option.correct ? "result-column correct" : "result-column";
+		column.style.setProperty("--column-delay", `${index * COLUMN_STAGGER_MS}ms`);
 
-		const head = document.createElement("div");
-		head.className = "result-head";
-		const label = document.createElement("span");
-		label.textContent = option.text;
-		if (option.correct) {
-			const tag = document.createElement("span");
-			tag.className = "correct-tag";
-			tag.textContent = "Correct";
-			label.append(tag);
-		}
-		const votes = document.createElement("span");
-		votes.className = "votes";
-		votes.textContent = String(option.voteCount);
-		head.append(label, votes);
-
+		const track = document.createElement("div");
+		track.className = "result-track";
 		const bar = document.createElement("div");
 		bar.className = "result-bar";
-		const fill = document.createElement("span");
-		fill.style.width = `${(Number(option.voteCount) / highestVoteCount) * 100}%`;
-		bar.append(fill);
+		bar.style.setProperty("--fill", `${(Number(option.voteCount) / highestVoteCount) * 100}%`);
 
-		row.append(head, bar);
-		return row;
+		const cap = document.createElement("div");
+		cap.className = "result-cap";
+		const tag = document.createElement("span");
+		tag.className = "correct-tag";
+		tag.textContent = "Correct";
+		const votes = document.createElement("span");
+		votes.className = "result-votes";
+		votes.textContent = String(option.voteCount);
+		cap.append(tag, votes);
+		bar.append(cap);
+		track.append(bar);
+
+		const label = document.createElement("div");
+		label.className = "result-label";
+		const shape = document.createElement("span");
+		shape.className = "result-shape";
+		shape.setAttribute("aria-hidden", "true");
+		const text = document.createElement("span");
+		text.textContent = option.text;
+		label.append(shape, text);
+
+		column.append(track, label);
+		return column;
 	}
 
 	function renderFinalResults() {
@@ -290,10 +312,15 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 		setText("#final-subtitle", standings.length === 0
 			? "Nobody took part in this quiz."
 			: "The fastest correct answers decide any tie.");
-		for (const place of podium.querySelectorAll(".podium-place")) {
-			const standing = standings[Number(place.dataset.place) - 1];
+		// Third place opens the reveal, so the delays follow the occupied places, not the fixed markup order.
+		let revealIndex = 0;
+		for (const placeNumber of [3, 2, 1]) {
+			const place = podium.querySelector(`.podium-place[data-place="${placeNumber}"]`);
+			const standing = standings[placeNumber - 1];
 			place.hidden = !standing;
 			if (!standing) continue;
+			place.style.setProperty("--podium-index", String(revealIndex));
+			revealIndex++;
 			place.querySelector(".podium-name").textContent = standing.name;
 			place.querySelector(".podium-points").textContent =
 				`${Math.round(Number(standing.totalPoints) || 0)} points`;

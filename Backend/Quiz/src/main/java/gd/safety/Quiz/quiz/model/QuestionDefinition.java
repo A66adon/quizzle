@@ -8,6 +8,7 @@ public record QuestionDefinition(
 		int points,
 		int timeSeconds,
 		boolean multiple,
+		boolean shuffleAnswers,
 		List<AnswerDefinition> answers) {
 
 	public QuestionDefinition {

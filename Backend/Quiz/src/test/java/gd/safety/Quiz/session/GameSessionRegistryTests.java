@@ -9,6 +9,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -27,6 +28,7 @@ import gd.safety.Quiz.persistence.SqliteSnapshotRepository;
 import gd.safety.Quiz.quiz.catalog.QuizCatalog;
 import gd.safety.Quiz.quiz.catalog.QuizDefinitionValidator;
 import gd.safety.Quiz.quiz.catalog.QuizYamlParser;
+import gd.safety.Quiz.quiz.model.AnswerDefinition;
 import gd.safety.Quiz.session.GameSessionRegistry.PlayerConnection;
 import gd.safety.Quiz.session.GameSessionRegistry.ReconnectRejectedException;
 import tools.jackson.databind.json.JsonMapper;
@@ -106,6 +108,105 @@ class GameSessionRegistryTests {
 		assertEquals(kicked, repository.loadAll().getFirst());
 		assertThrows(ReconnectRejectedException.class, () ->
 				registry.reconnectPlayer(created.codehash(), joined.player().reconnectToken()));
+	}
+
+	@Test
+	void closingASessionRemovesItFromMemoryAndFromTheSnapshotStore() throws Exception {
+		SqliteSnapshotRepository repository = createRepository();
+		GameSessionRegistry registry = createRegistry(createCatalog(prepareQuizDirectory()), repository);
+		registry.rehydrate();
+		GameSessionSnapshot created = registry.create("safety.yaml");
+
+		GameSessionSnapshot closed = registry.transition(created.codehash(), GameCommand.ABORT);
+
+		assertEquals(GameState.CLOSED, closed.state());
+		assertTrue(registry.find(created.codehash()).isEmpty());
+		assertTrue(registry.list().isEmpty());
+		assertTrue(repository.loadAll().isEmpty());
+	}
+
+	@Test
+	void shufflesAnswersPerSessionUnlessTheQuestionOptsOut() throws Exception {
+		Path quizDirectory = Files.createDirectories(temporaryDirectory.resolve("shuffled"));
+		Files.writeString(
+				quizDirectory.resolve("shuffled.yaml"),
+				shuffledQuizYaml(),
+				StandardCharsets.UTF_8);
+		GameSessionRegistry registry = createRegistry(createCatalog(quizDirectory), createRepository());
+		registry.rehydrate();
+
+		Set<List<String>> shuffledOrders = new HashSet<>();
+		for (int attempt = 0; attempt < 30; attempt++) {
+			GameSessionSnapshot created = registry.create("shuffled.yaml");
+			shuffledOrders.add(answerIds(created, 0));
+			assertEquals(List.of("f1", "f2", "f3", "f4", "f5", "f6"), answerIds(created, 1));
+		}
+
+		assertTrue(shuffledOrders.size() > 1, "the shuffled question kept a single answer order");
+	}
+
+	private List<String> answerIds(GameSessionSnapshot snapshot, int questionIndex) {
+		return snapshot.quiz().questions().get(questionIndex).answers().stream()
+				.map(AnswerDefinition::id)
+				.toList();
+	}
+
+	private String shuffledQuizYaml() {
+		return """
+				title: Safety
+				description: Shuffle rules
+				author: Safety Team
+				questions:
+				  - id: shuffled
+				    text: Shuffled question
+				    points: 1000
+				    timeSeconds: 20
+				    multiple: false
+				    answers:
+				      - id: s1
+				        text: Correct
+				        correct: true
+				      - id: s2
+				        text: Wrong
+				        correct: false
+				      - id: s3
+				        text: Wrong
+				        correct: false
+				      - id: s4
+				        text: Wrong
+				        correct: false
+				      - id: s5
+				        text: Wrong
+				        correct: false
+				      - id: s6
+				        text: Wrong
+				        correct: false
+				  - id: fixed
+				    text: Fixed question
+				    points: 1000
+				    timeSeconds: 20
+				    multiple: false
+				    shuffle_answers: false
+				    answers:
+				      - id: f1
+				        text: Correct
+				        correct: true
+				      - id: f2
+				        text: Wrong
+				        correct: false
+				      - id: f3
+				        text: Wrong
+				        correct: false
+				      - id: f4
+				        text: Wrong
+				        correct: false
+				      - id: f5
+				        text: Wrong
+				        correct: false
+				      - id: f6
+				        text: Wrong
+				        correct: false
+				""";
 	}
 
 	private Path prepareQuizDirectory() throws Exception {

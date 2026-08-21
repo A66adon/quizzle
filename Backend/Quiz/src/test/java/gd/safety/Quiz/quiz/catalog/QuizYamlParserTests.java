@@ -1,6 +1,7 @@
 package gd.safety.Quiz.quiz.catalog;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -30,6 +31,18 @@ class QuizYamlParserTests {
 		assertEquals(1, quiz.questions().size());
 		assertEquals(2, quiz.questions().getFirst().answers().size());
 		assertTrue(quiz.questions().getFirst().answers().getFirst().correct());
+	}
+
+	@Test
+	void shuffleAnswersDefaultsToTrueAndCanBeTurnedOff() throws Exception {
+		Path defaulted = write("defaulted.yaml", QuizTestFixtures.validYaml());
+		Path fixed = write("fixed.yaml", QuizTestFixtures.validYaml().replace(
+				"    multiple: false",
+				"    multiple: false\n    shuffle_answers: false"));
+		QuizYamlParser parser = new QuizYamlParser(QuizTestFixtures.limits());
+
+		assertTrue(parser.parse(defaulted).questions().getFirst().shuffleAnswers());
+		assertFalse(parser.parse(fixed).questions().getFirst().shuffleAnswers());
 	}
 
 	@Test

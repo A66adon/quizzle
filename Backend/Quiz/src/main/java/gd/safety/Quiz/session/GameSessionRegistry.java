@@ -2,6 +2,7 @@ package gd.safety.Quiz.session;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,9 @@ import gd.safety.Quiz.config.GameSessionProperties;
 import gd.safety.Quiz.persistence.SqliteSnapshotRepository;
 import gd.safety.Quiz.quiz.catalog.LoadedQuiz;
 import gd.safety.Quiz.quiz.catalog.QuizCatalog;
+import gd.safety.Quiz.quiz.model.AnswerDefinition;
 import gd.safety.Quiz.quiz.model.QuestionDefinition;
+import gd.safety.Quiz.quiz.model.QuizDefinition;
 import gd.safety.Quiz.session.AnswerGradingService.Grade;
 import gd.safety.Quiz.session.AnswerGradingService.InvalidAnswerSelectionException;
 import gd.safety.Quiz.session.GameSessionSnapshot.PlayerSnapshot;
@@ -78,12 +81,13 @@ public final class GameSessionRegistry {
 	public GameSessionSnapshot create(String quizFileName) {
 		LoadedQuiz loadedQuiz = quizCatalog.findByFileName(quizFileName)
 				.orElseThrow(() -> new QuizNotFoundException(quizFileName));
+		QuizDefinition quiz = withShuffledAnswers(loadedQuiz.quiz());
 
 		for (int attempt = 0; attempt < MAX_CODEHASH_ATTEMPTS; attempt++) {
 			String codehash = generateCodehash();
 			long nowEpochMs = System.currentTimeMillis();
 			GameSessionSnapshot snapshot = GameSessionSnapshot.create(
-					codehash, loadedQuiz.fileName(), loadedQuiz.quiz(), nowEpochMs);
+					codehash, loadedQuiz.fileName(), quiz, nowEpochMs);
 			GameSessionAggregate aggregate = new GameSessionAggregate(snapshot);
 			if (sessions.putIfAbsent(codehash, aggregate) != null) {
 				continue;
@@ -102,13 +106,28 @@ public final class GameSessionRegistry {
 	public GameSessionSnapshot transition(String codehash, GameCommand command) {
 		GameSessionAggregate aggregate = requireAggregate(codehash);
 		long nowEpochMs = System.currentTimeMillis();
+		GameSessionSnapshot updated;
 		try {
-			return aggregate.update(
+			updated = aggregate.update(
 					current -> current.withTransition(stateMachine.apply(current, command, nowEpochMs), nowEpochMs),
 					snapshotRepository::save);
 		} catch (InvalidGameTransitionException exception) {
 			LOGGER.warn("Rejected session command: codehash={}, command={}", codehash, command);
 			throw exception;
+		}
+		if (updated.state() == GameState.CLOSED) {
+			forget(codehash, aggregate);
+		}
+		return updated;
+	}
+
+	// A closed session must not survive a restart, so it leaves memory and the snapshot store at once.
+	private void forget(String codehash, GameSessionAggregate aggregate) {
+		sessions.remove(codehash, aggregate);
+		try {
+			snapshotRepository.delete(codehash);
+		} catch (RuntimeException exception) {
+			LOGGER.error("Could not delete the snapshot of closed session {}", codehash, exception);
 		}
 	}
 
@@ -341,6 +360,28 @@ public final class GameSessionRegistry {
 			throw new SessionNotFoundException(codehash);
 		}
 		return aggregate;
+	}
+
+	// The order is fixed once per session so it stays stable across reveals, reconnects and restarts.
+	private QuizDefinition withShuffledAnswers(QuizDefinition quiz) {
+		List<QuestionDefinition> questions = new ArrayList<>(quiz.questions().size());
+		for (QuestionDefinition question : quiz.questions()) {
+			if (!question.shuffleAnswers() || question.answers().size() < 2) {
+				questions.add(question);
+				continue;
+			}
+			List<AnswerDefinition> answers = new ArrayList<>(question.answers());
+			Collections.shuffle(answers, secureRandom);
+			questions.add(new QuestionDefinition(
+					question.id(),
+					question.text(),
+					question.points(),
+					question.timeSeconds(),
+					question.multiple(),
+					question.shuffleAnswers(),
+					answers));
+		}
+		return new QuizDefinition(quiz.title(), quiz.description(), quiz.author(), questions);
 	}
 
 	private PlayerSnapshot findPlayerByToken(GameSessionSnapshot snapshot, UUID reconnectToken) {

@@ -42,6 +42,7 @@ public final class SessionTestFixtures {
 				    points: 1000
 				    timeSeconds: 20
 				    multiple: false
+				    shuffle_answers: false
 				    answers:
 				      - id: a1
 				        text: Correct
@@ -54,6 +55,7 @@ public final class SessionTestFixtures {
 				    points: 2000
 				    timeSeconds: 30
 				    multiple: false
+				    shuffle_answers: false
 				    answers:
 				      - id: a3
 				        text: Correct
@@ -70,6 +72,7 @@ public final class SessionTestFixtures {
 				text,
 				id.equals("q1") ? 1_000 : 2_000,
 				id.equals("q1") ? 20 : 30,
+				false,
 				false,
 				List.of(
 						new AnswerDefinition(correctId, "Correct", true),

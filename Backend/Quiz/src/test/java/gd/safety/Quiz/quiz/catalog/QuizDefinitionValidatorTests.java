@@ -38,6 +38,7 @@ class QuizDefinitionValidatorTests {
 				0,
 				601,
 				false,
+				true,
 				List.of(
 						new AnswerDefinition("shared-answer", "One", false),
 						new AnswerDefinition("first-other", "Two", false)));
@@ -47,6 +48,7 @@ class QuizDefinitionValidatorTests {
 				100_001,
 				20,
 				false,
+				true,
 				List.of(
 						new AnswerDefinition("shared-answer", "Three", true),
 						new AnswerDefinition("second-other", "Four", true)));
@@ -71,6 +73,7 @@ class QuizDefinitionValidatorTests {
 				100,
 				20,
 				true,
+				true,
 				List.of(
 						new AnswerDefinition("a", "One", true),
 						new AnswerDefinition("a", "Two", false)));
@@ -88,6 +91,7 @@ class QuizDefinitionValidatorTests {
 				"Q".repeat(501),
 				1,
 				1,
+				true,
 				true,
 				List.of(new AnswerDefinition("answer", "A".repeat(301), true)));
 

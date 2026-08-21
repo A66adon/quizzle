@@ -30,6 +30,7 @@ public final class QuizYamlParser {
 	private static final Set<String> QUIZ_FIELDS = Set.of("title", "description", "author", "questions");
 	private static final Set<String> QUESTION_FIELDS = Set.of(
 			"id", "text", "points", "timeSeconds", "multiple", "answers");
+	private static final Set<String> OPTIONAL_QUESTION_FIELDS = Set.of("shuffle_answers");
 	private static final Set<String> ANSWER_FIELDS = Set.of("id", "text", "correct");
 
 	private final QuizValidationProperties limits;
@@ -54,7 +55,7 @@ public final class QuizYamlParser {
 
 		List<String> errors = new ArrayList<>();
 		Map<String, Object> root = readMap(document, "quiz", errors);
-		checkFields(root, QUIZ_FIELDS, "quiz", errors);
+		checkFields(root, QUIZ_FIELDS, Set.of(), "quiz", errors);
 
 		String title = readString(root, "title", "quiz.title", errors);
 		String description = readString(root, "description", "quiz.description", errors);
@@ -94,15 +95,18 @@ public final class QuizYamlParser {
 		for (int questionIndex = 0; questionIndex < values.size(); questionIndex++) {
 			String path = "questions[" + questionIndex + "]";
 			Map<String, Object> question = readMap(values.get(questionIndex), path, errors);
-			checkFields(question, QUESTION_FIELDS, path, errors);
+			checkFields(question, QUESTION_FIELDS, OPTIONAL_QUESTION_FIELDS, path, errors);
 
 			String id = readString(question, "id", path + ".id", errors);
 			String text = readString(question, "text", path + ".text", errors);
 			int points = readInteger(question, "points", path + ".points", errors);
 			int timeSeconds = readInteger(question, "timeSeconds", path + ".timeSeconds", errors);
-			boolean multiple = readBoolean(question, "multiple", path + ".multiple", errors);
+			boolean multiple = readBoolean(question, "multiple", path + ".multiple", false, errors);
+			boolean shuffleAnswers = readBoolean(
+					question, "shuffle_answers", path + ".shuffle_answers", true, errors);
 			List<AnswerDefinition> answers = readAnswers(question, path, errors);
-			questions.add(new QuestionDefinition(id, text, points, timeSeconds, multiple, answers));
+			questions.add(new QuestionDefinition(
+					id, text, points, timeSeconds, multiple, shuffleAnswers, answers));
 		}
 		return questions;
 	}
@@ -117,11 +121,11 @@ public final class QuizYamlParser {
 		for (int answerIndex = 0; answerIndex < values.size(); answerIndex++) {
 			String path = answersPath + "[" + answerIndex + "]";
 			Map<String, Object> answer = readMap(values.get(answerIndex), path, errors);
-			checkFields(answer, ANSWER_FIELDS, path, errors);
+			checkFields(answer, ANSWER_FIELDS, Set.of(), path, errors);
 			answers.add(new AnswerDefinition(
 					readString(answer, "id", path + ".id", errors),
 					readString(answer, "text", path + ".text", errors),
-					readBoolean(answer, "correct", path + ".correct", errors)));
+					readBoolean(answer, "correct", path + ".correct", false, errors)));
 		}
 		return answers;
 	}
@@ -145,16 +149,17 @@ public final class QuizYamlParser {
 
 	private void checkFields(
 			Map<String, Object> values,
-			Set<String> allowedFields,
+			Set<String> requiredFields,
+			Set<String> optionalFields,
 			String path,
 			List<String> errors) {
-		for (String requiredField : allowedFields) {
+		for (String requiredField : requiredFields) {
 			if (!values.containsKey(requiredField)) {
 				addError(errors, path + "." + requiredField + " is required");
 			}
 		}
 		for (String field : values.keySet()) {
-			if (!allowedFields.contains(field)) {
+			if (!requiredFields.contains(field) && !optionalFields.contains(field)) {
 				addError(errors, path + "." + field + " is not allowed");
 			}
 		}
@@ -202,14 +207,15 @@ public final class QuizYamlParser {
 			Map<String, Object> values,
 			String field,
 			String path,
+			boolean defaultValue,
 			List<String> errors) {
 		Object value = values.get(field);
 		if (value == null && !values.containsKey(field)) {
-			return false;
+			return defaultValue;
 		}
 		if (!(value instanceof Boolean booleanValue)) {
 			addError(errors, path + " must be true or false");
-			return false;
+			return defaultValue;
 		}
 		return booleanValue;
 	}

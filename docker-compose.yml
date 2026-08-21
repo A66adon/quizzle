@@ -1,0 +1,17 @@
+services:
+  quizzle:
+    build: .
+    container_name: quizzle
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD before starting}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:8080}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-false}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./Backend/Quiz/quizzes:/data/quizzes:ro
+      - quizzle-db:/data/db
+    restart: unless-stopped
+
+volumes:
+  quizzle-db:

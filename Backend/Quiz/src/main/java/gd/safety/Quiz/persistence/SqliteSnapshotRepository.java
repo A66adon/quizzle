@@ -115,6 +115,20 @@ public final class SqliteSnapshotRepository {
 		}
 	}
 
+	public void delete(String codehash) {
+		databaseWriterLock.lock();
+		try (Connection connection = openConnection();
+				PreparedStatement statement = connection.prepareStatement(
+						"DELETE FROM session_snapshots WHERE codehash = ?")) {
+			statement.setString(1, codehash);
+			statement.executeUpdate();
+		} catch (SQLException exception) {
+			throw new SnapshotPersistenceException("Could not delete session " + codehash, exception);
+		} finally {
+			databaseWriterLock.unlock();
+		}
+	}
+
 	public List<GameSessionSnapshot> loadAll() {
 		List<GameSessionSnapshot> snapshots = new ArrayList<>();
 		try (Connection connection = openConnection();
