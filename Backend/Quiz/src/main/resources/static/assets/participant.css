@@ -128,5 +128,10 @@ h2 { color: var(--primary); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-	*, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+	/* Without capping the iterations, looping animations race at .01ms per turn instead of stopping. */
+	*, *::before, *::after {
+		animation-duration: .01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: .01ms !important;
+	}
 }
