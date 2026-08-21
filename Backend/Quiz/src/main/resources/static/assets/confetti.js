@@ -1,11 +1,17 @@
 const COLORS = ["#00d4ff", "#040066", "#ffc53d", "#ef476f", "#06d6a0", "#ffffff"];
 const GRAVITY = 0.00042;
 const DRAG = 0.9985;
+const MAX_PIECES = 240;
 
 // A single canvas is reused so repeated renders of the winner screen cannot stack overlays.
 let activeRun = null;
 
-export function launchConfetti({ durationMs = 7_000, pieceCount = 170 } = {}) {
+export function launchConfetti({
+	durationMs = 60_000,
+	startPiecesPerSecond = 34,
+	endPiecesPerSecond = 4,
+	initialPieceCount = 45
+} = {}) {
 	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 	stopConfetti();
 
@@ -28,9 +34,10 @@ export function launchConfetti({ durationMs = 7_000, pieceCount = 170 } = {}) {
 	resize();
 	window.addEventListener("resize", resize);
 
-	const pieces = Array.from({ length: pieceCount }, () => createPiece());
+	const pieces = Array.from({ length: initialPieceCount }, () => createPiece(true));
 	const startedAt = performance.now();
 	let previousFrameAt = startedAt;
+	let pendingPieces = 0;
 	let frame = 0;
 
 	const run = { canvas, resize, stop: () => cancelAnimationFrame(frame) };
@@ -40,17 +47,31 @@ export function launchConfetti({ durationMs = 7_000, pieceCount = 170 } = {}) {
 		if (activeRun !== run) return;
 		const deltaMs = Math.min(48, now - previousFrameAt);
 		previousFrameAt = now;
-		const fadeOut = Math.max(0, Math.min(1, (durationMs - (now - startedAt)) / 1_200));
-		context.clearRect(0, 0, window.innerWidth, window.innerHeight);
-		context.globalAlpha = fadeOut;
+		const elapsedMs = now - startedAt;
 
-		for (const piece of pieces) {
+		// New pieces keep coming instead of looping one batch, and the rain thins out towards the end.
+		if (elapsedMs < durationMs) {
+			const piecesPerSecond = startPiecesPerSecond
+				+ (endPiecesPerSecond - startPiecesPerSecond) * (elapsedMs / durationMs);
+			pendingPieces += (piecesPerSecond * deltaMs) / 1_000;
+			while (pendingPieces >= 1) {
+				pendingPieces -= 1;
+				if (pieces.length < MAX_PIECES) pieces.push(createPiece(false));
+			}
+		}
+
+		context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+		for (let index = pieces.length - 1; index >= 0; index--) {
+			const piece = pieces[index];
 			piece.velocityY += GRAVITY * deltaMs;
 			piece.velocityX *= DRAG;
 			piece.x += piece.velocityX * deltaMs;
 			piece.y += piece.velocityY * deltaMs;
 			piece.spin += piece.spinSpeed * deltaMs;
-			if (piece.y > window.innerHeight + 40) Object.assign(piece, createPiece(), { y: -40 });
+			if (piece.y > window.innerHeight + 40) {
+				pieces.splice(index, 1);
+				continue;
+			}
 
 			context.save();
 			context.translate(piece.x, piece.y);
@@ -60,7 +81,7 @@ export function launchConfetti({ durationMs = 7_000, pieceCount = 170 } = {}) {
 			context.restore();
 		}
 
-		if (now - startedAt >= durationMs) {
+		if (elapsedMs >= durationMs && pieces.length === 0) {
 			stopConfetti();
 			return;
 		}
@@ -79,10 +100,12 @@ export function stopConfetti() {
 	finished.canvas.remove();
 }
 
-function createPiece() {
+function createPiece(spreadAboveViewport) {
 	return {
 		x: Math.random() * window.innerWidth,
-		y: -20 - Math.random() * window.innerHeight * 0.5,
+		y: spreadAboveViewport
+			? -20 - Math.random() * window.innerHeight * 0.8
+			: -20 - Math.random() * 40,
 		velocityX: (Math.random() - 0.5) * 0.22,
 		velocityY: 0.12 + Math.random() * 0.22,
 		width: 6 + Math.random() * 7,

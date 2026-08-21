@@ -44,6 +44,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	let renderedFinalSignature = null;
 	let resultsRevealTimer = null;
 	let confettiShown = false;
+	let confettiTimer = null;
 
 	if (!codehash) {
 		showMessage("This presenter link is invalid.", true);
@@ -125,9 +126,24 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		try {
 			applyStateMessage(await requestJson(`/admin/api/sessions/${codehash}/state`));
 			setFeedStatus("live", "Live (polling)");
-		} catch {
+		} catch (error) {
+			// A closed session is deleted on the server, so polling it starts to answer with 404.
+			if (error.status === 404) {
+				showClosedSession();
+				return;
+			}
 			setFeedStatus("offline", "Reconnecting");
 		}
+	}
+
+	function showClosedSession() {
+		window.clearInterval(pollTimer);
+		pollTimer = null;
+		stopCountdown();
+		cancelConfetti();
+		hideMessage();
+		showView("closed-view");
+		setFeedStatus("offline", "Closed");
 	}
 
 	function applyState(rawState) {
@@ -160,9 +176,8 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	function render() {
 		stopCountdown();
 		if (session.state !== "FINAL_RESULTS") {
-			confettiShown = false;
 			renderedFinalSignature = null;
-			stopConfetti();
+			cancelConfetti();
 		}
 		if (session.state !== "LEADERBOARD") renderedLeaderboardSignature = null;
 		switch (session.state) {
@@ -170,10 +185,25 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			case "QUESTION_OPEN": renderQuestion(); break;
 			case "RESULTS": renderResults(); break;
 			case "LEADERBOARD": renderLeaderboard(); break;
-			case "FINAL_RESULTS": renderFinalResults(); break;
+			case "FINAL_RESULTS": renderFinalResults(); scheduleConfetti(); break;
 			case "CLOSED": showView("closed-view"); break;
 			default: break;
 		}
+	}
+
+	// The podium reveals place by place, so the confetti waits for the winner to be on screen.
+	function scheduleConfetti() {
+		const placeCount = Math.min(3, (session.standings || []).length);
+		if (confettiShown || placeCount === 0) return;
+		confettiShown = true;
+		confettiTimer = window.setTimeout(() => launchConfetti(), placeCount * 1_700 + 900);
+	}
+
+	function cancelConfetti() {
+		window.clearTimeout(confettiTimer);
+		confettiTimer = null;
+		confettiShown = false;
+		stopConfetti();
 	}
 
 	function renderLobby() {
@@ -383,10 +413,6 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			setAvatar(place.querySelector(".podium-avatar"), participantFor(standing.playerId));
 		}
 		standingsList.replaceChildren(...standings.map((standing, index) => createStandingRow(standing, index)));
-		if (standings.length !== 0 && !confettiShown) {
-			confettiShown = true;
-			window.setTimeout(() => launchConfetti(), revealIndex * 1_700 + 900);
-		}
 	}
 
 	function createStandingRow(standing, index) {

@@ -24,4 +24,13 @@ public final class ParticipantEntryController {
 		}
 		return "forward:/participant.html";
 	}
+
+	// The reconnect cookie is scoped to /{codehash}/, so the trailing slash stays the canonical form.
+	@GetMapping("/{codehash:[A-Za-z0-9_-]{8,32}}")
+	public String participantEntryWithoutTrailingSlash(@PathVariable String codehash) {
+		if (sessionRegistry.find(codehash).isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+		}
+		return "redirect:/" + codehash + "/";
+	}
 }

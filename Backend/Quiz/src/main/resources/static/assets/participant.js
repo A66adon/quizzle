@@ -425,7 +425,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			: "");
 		if (!confettiShown) {
 			confettiShown = true;
-			launchConfetti({ pieceCount: 110 });
+			launchConfetti({ startPiecesPerSecond: 22, endPiecesPerSecond: 3, initialPieceCount: 30 });
 		}
 	}
 
