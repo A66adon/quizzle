@@ -1,0 +1,24 @@
+# Branding for this deployment. Every field is optional; anything left out keeps the built-in value.
+# The file is read once at startup, so restart Quizzle after changing it.
+name: "Safety Quiz"
+mark: "G+D"
+
+colors:
+  primary: "#040066"
+  primarySoft: "#ececff"
+  accent: "#00d4ff"
+  surface: "#ffffff"
+  background: "#f5f7fb"
+  text: "#17162d"
+  muted: "#66687a"
+  border: "#e3e6ef"
+  danger: "#a32035"
+  dangerSoft: "#fff3f5"
+  success: "#13854e"
+
+# Colors of the four answer tiles, in order.
+answerColors:
+  - "#c52f42"
+  - "#1664ad"
+  - "#b28200"
+  - "#26824b"

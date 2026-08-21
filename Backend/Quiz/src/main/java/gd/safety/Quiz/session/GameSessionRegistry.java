@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
@@ -141,6 +142,7 @@ public final class GameSessionRegistry {
 		GameSessionAggregate aggregate = requireAggregate(codehash);
 		Set<String> submittedIds = selectedAnswerIds == null ? Set.of() : Set.copyOf(selectedAnswerIds);
 		AtomicReference<SubmittedAnswerSnapshot> acceptedAnswer = new AtomicReference<>();
+		AtomicBoolean questionClosedByLastAnswer = new AtomicBoolean();
 		GameSessionSnapshot updated = aggregate.updateInMemory(current -> {
 			boolean revealRacedWithTimelyAnswer = receivedWhileQuestionOpen
 					&& current.state() == GameState.RESULTS;
@@ -186,12 +188,35 @@ public final class GameSessionRegistry {
 					grade.fullyCorrect(),
 					grade.awardedPoints());
 			acceptedAnswer.set(answer);
-			return current.withAcceptedAnswer(answer, players, serverReceivedAtEpochMs);
+			GameSessionSnapshot withAnswer = current.withAcceptedAnswer(
+					answer, players, serverReceivedAtEpochMs);
+			if (withAnswer.state() != GameState.QUESTION_OPEN
+					|| !everyConnectedPlayerAnswered(withAnswer, questionId)) {
+				return withAnswer;
+			}
+			questionClosedByLastAnswer.set(true);
+			return withAnswer.withTransition(
+					stateMachine.apply(withAnswer, GameCommand.END_EARLY, serverReceivedAtEpochMs),
+					serverReceivedAtEpochMs);
 		});
+		if (questionClosedByLastAnswer.get()) {
+			aggregate.persistCurrent(snapshotRepository::save);
+		}
 		long receivedAnswerCount = updated.answers().stream()
 				.filter(answer -> answer.questionId().equals(questionId))
 				.count();
 		return new AnswerSubmissionResult(updated, acceptedAnswer.get(), receivedAnswerCount);
+	}
+
+	// The presenter should not have to wait for a timer once nobody is left to answer.
+	private boolean everyConnectedPlayerAnswered(GameSessionSnapshot snapshot, String questionId) {
+		Set<UUID> answeredPlayerIds = snapshot.answers().stream()
+				.filter(answer -> answer.questionId().equals(questionId))
+				.map(SubmittedAnswerSnapshot::playerId)
+				.collect(java.util.stream.Collectors.toUnmodifiableSet());
+		return snapshot.players().stream()
+				.filter(player -> player.connectionStatus() == ConnectionStatus.CONNECTED)
+				.allMatch(player -> answeredPlayerIds.contains(player.playerId()));
 	}
 
 	public List<GameSessionSnapshot> transitionExpiredQuestions(long nowEpochMs) {

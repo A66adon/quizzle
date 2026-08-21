@@ -19,7 +19,11 @@ public final class GameStateMachine {
 							session.serverStartEpochMs(), false)
 					: rejected(session, command);
 			case RESULTS -> command == GameCommand.NEXT
-					? advanceAfterResults(session, nowEpochMs)
+					? advanceAfterResults(session)
+					: rejected(session, command);
+			case LEADERBOARD -> command == GameCommand.NEXT
+					? new Transition(GameState.QUESTION_OPEN,
+							session.currentQuestionIndex() + 1, nowEpochMs, false)
 					: rejected(session, command);
 			case FINAL_RESULTS -> switch (command) {
 				case OPEN_PODIUM -> new Transition(GameState.FINAL_RESULTS,
@@ -32,12 +36,13 @@ public final class GameStateMachine {
 		};
 	}
 
-	private Transition advanceAfterResults(GameSessionSnapshot session, long nowEpochMs) {
+	// The leaderboard is only worth showing when another question follows it.
+	private Transition advanceAfterResults(GameSessionSnapshot session) {
 		int nextQuestionIndex = session.currentQuestionIndex() + 1;
 		if (nextQuestionIndex < session.quiz().questions().size()) {
-			return new Transition(GameState.QUESTION_OPEN, nextQuestionIndex, nowEpochMs, false);
+			return new Transition(GameState.LEADERBOARD, session.currentQuestionIndex(), 0, false);
 		}
-		return new Transition(GameState.FINAL_RESULTS, session.currentQuestionIndex(), 0, false);
+		return new Transition(GameState.FINAL_RESULTS, session.currentQuestionIndex(), 0, true);
 	}
 
 	private Transition rejected(GameSessionSnapshot session, GameCommand command) {

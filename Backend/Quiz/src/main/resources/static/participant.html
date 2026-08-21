@@ -4,8 +4,10 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="robots" content="noindex, nofollow">
-	<title>Join quiz · Safety Quiz</title>
+	<title data-page-title="Join quiz">Join quiz</title>
+	<link rel="stylesheet" href="/assets/branding.css">
 	<link rel="stylesheet" href="/assets/participant.css">
+	<script type="module" src="/assets/branding.js"></script>
 	<script type="module" src="/assets/participant.js"></script>
 </head>
 <body>
@@ -16,8 +18,8 @@
 
 	<main class="participant-shell">
 		<header class="participant-header">
-			<div class="brand-mark" aria-hidden="true">G+D</div>
-			<span>Safety Quiz</span>
+			<div class="brand-mark" data-brand-mark aria-hidden="true"></div>
+			<span data-brand-name></span>
 		</header>
 
 		<p id="client-message" class="client-message" role="alert" hidden></p>
@@ -53,8 +55,10 @@
 
 		<section id="question-view" class="view" aria-labelledby="question-text" hidden>
 			<div class="question-topline">
-				<div class="timer-card"><span>Time</span><strong id="countdown">0.0</strong></div>
-				<div class="timer-card"><span>Points</span><strong id="display-points">0</strong></div>
+				<div class="timer-bar" role="img" aria-label="Time remaining">
+					<span id="timer-fill"></span>
+				</div>
+				<div class="timer-card points-card"><span>Points</span><strong id="display-points">0</strong></div>
 			</div>
 			<article class="question-card">
 				<p id="question-mode" class="eyebrow"></p>
@@ -84,11 +88,24 @@
 			<p class="waiting-copy">Waiting for the next question…</p>
 		</section>
 
+		<section id="leaderboard-view" class="view" aria-labelledby="leaderboard-title" hidden>
+			<div class="section-heading">
+				<div><p class="eyebrow">Standings</p><h1 id="leaderboard-title">Leaderboard</h1></div>
+				<span id="leaderboard-progress" class="count-chip"></span>
+			</div>
+			<div id="leaderboard-list" class="standings-list"></div>
+			<p class="waiting-copy">Waiting for the next question…</p>
+		</section>
+
 		<section id="final-view" class="view" aria-labelledby="final-title" hidden>
 			<p class="eyebrow">Final results</p>
 			<h1 id="final-title">Quiz complete</h1>
 			<p id="final-wait" class="waiting-copy" hidden>Waiting for the presenter to reveal the scores…</p>
 			<article id="winner-card" class="winner-card" hidden>
+				<svg class="winner-crown" viewBox="0 0 64 44" aria-hidden="true" focusable="false">
+					<path d="M4 40h56l4-32-16 12L32 2 16 20 0 8z" fill="#ffc53d" stroke="#e0a300" stroke-width="2" stroke-linejoin="round"/>
+					<circle cx="32" cy="30" r="3.5" fill="#fff6da"/>
+				</svg>
 				<p class="eyebrow">Winner</p>
 				<img id="winner-avatar" class="winner-avatar" src="/assets/avatar-fallback.svg" alt="">
 				<h2 id="winner-name"></h2>

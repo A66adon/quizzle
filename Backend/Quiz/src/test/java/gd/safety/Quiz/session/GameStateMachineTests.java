@@ -1,7 +1,6 @@
 package gd.safety.Quiz.session;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,6 +22,10 @@ class GameStateMachineTests {
 		session = transition(session, GameCommand.REVEAL, 3_000);
 		assertEquals(GameState.RESULTS, session.state());
 
+		session = transition(session, GameCommand.NEXT, 3_500);
+		assertEquals(GameState.LEADERBOARD, session.state());
+		assertEquals(0, session.currentQuestionIndex());
+
 		session = transition(session, GameCommand.NEXT, 4_000);
 		assertEquals(GameState.QUESTION_OPEN, session.state());
 		assertEquals(1, session.currentQuestionIndex());
@@ -31,9 +34,6 @@ class GameStateMachineTests {
 		session = transition(session, GameCommand.END_EARLY, 5_000);
 		session = transition(session, GameCommand.NEXT, 6_000);
 		assertEquals(GameState.FINAL_RESULTS, session.state());
-		assertFalse(session.podiumOpen());
-
-		session = transition(session, GameCommand.OPEN_PODIUM, 7_000);
 		assertTrue(session.podiumOpen());
 
 		session = transition(session, GameCommand.CLOSE, 8_000);

@@ -9,11 +9,13 @@ RUN useradd --system --create-home --uid 10001 quizzle
 WORKDIR /app
 COPY --from=build /build/build/libs/Quiz-0.0.1-SNAPSHOT.jar app.jar
 COPY Backend/Quiz/quizzes /data/quizzes
+COPY Backend/Quiz/branding /data/branding
 RUN mkdir -p /data/db && chown -R quizzle:quizzle /data
 
 USER quizzle
 ENV SERVER_PORT=8080 \
     QUIZ_FOLDER=/data/quizzes \
+    BRANDING_FOLDER=/data/branding \
     QUIZ_DATABASE_PATH=/data/db/quiz-snapshots.db
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

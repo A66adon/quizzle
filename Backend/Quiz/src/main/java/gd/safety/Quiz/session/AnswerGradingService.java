@@ -10,6 +10,8 @@ import gd.safety.Quiz.quiz.model.QuestionDefinition;
 @Component
 public final class AnswerGradingService {
 
+	private static final int POINT_STEP = 10;
+
 	public Grade grade(QuestionDefinition question, Set<String> selectedAnswerIds, long elapsedMs) {
 		Set<String> availableAnswerIds = question.answers().stream()
 				.map(answer -> answer.id())
@@ -29,10 +31,9 @@ public final class AnswerGradingService {
 
 		long durationMs = question.timeSeconds() * 1_000L;
 		long remainingMs = Math.max(0, durationMs - elapsedMs);
-		double awardedPoints = Math.min(
-				question.points(),
-				((double) question.points() * remainingMs) / durationMs);
-		return new Grade(true, awardedPoints);
+		double rawPoints = ((double) question.points() * remainingMs) / durationMs;
+		double steppedPoints = Math.round(rawPoints / POINT_STEP) * (double) POINT_STEP;
+		return new Grade(true, Math.min(question.points(), steppedPoints));
 	}
 
 	public record Grade(boolean fullyCorrect, double awardedPoints) {

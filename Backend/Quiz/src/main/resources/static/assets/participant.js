@@ -1,4 +1,5 @@
 import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
+import { launchConfetti, stopConfetti } from "./confetti.js";
 
 (() => {
 	"use strict";
@@ -32,6 +33,7 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 	let selectedAnswerIds = new Set();
 	let renderedQuestionId = null;
 	let countdownFrame = null;
+	let confettiShown = false;
 
 	if (!codehash) {
 		showTerminal("This quiz link is invalid.", false);
@@ -230,10 +232,15 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 	function renderState() {
 		if (!currentSession || !currentParticipant) return;
 		stopCountdown();
+		if (currentSession.state !== "FINAL_RESULTS") {
+			confettiShown = false;
+			stopConfetti();
+		}
 		switch (currentSession.state) {
 			case "LOBBY": renderLobby(); break;
 			case "QUESTION_OPEN": renderQuestionOrWait(); break;
 			case "RESULTS": renderResults(); break;
+			case "LEADERBOARD": renderLeaderboard(); break;
 			case "FINAL_RESULTS": renderFinalResults(); break;
 			case "CLOSED": showTerminal("Thanks for playing.", false); break;
 			default: break;
@@ -286,20 +293,28 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 		renderedQuestionId = question.id;
 		selectedAnswerIds = new Set();
 		const grid = document.querySelector("#answer-grid");
+		grid.classList.toggle("multiple", Boolean(question.multiple));
 		grid.replaceChildren();
 		for (const option of question.answers || []) {
 			const button = document.createElement("button");
 			button.type = "button";
 			button.className = "answer-tile";
-			button.textContent = option.text;
 			button.dataset.answerId = option.id;
 			button.setAttribute("aria-pressed", "false");
+			const marker = document.createElement("span");
+			marker.className = "answer-marker";
+			marker.setAttribute("aria-hidden", "true");
+			const label = document.createElement("span");
+			label.className = "answer-text";
+			label.textContent = option.text;
+			button.append(marker, label);
 			button.addEventListener("click", () => {
 				if (question.multiple) {
 					if (selectedAnswerIds.has(option.id)) selectedAnswerIds.delete(option.id);
 					else selectedAnswerIds.add(option.id);
 					button.classList.toggle("selected", selectedAnswerIds.has(option.id));
 					button.setAttribute("aria-pressed", String(selectedAnswerIds.has(option.id)));
+					grid.classList.toggle("has-selection", selectedAnswerIds.size !== 0);
 					confirmMultipleButton.disabled = selectedAnswerIds.size === 0;
 				} else {
 					submitAnswer([option.id]);
@@ -307,6 +322,7 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 			});
 			grid.append(button);
 		}
+		grid.classList.remove("has-selection");
 		confirmMultipleButton.hidden = !question.multiple;
 		confirmMultipleButton.disabled = true;
 	}
@@ -377,6 +393,16 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 		return card;
 	}
 
+	function renderLeaderboard() {
+		showView("leaderboard-view");
+		const standings = currentSession.standings || [];
+		setText("#leaderboard-progress",
+			`After question ${currentSession.currentQuestionIndex + 1} of ${currentSession.questionCount}`);
+		document.querySelector("#leaderboard-list")
+			.replaceChildren(...standings.map(createStandingRow));
+		renderedQuestionId = null;
+	}
+
 	function renderFinalResults() {
 		showView("final-view");
 		const standings = currentSession.standings || [];
@@ -397,6 +423,10 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 				? "That is you - congratulations!"
 				: `You finished #${own.rank} with ${Math.round(Number(own.totalPoints) || 0)} points.`)
 			: "");
+		if (!confettiShown) {
+			confettiShown = true;
+			launchConfetti({ pieceCount: 110 });
+		}
 	}
 
 	function participantFor(playerId) {
@@ -421,16 +451,16 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 
 	function startCountdown(question) {
 		stopCountdown();
-		const countdown = document.querySelector("#countdown");
+		const timerFill = document.querySelector("#timer-fill");
 		const displayPoints = document.querySelector("#display-points");
 		const update = () => {
 			const elapsed = syncedNow() - Number(currentSession.serverStartEpochMs);
 			const remaining = Math.max(0, Number(currentSession.durationMs) - elapsed);
 			const ratio = currentSession.durationMs > 0 ? remaining / currentSession.durationMs : 0;
-			countdown.textContent = (remaining / 1_000).toFixed(1);
-			displayPoints.textContent = String(Math.max(0, Math.floor(Number(question.maximumPoints) * ratio)));
-			countdown.classList.toggle("warning", remaining <= 10_000 && remaining > 5_000);
-			countdown.classList.toggle("danger", remaining <= 5_000);
+			timerFill.style.width = `${ratio * 100}%`;
+			timerFill.classList.toggle("warning", remaining <= 10_000 && remaining > 5_000);
+			timerFill.classList.toggle("danger", remaining <= 5_000);
+			displayPoints.textContent = String(steppedPoints(question.maximumPoints, ratio));
 			if (remaining <= 0) {
 				setAnswerControlsDisabled(true);
 				return;
@@ -438,6 +468,12 @@ import { FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
 			countdownFrame = requestAnimationFrame(update);
 		};
 		update();
+	}
+
+	// Mirrors the server side rounding so the live counter never promises points that are not awarded.
+	function steppedPoints(maximumPoints, ratio) {
+		const maximum = Number(maximumPoints) || 0;
+		return Math.max(0, Math.min(maximum, Math.round((maximum * ratio) / 10) * 10));
 	}
 
 	function stopCountdown() {

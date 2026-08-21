@@ -4,16 +4,18 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="robots" content="noindex, nofollow">
-	<title>Presenter · Safety Quiz</title>
+	<title data-page-title="Presenter">Presenter</title>
+	<link rel="stylesheet" href="/assets/branding.css">
 	<link rel="stylesheet" href="/assets/admin.css">
 	<link rel="stylesheet" href="/assets/presenter.css">
+	<script type="module" src="/assets/branding.js"></script>
 	<script type="module" src="/assets/presenter.js"></script>
 </head>
 <body class="presenter-body">
 	<header class="site-header">
 		<a class="brand" href="/admin" aria-label="Back to quiz sessions">
-			<span class="brand-mark" aria-hidden="true">G+D</span>
-			<span>Safety Quiz</span>
+			<span class="brand-mark" data-brand-mark aria-hidden="true"></span>
+			<span data-brand-name></span>
 		</a>
 		<div class="header-status">
 			<span id="feed-status" class="feed-status connecting">Connecting</span>
@@ -70,34 +72,53 @@
 				</div>
 			</div>
 			<div class="timer-track" aria-hidden="true"><span id="timer-fill"></span></div>
-			<h1 id="question-title"></h1>
-			<p id="question-mode" class="muted"></p>
+			<h1 id="question-title" class="stage-title"></h1>
+			<p id="question-mode" class="muted stage-subtitle"></p>
 			<div id="question-options" class="option-grid"></div>
 			<div class="control-bar">
-				<button id="end-early-button" class="primary-button" type="button">End question early</button>
 				<button class="ghost-button abort-button" type="button" data-abort>Abort quiz</button>
+				<button id="end-early-button" class="primary-button push-right" type="button">End question early</button>
 			</div>
 		</section>
 
 		<section id="results-view" class="view" aria-labelledby="results-title" hidden>
-			<div class="section-heading">
-				<div>
+			<div class="stage-heading">
+				<span class="stage-heading-side"></span>
+				<div class="stage-heading-main">
 					<p id="results-progress" class="eyebrow"></p>
-					<h1 id="results-title"></h1>
+					<h1 id="results-title" class="stage-title"></h1>
 				</div>
-				<div class="summary-pill"><strong id="results-answer-count">0</strong><span>answers</span></div>
+				<div class="stage-heading-side end">
+					<div class="summary-pill"><strong id="results-answer-count">0</strong><span>answers</span></div>
+				</div>
 			</div>
 			<div id="results-chart" class="results-chart"></div>
 			<div class="control-bar">
-				<button id="next-button" class="primary-button" type="button">Next question</button>
 				<button class="ghost-button abort-button" type="button" data-abort>Abort quiz</button>
+				<button id="next-button" class="primary-button push-right" type="button">Next question</button>
+			</div>
+		</section>
+
+		<section id="leaderboard-view" class="view" aria-labelledby="leaderboard-title" hidden>
+			<div class="stage-heading">
+				<span class="stage-heading-side"></span>
+				<div class="stage-heading-main">
+					<p id="leaderboard-progress" class="eyebrow"></p>
+					<h1 id="leaderboard-title" class="stage-title">Leaderboard</h1>
+				</div>
+				<span class="stage-heading-side end"></span>
+			</div>
+			<div id="leaderboard-list" class="standings-list leaderboard-list"></div>
+			<div class="control-bar">
+				<button class="ghost-button abort-button" type="button" data-abort>Abort quiz</button>
+				<button id="leaderboard-next-button" class="primary-button push-right" type="button">Next question</button>
 			</div>
 		</section>
 
 		<section id="final-view" class="view" aria-labelledby="final-title" hidden>
-			<p class="eyebrow">Final results</p>
-			<h1 id="final-title">That was the last question</h1>
-			<p id="final-subtitle" class="muted">Reveal the podium when everyone is ready.</p>
+			<p class="eyebrow center-text">Final results</p>
+			<h1 id="final-title" class="stage-title">Congratulations</h1>
+			<p id="final-subtitle" class="muted stage-subtitle"></p>
 
 			<div id="podium" class="podium" hidden>
 				<div class="podium-place second" data-place="2">
@@ -110,6 +131,10 @@
 				</div>
 				<div class="podium-place first" data-place="1">
 					<div class="podium-player">
+						<svg class="podium-crown" viewBox="0 0 64 44" aria-hidden="true" focusable="false">
+							<path d="M4 40h56l4-32-16 12L32 2 16 20 0 8z" fill="#ffc53d" stroke="#e0a300" stroke-width="2" stroke-linejoin="round"/>
+							<circle cx="32" cy="30" r="3.5" fill="#fff6da"/>
+						</svg>
 						<img class="podium-avatar" alt="">
 						<strong class="podium-name"></strong>
 						<span class="podium-points"></span>
@@ -127,11 +152,12 @@
 			</div>
 
 			<div class="control-bar">
-				<button id="reveal-button" class="primary-button" type="button">Reveal score</button>
-				<button id="standings-toggle" class="ghost-button" type="button" hidden aria-expanded="false">
+				<button id="standings-toggle" class="ghost-button" type="button" aria-expanded="false">
 					Show full ranking
 				</button>
-				<button class="ghost-button abort-button" type="button" data-abort data-command="CLOSE">Close quiz</button>
+				<button class="ghost-button abort-button push-right" type="button" data-abort data-command="CLOSE">
+					Close quiz
+				</button>
 			</div>
 
 			<div id="standings-list" class="standings-list" hidden></div>

@@ -17,12 +17,16 @@ Create these directories (for example as datasets under an existing pool):
 ```
 /mnt/FastData/Apps/Quizzle/workspace    # git checkout and Gradle cache
 /mnt/FastData/Apps/Quizzle/quizzes      # your quiz YAML files
+/mnt/FastData/Apps/Quizzle/branding     # optional branding.yaml
 /mnt/FastData/Apps/Quizzle/db           # SQLite session snapshots
 ```
 
 Copy at least one quiz YAML into `quizzes/`. The format is described in the
 [README](../README.md#writing-a-quiz); you can start from
 `Backend/Quiz/quizzes/safety-basics.yaml`.
+
+To use your own wording and colors, copy `Backend/Quiz/branding/branding.yaml` into `branding/` and
+edit it – see [Branding](../README.md#branding). Without that file the built-in defaults apply.
 
 ## 2. Install the app
 
@@ -49,6 +53,7 @@ services:
 
       - SERVER_PORT=17713
       - QUIZ_FOLDER=/data/quizzes
+      - BRANDING_FOLDER=/data/branding
       - QUIZ_DATABASE_PATH=/data/db/quiz-snapshots.db
 
       # Optional:
@@ -60,6 +65,7 @@ services:
     volumes:
       - /mnt/FastData/Apps/Quizzle/workspace:/workspace
       - /mnt/FastData/Apps/Quizzle/quizzes:/data/quizzes
+      - /mnt/FastData/Apps/Quizzle/branding:/data/branding
       - /mnt/FastData/Apps/Quizzle/db:/data/db
 
     restart: unless-stopped
@@ -144,6 +150,7 @@ git clone --depth 1 --branch v1.0.0 https://git.olli.info/Oliver/quizzle.git /wo
 Everything worth keeping lives in the mounted datasets:
 
 - `quizzes/` – your quiz definitions,
+- `branding/` – your branding file,
 - `db/quiz-snapshots.db` – running and finished sessions.
 
 `workspace/` is a disposable build cache; deleting it only forces a fresh clone and rebuild.

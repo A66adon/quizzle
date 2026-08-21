@@ -1,17 +1,10 @@
+/* The color palette lives in /assets/branding.css, which is generated from the branding folder. */
 :root {
 	color-scheme: light;
 	font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	color: #17162d;
-	background: #f5f7fb;
+	color: var(--text);
+	background: var(--background);
 	font-synthesis: none;
-	--primary: #040066;
-	--primary-soft: #ececff;
-	--accent: #00d4ff;
-	--surface: #ffffff;
-	--border: #e3e6ef;
-	--muted: #66687a;
-	--danger: #a32035;
-	--danger-soft: #fff3f5;
 	--shadow: 0 18px 45px rgba(4, 0, 102, 0.09);
 }
 
@@ -28,8 +21,8 @@ body {
 	min-width: 320px;
 	min-height: 100vh;
 	background:
-		radial-gradient(circle at 100% 0%, rgba(0, 212, 255, 0.1), transparent 30rem),
-		#f5f7fb;
+		radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 30rem),
+		var(--background);
 }
 
 button,
@@ -44,7 +37,7 @@ button {
 button:focus-visible,
 input:focus-visible,
 a:focus-visible {
-	outline: 3px solid rgba(0, 212, 255, 0.7);
+	outline: 3px solid color-mix(in srgb, var(--accent) 70%, transparent);
 	outline-offset: 3px;
 }
 
@@ -106,8 +99,8 @@ h2 {
 	justify-content: space-between;
 	height: 4.75rem;
 	padding: 0 clamp(1.25rem, 5vw, 4rem);
-	border-bottom: 1px solid rgba(227, 230, 239, 0.9);
-	background: rgba(255, 255, 255, 0.9);
+	border-bottom: 1px solid var(--border);
+	background: color-mix(in srgb, var(--surface) 90%, transparent);
 	backdrop-filter: blur(16px);
 }
 
@@ -186,14 +179,14 @@ h2 {
 .status-card,
 .empty-card {
 	padding: 1.2rem 1.35rem;
-	border: 1px dashed #c8ccda;
+	border: 1px dashed var(--border);
 	border-radius: 0.9rem;
 	color: var(--muted);
-	background: rgba(255, 255, 255, 0.62);
+	background: color-mix(in srgb, var(--surface) 62%, transparent);
 }
 
 .status-card[data-error="true"] {
-	border-color: #e4aab4;
+	border-color: color-mix(in srgb, var(--danger) 35%, var(--surface));
 	color: var(--danger);
 	background: var(--danger-soft);
 }
@@ -304,7 +297,7 @@ h2 {
 
 .quiz-card:hover {
 	transform: translateY(-2px);
-	border-color: #cbd0e0;
+	border-color: color-mix(in srgb, var(--border) 70%, var(--muted));
 	box-shadow: var(--shadow);
 }
 
@@ -335,7 +328,7 @@ h2 {
 	padding: 0.32rem 0.58rem;
 	border-radius: 999px;
 	color: var(--primary);
-	background: rgba(0, 212, 255, 0.18);
+	background: color-mix(in srgb, var(--accent) 18%, transparent);
 	font-size: 0.7rem;
 	font-weight: 850;
 	letter-spacing: 0.08em;
@@ -359,7 +352,7 @@ h2 {
 	display: -webkit-box;
 	overflow: hidden;
 	margin-bottom: 1.5rem;
-	color: #515365;
+	color: color-mix(in srgb, var(--text) 75%, var(--muted));
 	line-height: 1.55;
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 3;
@@ -369,11 +362,11 @@ h2 {
 	align-items: flex-end;
 	margin-top: auto;
 	padding-top: 1rem;
-	border-top: 1px solid #eef0f5;
+	border-top: 1px solid var(--border);
 }
 
 .quiz-author {
-	color: #3e4052;
+	color: color-mix(in srgb, var(--text) 85%, var(--muted));
 	font-size: 0.85rem;
 	font-weight: 700;
 }
@@ -405,7 +398,7 @@ h2 {
 	grid-template-columns: minmax(9rem, 0.28fr) 1fr;
 	gap: 1.25rem;
 	padding: 1rem 1.15rem;
-	border: 1px solid #f0ccd3;
+	border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--surface));
 	border-radius: 0.8rem;
 	background: var(--danger-soft);
 }
@@ -418,7 +411,7 @@ h2 {
 .issue-reason {
 	margin: 0;
 	overflow-wrap: anywhere;
-	color: #662331;
+	color: color-mix(in srgb, var(--danger) 75%, var(--text));
 	font-size: 0.88rem;
 	line-height: 1.5;
 }
@@ -428,8 +421,8 @@ h2 {
 	place-items: center;
 	padding: 1.25rem;
 	background:
-		radial-gradient(circle at 15% 5%, rgba(0, 212, 255, 0.18), transparent 24rem),
-		linear-gradient(145deg, #f9faff 0%, #eef0f8 100%);
+		radial-gradient(circle at 15% 5%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 24rem),
+		linear-gradient(145deg, color-mix(in srgb, var(--background) 60%, var(--surface)) 0%, var(--background) 100%);
 }
 
 .login-shell {
@@ -469,7 +462,7 @@ h2 {
 }
 
 .login-form label {
-	color: #343548;
+	color: color-mix(in srgb, var(--text) 85%, var(--muted));
 	font-size: 0.86rem;
 	font-weight: 750;
 }
@@ -478,10 +471,10 @@ h2 {
 	width: 100%;
 	min-height: 3.15rem;
 	padding: 0.75rem 0.9rem;
-	border: 1px solid #c8ccda;
+	border: 1px solid color-mix(in srgb, var(--border) 70%, var(--muted));
 	border-radius: 0.7rem;
-	color: #17162d;
-	background: #fff;
+	color: var(--text);
+	background: var(--surface);
 	transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 

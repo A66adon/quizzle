@@ -1,4 +1,5 @@
 import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles } from "./avatar.js";
+import { launchConfetti, stopConfetti } from "./confetti.js";
 
 (() => {
 	"use strict";
@@ -35,6 +36,7 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 	let feedWatchdog = null;
 	let chartedQuestionId = null;
 	let resultsRevealTimer = null;
+	let confettiShown = false;
 
 	if (!codehash) {
 		showMessage("This presenter link is invalid.", true);
@@ -47,7 +49,7 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 	document.querySelector("#start-button").addEventListener("click", () => sendCommand("START"));
 	document.querySelector("#end-early-button").addEventListener("click", () => sendCommand("END_EARLY"));
 	document.querySelector("#next-button").addEventListener("click", () => sendCommand("NEXT"));
-	document.querySelector("#reveal-button").addEventListener("click", () => sendCommand("OPEN_PODIUM"));
+	document.querySelector("#leaderboard-next-button").addEventListener("click", () => sendCommand("NEXT"));
 
 	for (const button of document.querySelectorAll("[data-abort]")) {
 		button.addEventListener("click", () => {
@@ -121,10 +123,15 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 
 	function render() {
 		stopCountdown();
+		if (session.state !== "FINAL_RESULTS") {
+			confettiShown = false;
+			stopConfetti();
+		}
 		switch (session.state) {
 			case "LOBBY": renderLobby(); break;
 			case "QUESTION_OPEN": renderQuestion(); break;
 			case "RESULTS": renderResults(); break;
+			case "LEADERBOARD": renderLeaderboard(); break;
 			case "FINAL_RESULTS": renderFinalResults(); break;
 			case "CLOSED": showView("closed-view"); break;
 			default: break;
@@ -239,7 +246,7 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 		setText("#results-answer-count", session.receivedAnswerCount || 0);
 		document.querySelector("#next-button").textContent = lastQuestion
 			? "Finish quiz"
-			: "Next question";
+			: "Show leaderboard";
 		renderedQuestionId = null;
 
 		// Rebuilding on every state push would restart the reveal, so each question is charted once.
@@ -294,24 +301,24 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 		return column;
 	}
 
+	function renderLeaderboard() {
+		showView("leaderboard-view");
+		const standings = session.standings || [];
+		setText("#leaderboard-progress",
+			`After question ${session.currentQuestionIndex + 1} of ${session.questionCount}`);
+		document.querySelector("#leaderboard-list").replaceChildren(
+			...standings.map((standing, index) => createStandingRow(standing, index)));
+		renderedQuestionId = null;
+		chartedQuestionId = null;
+	}
+
 	function renderFinalResults() {
 		showView("final-view");
 		const standings = session.standings || [];
-		const revealed = Boolean(session.podiumOpen);
-		document.querySelector("#reveal-button").hidden = revealed;
-		standingsToggle.hidden = !revealed;
-		podium.hidden = !revealed;
-		if (!revealed) {
-			standingsList.hidden = true;
-			standingsToggle.setAttribute("aria-expanded", "false");
-			standingsToggle.textContent = "Show full ranking";
-			return;
-		}
+		podium.hidden = standings.length === 0;
+		standingsToggle.hidden = standings.length === 0;
 
-		setText("#final-title", "Congratulations");
-		setText("#final-subtitle", standings.length === 0
-			? "Nobody took part in this quiz."
-			: "The fastest correct answers decide any tie.");
+		setText("#final-subtitle", standings.length === 0 ? "Nobody took part in this quiz." : "");
 		// Third place opens the reveal, so the delays follow the occupied places, not the fixed markup order.
 		let revealIndex = 0;
 		for (const placeNumber of [3, 2, 1]) {
@@ -326,23 +333,31 @@ import { DEFAULT_AVATAR_STYLE, FALLBACK_AVATAR, avatarFor, preloadAvatarStyles }
 				`${Math.round(Number(standing.totalPoints) || 0)} points`;
 			setAvatar(place.querySelector(".podium-avatar"), participantFor(standing.playerId));
 		}
-		podium.hidden = standings.length === 0;
-		standingsList.replaceChildren(...standings.map(createStandingRow));
+		standingsList.replaceChildren(...standings.map((standing, index) => createStandingRow(standing, index)));
 		renderedQuestionId = null;
+		if (standings.length !== 0 && !confettiShown) {
+			confettiShown = true;
+			window.setTimeout(() => launchConfetti(), revealIndex * 1_700 + 900);
+		}
 	}
 
-	function createStandingRow(standing) {
+	function createStandingRow(standing, index) {
 		const row = document.createElement("article");
 		row.className = "standing-row";
+		row.style.setProperty("--row-index", String(index));
 		const rank = document.createElement("span");
 		rank.className = "standing-rank";
 		rank.textContent = `#${standing.rank}`;
+		const avatar = document.createElement("img");
+		avatar.className = "standing-avatar";
+		avatar.alt = "";
+		setAvatar(avatar, participantFor(standing.playerId));
 		const name = document.createElement("strong");
 		name.textContent = standing.name;
 		const points = document.createElement("span");
 		points.className = "standing-points";
 		points.textContent = `${Math.round(Number(standing.totalPoints) || 0)} pts`;
-		row.append(rank, name, points);
+		row.append(rank, avatar, name, points);
 		return row;
 	}
 

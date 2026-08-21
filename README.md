@@ -16,6 +16,7 @@ server and its participants.
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
 - [Writing a quiz](#writing-a-quiz)
+- [Branding](#branding)
 - [How a quiz runs](#how-a-quiz-runs)
 - [Scoring](#scoring)
 - [Connections and reconnects](#connections-and-reconnects)
@@ -41,8 +42,10 @@ server and its participants.
 ```
 Backend/Quiz/                 Spring Boot application (Gradle project, root name "Quiz")
   quizzes/                    Quiz YAML files that the catalog reads at startup
+  branding/                   branding.yaml with the wording and color palette
   src/main/java/gd/safety/Quiz/
     admin/                    Login, catalog and session REST endpoints, presenter page routing
+    branding/                 Branding file loading and the generated CSS/JS assets
     config/                   Typed configuration properties and the .env loader
     persistence/              SQLite snapshot repository
     quiz/catalog/             YAML parsing and quiz validation
@@ -87,6 +90,8 @@ Real environment variables win over `.env`, and `.env` wins over the built-in de
 | `PUBLIC_BASE_URL` | `http://localhost:8080` | Base URL printed into join links and QR codes. Must be what participants can actually reach. |
 | `SESSION_COOKIE_SECURE` | `false` | Set to `true` when served over HTTPS. |
 | `QUIZ_FOLDER` | `./quizzes` | Folder scanned for `.yaml` / `.yml` quiz files. |
+| `BRANDING_FOLDER` | `./branding` | Folder that holds the branding file. |
+| `BRANDING_FILE` | `branding.yaml` | Branding file name inside that folder. |
 | `QUIZ_DATABASE_PATH` | `./data/quiz-snapshots.db` | SQLite file for session snapshots. |
 | `SNAPSHOT_INTERVAL_MS` | `30000` | Interval of the periodic snapshot flush. |
 | `SESSION_CODEHASH_LENGTH` | `10` | Length of the generated join code. |
@@ -147,6 +152,38 @@ A file that fails any of these checks is skipped and shown in the admin view wit
 single broken quiz never blocks the rest of the catalog. Duplicate YAML keys are rejected with the
 line number.
 
+## Branding
+
+Wording and colors live in [`Backend/Quiz/branding/branding.yaml`](Backend/Quiz/branding/branding.yaml)
+instead of the stylesheets, so a deployment can be rebranded without touching the front-end.
+
+```yaml
+name: "Safety Quiz"      # product name in the header and page titles
+mark: "G+D"              # short badge next to it, at most 8 characters
+colors:
+  primary: "#040066"     # headings, buttons, podium
+  primarySoft: "#ececff"
+  accent: "#00d4ff"      # highlights, timers, winner ring
+  surface: "#ffffff"     # cards
+  background: "#f5f7fb"  # page background
+  text: "#17162d"
+  muted: "#66687a"
+  border: "#e3e6ef"
+  danger: "#a32035"
+  dangerSoft: "#fff3f5"
+  success: "#13854e"
+answerColors: ["#c52f42", "#1664ad", "#b28200", "#26824b"]
+```
+
+- Every field is optional; anything left out keeps the built-in value.
+- Colors must be hex (`#rgb` or `#rrggbb`), and `answerColors` must list exactly four of them.
+- The file is read once at startup and served as `/assets/branding.css` and `/assets/branding.js`,
+  which every page loads. Restart Quizzle after changing it.
+- An unreadable or invalid file is logged and ignored – the app then starts with the defaults.
+
+The container reads the folder from `BRANDING_FOLDER` (`/data/branding` in Docker), so mounting your
+own `branding.yaml` there is enough.
+
 ## How a quiz runs
 
 The server owns the state; every transition is validated against a state machine and rejected
@@ -156,21 +193,24 @@ otherwise.
 stateDiagram-v2
     [*] --> LOBBY
     LOBBY --> QUESTION_OPEN: START
-    QUESTION_OPEN --> RESULTS: END_EARLY / timer expired
-    RESULTS --> QUESTION_OPEN: NEXT (more questions)
+    QUESTION_OPEN --> RESULTS: END_EARLY / timer expired / everyone answered
+    RESULTS --> LEADERBOARD: NEXT (more questions)
     RESULTS --> FINAL_RESULTS: NEXT (last question)
-    FINAL_RESULTS --> FINAL_RESULTS: OPEN_PODIUM
+    LEADERBOARD --> QUESTION_OPEN: NEXT
     FINAL_RESULTS --> CLOSED: CLOSE
     LOBBY --> CLOSED: ABORT
     QUESTION_OPEN --> CLOSED: ABORT
     RESULTS --> CLOSED: ABORT
+    LEADERBOARD --> CLOSED: ABORT
 ```
 
 - Participants can only join in `LOBBY`.
 - Answers are only accepted in `QUESTION_OPEN`, for the currently open question, before the
   deadline, and only once per participant and question.
+- A question closes as soon as every connected participant has answered it.
 - While a question is open the presenter sees the number of answers received, never the
-  distribution. The bar chart appears in `RESULTS`.
+  distribution. The bar chart appears in `RESULTS`, the standings in `LEADERBOARD`.
+- `FINAL_RESULTS` opens the podium right away.
 - `ABORT` and `CLOSE` are behind a confirmation dialog in the presenter view.
 - A session that reaches `CLOSED` is dropped from the registry and deleted from the snapshot store
   right away, so it disappears from the admin list and does not come back after a restart.
@@ -180,8 +220,8 @@ stateDiagram-v2
 - A question counts as answered correctly only when the selected set matches the correct set
   **exactly** – a partially correct multiple-choice answer scores zero.
 - Points decay linearly with the remaining time:
-  `points × remaining / duration`. Answering instantly yields the full value, answering at the
-  buzzer yields close to zero.
+  `points × remaining / duration`, rounded to the nearest 10. Answering instantly yields the full
+  value, answering at the buzzer yields close to zero.
 - Ties are broken by the summed response time of all correct answers, then by the single fastest
   correct answer. Because points are time-weighted, exact ties are rare to begin with.
 - The elapsed time is measured server-side from the moment the question opened, so a slow client

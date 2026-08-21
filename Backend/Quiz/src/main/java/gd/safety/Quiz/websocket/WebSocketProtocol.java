@@ -198,7 +198,9 @@ public final class WebSocketProtocol {
 					snapshot.state() == gd.safety.Quiz.session.GameState.RESULTS
 							? ResultsView.from(snapshot, currentQuestion) : null,
 					participants,
-					snapshot.podiumOpen() ? StandingView.from(snapshot) : List.of());
+					snapshot.podiumOpen()
+							|| snapshot.state() == gd.safety.Quiz.session.GameState.LEADERBOARD
+									? StandingView.from(snapshot) : List.of());
 		}
 	}
 

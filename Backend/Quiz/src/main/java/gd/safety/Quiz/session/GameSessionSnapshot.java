@@ -32,7 +32,8 @@ public record GameSessionSnapshot(
 			throw new IllegalArgumentException("currentQuestionIndex is outside the quiz");
 		}
 		if ((state == GameState.QUESTION_OPEN || state == GameState.RESULTS
-				|| state == GameState.FINAL_RESULTS) && currentQuestionIndex < 0) {
+				|| state == GameState.LEADERBOARD || state == GameState.FINAL_RESULTS)
+				&& currentQuestionIndex < 0) {
 			throw new IllegalArgumentException("active states require a current question");
 		}
 		if (state == GameState.QUESTION_OPEN && serverStartEpochMs <= 0) {
