@@ -159,7 +159,7 @@ instead of the stylesheets, so a deployment can be rebranded without touching th
 
 ```yaml
 name: "Safety Quiz"      # product name in the header and page titles
-mark: "G+D"              # short badge next to it, at most 8 characters
+mark: "G+D"              # short badge next to it, at most 10 characters
 colors:
   primary: "#040066"     # headings, buttons, podium
   primarySoft: "#ececff"
