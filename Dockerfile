@@ -8,8 +8,8 @@ FROM eclipse-temurin:21-jre
 RUN useradd --system --create-home --uid 10001 quizzle
 WORKDIR /app
 COPY --from=build /build/build/libs/quizzle-0.0.1-SNAPSHOT.jar app.jar
-COPY ./quizzes /data/quizzes
-COPY quizzle/branding /data/branding
+COPY ./quizzes  /data/quizzes
+COPY ./branding /data/branding
 RUN mkdir -p /data/db && chown -R quizzle:quizzle /data
 
 USER quizzle
