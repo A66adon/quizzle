@@ -1,6 +1,6 @@
 # Branding for this deployment. Every field is optional; anything left out keeps the built-in value.
 # The file is read once at startup, so restart Quizzle after changing it.
-name: "Quizz3242342le"
+name: "Quizzle"
 mark: "GD_Logo.png"
 
 colors:
