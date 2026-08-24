@@ -1,0 +1,2 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+gd.safety.quizzle.config.DotEnvEnvironmentPostProcessor
