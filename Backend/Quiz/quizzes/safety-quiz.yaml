@@ -1,0 +1,185 @@
+title: "Quiz zur Sicherheitsunterweisung"
+description: "Ein kurzes Quiz zur Sicherheitsunterweisung."
+author: "G+D Safety Team"
+
+questions:
+  - id: "arbeitssicherheit_verantwortlich"
+    text: "Wer ist für die Arbeitssicherheit verantwortlich?"
+    points: 3000
+    timeSeconds: 20
+    multiple: false
+    answers:
+      - id: "arbeitgeber"
+        text: "Der Arbeitgeber"
+        correct: false
+      - id: "jeder"
+        text: "Jeder"
+        correct: true
+      - id: "arbeitnehmer"
+        text: "Der Arbeitnehmer"
+        correct: false
+
+  - id: "vorfaelle_melden"
+    text: "Welche Vorfälle musst du melden?"
+    points: 3000
+    timeSeconds: 20
+    multiple: true
+    answers:
+      - id: "beinaheunfaelle"
+        text: "Beinaheunfälle"
+        correct: true
+      - id: "erste_hilfe_faelle"
+        text: "Erste-Hilfe-Fälle"
+        correct: true
+      - id: "wegeunfaelle"
+        text: "Wegeunfälle"
+        correct: true
+      - id: "dienstreise_unfaelle"
+        text: "Unfälle auf Dienstreisen"
+        correct: true
+
+  - id: "interner_notruf"
+    text: "Was ist der interne Notruf?"
+    points: 3000
+    timeSeconds: 20
+    multiple: false
+    answers:
+      - id: "3333"
+        text: "3333"
+        correct: false
+      - id: "7777"
+        text: "7777"
+        correct: true
+      - id: "112"
+        text: "112"
+        correct: false
+      - id: "2222"
+        text: "2222"
+        correct: false
+
+  - id: "rote_lampe_toilette"
+    text: "Was bedeutet eine blinkende rote Lampe außerhalb der Toilette?"
+    points: 3000
+    timeSeconds: 20
+    multiple: false
+    answers:
+      - id: "geputzt"
+        text: "Hier wird gerade geputzt"
+        correct: false
+      - id: "ausser_betrieb"
+        text: "Die Toilette ist außer Betrieb"
+        correct: false
+      - id: "hilfe"
+        text: "Jemand braucht Hilfe"
+        correct: true
+
+  - id: "defektes_geraet"
+    text: "Welche Nummer musst du wählen, wenn du ein defektes Gerät bemerkst?"
+    points: 3000
+    timeSeconds: 20
+    multiple: false
+    answers:
+      - id: "geraet_3333"
+        text: "3333"
+        correct: false
+      - id: "geraet_7777"
+        text: "7777"
+        correct: false
+      - id: "geraet_112"
+        text: "112"
+        correct: false
+      - id: "geraet_2222"
+        text: "2222"
+        correct: true
+
+  - id: "stromschlag"
+    text: "Du kriegst einen leichten Stromschlag, was machst du?"
+    points: 3000
+    timeSeconds: 20
+    multiple: false
+    answers:
+      - id: "selbst_einschaetzen"
+        text: "Du schätzt die Situation selbst ein, und gehst dann bei Bedarf zum Arzt"
+        correct: false
+      - id: "betriebsarzt"
+        text: "Du kontaktierst sofort den betriebsärztlichen Dienst"
+        correct: true
+      - id: "weiterarbeiten"
+        text: "Es geht dir ja gut, deswegen arbeitest du weiter"
+        correct: false
+
+  - id: "laserpointer"
+    text: "Welche Laserpointer sind im Arbeitsumfeld erlaubt?"
+    points: 3000
+    timeSeconds: 20
+    multiple: true
+    answers:
+      - id: "klasse_3r"
+        text: "Klasse 3R"
+        correct: false
+      - id: "klasse_2"
+        text: "Klasse 2"
+        correct: true
+      - id: "klasse_4"
+        text: "Klasse 4"
+        correct: false
+      - id: "klasse_1"
+        text: "Klasse 1"
+        correct: true
+      - id: "klasse_2m"
+        text: "Klasse 2M"
+        correct: false
+
+  - id: "angebotsvorsorge"
+    text: "Was ist Angebotsvorsorge?"
+    points: 3000
+    timeSeconds: 20
+    multiple: false
+    answers:
+      - id: "arbeitnehmer_anfragen"
+        text: "Kann vom Arbeitnehmer angefragt werden"
+        correct: false
+      - id: "arbeitgeber_anbieten"
+        text: "Wird vom Arbeitgeber angeboten"
+        correct: true
+      - id: "beschaeftigungsvoraussetzung"
+        text: "Ist zwingende Beschäftigungsvoraussetzung"
+        correct: false
+
+  - id: "langzeitschaeden"
+    text: "Wie kannst du bei langem starren Sitzen Langzeitschäden vorbeugen?"
+    points: 3000
+    timeSeconds: 20
+    multiple: true
+    answers:
+      - id: "haltung_wechseln"
+        text: "Regelmäßiges Wechseln der Haltung"
+        correct: true
+      - id: "viel_trinken"
+        text: "Viel trinken"
+        correct: false
+      - id: "platz_wechseln"
+        text: "Jeden Tag an einem anderen Platz sitzen"
+        correct: false
+      - id: "dehnpausen"
+        text: "Einbauen kurzer Dehnpausen"
+        correct: true
+
+  - id: "mentale_gesundheit"
+    text: "Was sind negative Einflussfaktoren bei der mentalen Gesundheit?"
+    points: 3000
+    timeSeconds: 20
+    multiple: true
+    answers:
+      - id: "zeitdruck"
+        text: "Hoher Zeitdruck"
+        correct: true
+      - id: "viele_pausen"
+        text: "Viele Pausen"
+        correct: false
+      - id: "wenige_pausen"
+        text: "Wenige Pausen"
+        correct: true
+      - id: "grosses_mittagessen"
+        text: "Ein großes Mittagessen"
+        correct: false
