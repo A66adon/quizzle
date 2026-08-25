@@ -304,7 +304,10 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		showView("question-view");
 		if (renderedQuestionId !== question.id) buildAnswerControls(question);
 		setText("#question-text", question.text);
-		setText("#question-mode", question.multiple ? "Choose all correct answers" : "Choose one answer");
+		setText("#question-mode", question.multiple ? "Multiple choice" : "Single choice");
+		setText("#question-hint", question.multiple
+			? "Select all correct answers, then submit."
+			: "Select one answer.");
 		startCountdown(question);
 	}
 
@@ -327,14 +330,21 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			label.className = "answer-text";
 			label.textContent = option.text;
 			button.append(marker, label);
+			if (question.multiple) {
+				const checkbox = document.createElement("span");
+				checkbox.className = "answer-checkbox";
+				checkbox.setAttribute("aria-hidden", "true");
+				button.append(checkbox);
+			}
 			button.addEventListener("click", () => {
 				if (question.multiple) {
+					const wasEmpty = selectedAnswerIds.size === 0;
 					if (selectedAnswerIds.has(option.id)) selectedAnswerIds.delete(option.id);
 					else selectedAnswerIds.add(option.id);
 					button.classList.toggle("selected", selectedAnswerIds.has(option.id));
 					button.setAttribute("aria-pressed", String(selectedAnswerIds.has(option.id)));
 					grid.classList.toggle("has-selection", selectedAnswerIds.size !== 0);
-					confirmMultipleButton.disabled = selectedAnswerIds.size === 0;
+					updateSelectionUi(wasEmpty && selectedAnswerIds.size === 1);
 				} else {
 					submitAnswer([option.id]);
 				}
@@ -343,7 +353,28 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		}
 		grid.classList.remove("has-selection");
 		confirmMultipleButton.hidden = !question.multiple;
-		confirmMultipleButton.disabled = true;
+		if (question.multiple) updateSelectionUi(false);
+	}
+
+	function updateSelectionUi(justActivated) {
+		const count = selectedAnswerIds.size;
+		const status = document.querySelector("#selection-status");
+		confirmMultipleButton.disabled = count === 0;
+		confirmMultipleButton.textContent = count === 0
+			? "Select one or more answers"
+			: `Submit selection · ${count} selected`;
+		if (count === 0) {
+			status.hidden = true;
+		} else {
+			status.hidden = false;
+			status.textContent = `${count} answer${count === 1 ? "" : "s"} selected. You can select more, or submit your selection.`;
+		}
+		if (justActivated) {
+			confirmMultipleButton.classList.remove("just-activated");
+			// Force a reflow so the animation can restart if it was already removed once.
+			void confirmMultipleButton.offsetWidth;
+			confirmMultipleButton.classList.add("just-activated");
+		}
 	}
 
 	function submitAnswer(answerIds) {
