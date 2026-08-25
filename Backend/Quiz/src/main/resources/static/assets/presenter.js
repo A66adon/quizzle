@@ -46,13 +46,8 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	let renderedLeaderboardSignature = null;
 	let renderedFinalSignature = null;
 	let resultsRevealTimer = null;
-	let confettiShown = false;
 	let confettiTimer = null;
-	let pollInFlight = false;
-	// A poll fired right after a command can resolve after a slower in-flight poll from the
-	// regular interval, rolling the UI back to a stale state (and silently killing the pending
-	// confetti timer since it looks like FINAL_RESULTS was left). Reject anything older.
-	let lastAppliedUpdatedAtEpochMs = -1;
+	let confettiPodiumKey = null;
 
 	if (!codehash) {
 		showMessage("This presenter link is invalid.", true);
@@ -134,9 +129,6 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	}
 
 	async function pollState() {
-		// An immediate post-command poll can overlap the regular interval tick; never run two at once.
-		if (pollInFlight) return;
-		pollInFlight = true;
 		try {
 			// The cache-busting query param defeats proxies that cache GETs despite Cache-Control: no-store.
 			applyStateMessage(await requestJson(
@@ -150,8 +142,6 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 				return;
 			}
 			setFeedStatus("offline", "Reconnecting");
-		} finally {
-			pollInFlight = false;
 		}
 	}
 
@@ -175,17 +165,14 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	function applyStateMessage(received) {
 		if (received?.type !== "STATE" || received.payload?.codehash !== codehash) return;
-		// Reject responses that raced a newer one and resolved out of order (see pollInFlight above).
-		const updatedAt = Number(received.payload.updatedAtEpochMs);
-		if (Number.isFinite(updatedAt)) {
-			if (updatedAt < lastAppliedUpdatedAtEpochMs) return;
-			lastAppliedUpdatedAtEpochMs = updatedAt;
-		}
 		session = received.payload;
 		lastStateAtMs = Date.now();
 		window.clearTimeout(feedWatchdog);
 		serverClockOffsetMs = Number(session.serverEpochMs) - Date.now();
 		hideMessage();
+		// Runs before the dedup below and outside render(), so neither a repeated state nor a
+		// failing podium render can leave the winner screen without confetti.
+		syncConfetti();
 		const signature = stateSignature(session);
 		if (signature === renderedStateSignature) return;
 		renderedStateSignature = signature;
@@ -200,34 +187,41 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	function render() {
 		stopCountdown();
-		if (session.state !== "FINAL_RESULTS") {
-			renderedFinalSignature = null;
-			cancelConfetti();
-		}
+		if (session.state !== "FINAL_RESULTS") renderedFinalSignature = null;
 		if (session.state !== "LEADERBOARD") renderedLeaderboardSignature = null;
 		switch (session.state) {
 			case "LOBBY": renderLobby(); break;
 			case "QUESTION_OPEN": renderQuestion(); break;
 			case "RESULTS": renderResults(); break;
 			case "LEADERBOARD": renderLeaderboard(); break;
-			case "FINAL_RESULTS": renderFinalResults(); scheduleConfetti(); break;
+			case "FINAL_RESULTS": renderFinalResults(); break;
 			case "CLOSED": showView("closed-view"); break;
 			default: break;
 		}
 	}
 
-	// The podium reveals place by place, so the confetti waits for the winner to be on screen.
-	function scheduleConfetti() {
-		const placeCount = Math.min(3, (session.standings || []).length);
-		if (confettiShown || placeCount === 0) return;
-		confettiShown = true;
+	// Confetti belongs to the podium, so it is derived from the current state on every update
+	// rather than scheduled once: the podium key makes re-runs idempotent, and any state
+	// without a podium tears it down again.
+	function syncConfetti() {
+		const standings = session.state === "FINAL_RESULTS" ? (session.standings || []) : [];
+		const placeCount = Math.min(3, standings.length);
+		if (placeCount === 0) {
+			if (confettiPodiumKey !== null) cancelConfetti();
+			return;
+		}
+		const podiumKey = standings.slice(0, placeCount).map(standing => standing.playerId).join("|");
+		if (confettiPodiumKey === podiumKey) return;
+		cancelConfetti();
+		confettiPodiumKey = podiumKey;
+		// The podium reveals place by place, so the confetti waits for the winner to be on screen.
 		confettiTimer = window.setTimeout(() => launchConfetti(), placeCount * 1_700 + 900);
 	}
 
 	function cancelConfetti() {
 		window.clearTimeout(confettiTimer);
 		confettiTimer = null;
-		confettiShown = false;
+		confettiPodiumKey = null;
 		stopConfetti();
 	}
 
