@@ -123,6 +123,9 @@ public final class AdminGameSessionController {
 		GameSessionSnapshot session = requireSession(codehash);
 		return ResponseEntity.ok()
 				.cacheControl(CacheControl.noStore())
+				// Some corporate proxies only honour the legacy header, and would otherwise
+				// keep serving a stale snapshot to a polling presenter forever.
+				.header("Pragma", "no-cache")
 				.body(realtimePublisher.stateJson(session));
 	}
 

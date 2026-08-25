@@ -12,12 +12,18 @@
 	<script type="module" src="/assets/presenter.js"></script>
 </head>
 <body class="presenter-body">
+	<audio id="background-music" loop preload="auto">
+		<source src="/assets/audio/presenter-background-music.mp3" type="audio/mpeg">
+	</audio>
 	<header class="site-header">
 		<a class="brand" href="/admin" aria-label="Back to quiz sessions">
 			<span class="brand-mark" data-brand-mark aria-hidden="true"></span>
 			<span data-brand-name></span>
 		</a>
 		<div class="header-status">
+			<button id="music-toggle" class="music-toggle" type="button" aria-pressed="false" aria-label="Mute background music">
+				<span aria-hidden="true">🔊</span>
+			</button>
 			<span id="feed-status" class="feed-status connecting">Connecting</span>
 			<span id="session-code-chip" class="code-chip"></span>
 		</div>

@@ -13,6 +13,9 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	const standingsToggle = document.querySelector("#standings-toggle");
 	const standingsList = document.querySelector("#standings-list");
 	const podium = document.querySelector("#podium");
+	const backgroundMusic = document.querySelector("#background-music");
+	const musicToggle = document.querySelector("#music-toggle");
+	const MUSIC_MUTED_KEY = "quizzle-presenter-music-muted";
 	const COLUMN_STAGGER_MS = 320;
 	const COLUMN_GROW_MS = 1_100;
 	const SSE_GRACE_MS = 6_000;
@@ -52,6 +55,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		document.querySelector("#session-code-chip").textContent = codehash;
 		loadJoinDetails();
 		preloadAvatarStyles().then(subscribe);
+		setupBackgroundMusic();
 	}
 
 	document.querySelector("#start-button").addEventListener("click", () => sendCommand("START"));
@@ -95,6 +99,8 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		eventSource.addEventListener("state", event => {
 			setFeedStatus("live", "Live");
 			applyState(event.data);
+			// A proxy can start silently swallowing the stream mid-session, not just at the start.
+			startFeedWatchdog();
 		});
 		eventSource.addEventListener("error", () => {
 			if (pollTimer) return;
@@ -124,7 +130,10 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	async function pollState() {
 		try {
-			applyStateMessage(await requestJson(`/admin/api/sessions/${codehash}/state`));
+			// The cache-busting query param defeats proxies that cache GETs despite Cache-Control: no-store.
+			applyStateMessage(await requestJson(
+				`/admin/api/sessions/${codehash}/state?_=${Date.now()}`,
+				{ headers: { "Cache-Control": "no-cache" } }));
 			setFeedStatus("live", "Live (polling)");
 		} catch (error) {
 			// A closed session is deleted on the server, so polling it starts to answer with 404.
@@ -548,6 +557,37 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	function setFeedStatus(state, label) {
 		feedStatus.className = `feed-status ${state}`;
 		feedStatus.textContent = label;
+	}
+
+	// Autoplay with sound needs a user gesture, so playback is retried on the first interaction if blocked.
+	function setupBackgroundMusic() {
+		if (!backgroundMusic || !musicToggle) return;
+		backgroundMusic.volume = 0.4;
+		const muted = window.localStorage.getItem(MUSIC_MUTED_KEY) === "true";
+		applyMusicMuted(muted);
+
+		const tryPlay = () => backgroundMusic.play().catch(() => {});
+		tryPlay();
+		const resumeOnGesture = () => {
+			tryPlay();
+			document.removeEventListener("pointerdown", resumeOnGesture);
+			document.removeEventListener("keydown", resumeOnGesture);
+		};
+		document.addEventListener("pointerdown", resumeOnGesture);
+		document.addEventListener("keydown", resumeOnGesture);
+
+		musicToggle.addEventListener("click", () => {
+			applyMusicMuted(!backgroundMusic.muted);
+			tryPlay();
+		});
+	}
+
+	function applyMusicMuted(muted) {
+		backgroundMusic.muted = muted;
+		musicToggle.setAttribute("aria-pressed", String(muted));
+		musicToggle.setAttribute("aria-label", muted ? "Unmute background music" : "Mute background music");
+		musicToggle.querySelector("span").textContent = muted ? "🔇" : "🔊";
+		window.localStorage.setItem(MUSIC_MUTED_KEY, String(muted));
 	}
 
 	function setAvatar(image, participant) {
