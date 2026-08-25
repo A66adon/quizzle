@@ -1,0 +1,16 @@
+title: "Debug Single Question"
+description: "Temporary quiz used to reproduce the presenter confetti bug."
+author: "Debug"
+questions:
+  - id: "only-question"
+    text: "Pick the correct option."
+    points: 1000
+    timeSeconds: 10
+    multiple: false
+    answers:
+      - id: "right"
+        text: "The correct one"
+        correct: true
+      - id: "wrong"
+        text: "The wrong one"
+        correct: false

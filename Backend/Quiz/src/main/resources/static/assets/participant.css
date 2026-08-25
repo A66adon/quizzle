@@ -140,12 +140,3 @@ h2 { color: var(--primary); }
 	.answer-tile:last-child:nth-child(odd) { width: 100%; }
 	.connection-status { right: .7rem; top: .7rem; }
 }
-
-@media (prefers-reduced-motion: reduce) {
-	/* Without capping the iterations, looping animations race at .01ms per turn instead of stopping. */
-	*, *::before, *::after {
-		animation-duration: .01ms !important;
-		animation-iteration-count: 1 !important;
-		transition-duration: .01ms !important;
-	}
-}

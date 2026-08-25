@@ -214,17 +214,6 @@
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.avatar-chip,
-	.podium-block::before,
-	.podium-player,
-	.result-bar,
-	.result-votes,
-	.view {
-		animation: none;
-	}
-}
-
 .offline-heading {
 	margin-top: 2rem;
 }

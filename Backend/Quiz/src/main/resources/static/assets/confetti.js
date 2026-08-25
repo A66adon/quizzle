@@ -12,7 +12,6 @@ export function launchConfetti({
 	endPiecesPerSecond = 4,
 	initialPieceCount = 45
 } = {}) {
-	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 	stopConfetti();
 
 	const canvas = document.createElement("canvas");
