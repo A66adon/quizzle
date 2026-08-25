@@ -1,5 +1,11 @@
 package gd.safety.Quiz.branding;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Locale;
+import java.util.Optional;
+
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +32,7 @@ public final class BrandingAssetsController {
 	public ResponseEntity<String> stylesheet() {
 		Branding branding = catalog.branding();
 		StringBuilder css = new StringBuilder(":root {\n");
+		markImageUrl(branding).ifPresent(url -> css.append("\t--mark: url(\"").append(url).append("\");\n"));
 		appendVariable(css, "primary", branding.primary());
 		appendVariable(css, "primary-soft", branding.primarySoft());
 		appendVariable(css, "accent", branding.accent());
@@ -47,8 +54,9 @@ public final class BrandingAssetsController {
 	@GetMapping(value = "/assets/branding.js", produces = "text/javascript")
 	public ResponseEntity<String> module() {
 		Branding branding = catalog.branding();
+		boolean markIsImage = markImageUrl(branding).isPresent();
 		String json = objectMapper.writeValueAsString(
-				new BrandingView(branding.name(), branding.mark()));
+				new BrandingView(branding.name(), branding.mark(), markIsImage));
 		String module = """
 				export const branding = %s;
 
@@ -56,12 +64,60 @@ public final class BrandingAssetsController {
 					element.textContent = branding.name;
 				}
 				for (const element of document.querySelectorAll("[data-brand-mark]")) {
-					element.textContent = branding.mark;
+					if (branding.markIsImage) {
+						element.classList.add("brand-mark--image");
+					} else {
+						element.textContent = branding.mark;
+					}
 				}
 				const pageTitle = document.querySelector("title")?.dataset.pageTitle;
 				document.title = pageTitle ? `${pageTitle} \u00b7 ${branding.name}` : branding.name;
 				""".formatted(json);
 		return respond(module, JAVASCRIPT);
+	}
+
+	@GetMapping("/assets/branding-mark")
+	public ResponseEntity<byte[]> markImage() throws IOException {
+		Path file = catalog.markImageFile().orElse(null);
+		if (file == null) {
+			return ResponseEntity.notFound().build();
+		}
+		return ResponseEntity.ok()
+				.contentType(mediaTypeForImage(file))
+				.cacheControl(CacheControl.noCache())
+				.header("X-Content-Type-Options", "nosniff")
+				.body(Files.readAllBytes(file));
+	}
+
+	/** The URL to use for the CSS {@code --mark} variable, absent when the mark is plain text. */
+	private Optional<String> markImageUrl(Branding branding) {
+		return switch (branding.markKind()) {
+			case IMAGE_URL -> Optional.of(branding.mark());
+			case IMAGE_FILE -> catalog.markImageFile().isPresent()
+					? Optional.of("/assets/branding-mark")
+					: Optional.empty();
+			case TEXT -> Optional.empty();
+		};
+	}
+
+	private MediaType mediaTypeForImage(Path file) {
+		String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
+		if (name.endsWith(".png")) {
+			return MediaType.IMAGE_PNG;
+		}
+		if (name.endsWith(".jpg") || name.endsWith(".jpeg")) {
+			return MediaType.IMAGE_JPEG;
+		}
+		if (name.endsWith(".gif")) {
+			return MediaType.IMAGE_GIF;
+		}
+		if (name.endsWith(".svg")) {
+			return MediaType.parseMediaType("image/svg+xml");
+		}
+		if (name.endsWith(".webp")) {
+			return MediaType.parseMediaType("image/webp");
+		}
+		return MediaType.APPLICATION_OCTET_STREAM;
 	}
 
 	private void appendVariable(StringBuilder css, String name, String value) {
@@ -76,6 +132,6 @@ public final class BrandingAssetsController {
 				.body(body);
 	}
 
-	private record BrandingView(String name, String mark) {
+	private record BrandingView(String name, String mark, boolean markIsImage) {
 	}
 }

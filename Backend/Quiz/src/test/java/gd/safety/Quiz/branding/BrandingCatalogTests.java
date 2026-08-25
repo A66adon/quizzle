@@ -66,6 +66,57 @@ class BrandingCatalogTests {
 		assertTrue(exception.getMessage().contains("not allowed"));
 	}
 
+	@Test
+	void resolvesAMarkImageThatSitsNextToTheBrandingFile() throws Exception {
+		write("""
+				mark: "logo.png"
+				""");
+		Files.write(temporaryDirectory.resolve("logo.png"), new byte[] { 1, 2, 3 });
+
+		BrandingCatalog catalog = createCatalog();
+		catalog.loadAtStartup();
+
+		assertEquals(Branding.MarkKind.IMAGE_FILE, catalog.branding().markKind());
+		assertEquals(temporaryDirectory.resolve("logo.png"), catalog.markImageFile().orElseThrow());
+	}
+
+	@Test
+	void fallsBackWhenTheMarkImageIsMissing() throws Exception {
+		write("""
+				mark: "missing-logo.png"
+				""");
+
+		BrandingCatalog catalog = createCatalog();
+		catalog.loadAtStartup();
+
+		assertEquals(Branding.MarkKind.IMAGE_FILE, catalog.branding().markKind());
+		assertTrue(catalog.markImageFile().isEmpty());
+	}
+
+	@Test
+	void refusesToResolveAMarkImageOutsideTheBrandingDirectory() throws Exception {
+		write("""
+				mark: "../escape.png"
+				""");
+
+		BrandingCatalog catalog = createCatalog();
+		catalog.loadAtStartup();
+
+		assertTrue(catalog.markImageFile().isEmpty());
+	}
+
+	@Test
+	void treatsAnHttpUrlAsAnImageMark() throws Exception {
+		write("""
+				mark: "https://example.com/logo.png"
+				""");
+
+		BrandingCatalog catalog = createCatalog();
+		catalog.loadAtStartup();
+
+		assertEquals(Branding.MarkKind.IMAGE_URL, catalog.branding().markKind());
+	}
+
 	private BrandingCatalog createCatalog() {
 		return new BrandingCatalog(
 				new BrandingProperties(temporaryDirectory, "branding.yaml"), parser);

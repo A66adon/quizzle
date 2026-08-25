@@ -1,6 +1,8 @@
 # Branding for this deployment. Every field is optional; anything left out keeps the built-in value.
 # The file is read once at startup, so restart Quizzle after changing it.
 name: "Safety Quiz"
+# mark can be plain text (e.g. "G+D"), a logo file placed next to this file (e.g. "logo.png"),
+# or a full https:// URL to a hosted logo image.
 mark: "G+D"
 
 colors:

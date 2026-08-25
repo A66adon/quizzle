@@ -2,6 +2,7 @@ package gd.safety.Quiz.branding;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ public final class BrandingCatalog {
 	private final Path file;
 	private final BrandingYamlParser parser;
 	private volatile Branding branding = Branding.defaults();
+	private volatile Path markImageFile;
 
 	public BrandingCatalog(BrandingProperties properties, BrandingYamlParser parser) {
 		this.file = properties.directory().resolve(properties.file()).toAbsolutePath().normalize();
@@ -32,6 +34,7 @@ public final class BrandingCatalog {
 		}
 		try {
 			branding = parser.parse(file);
+			markImageFile = resolveMarkImageFile(branding);
 			LOGGER.info("Branding ready: {}", file);
 		} catch (BrandingFileException exception) {
 			LOGGER.warn("Branding file rejected, using defaults: {}", exception.getMessage());
@@ -42,5 +45,23 @@ public final class BrandingCatalog {
 
 	public Branding branding() {
 		return branding;
+	}
+
+	/** The logo file to serve for {@link Branding.MarkKind#IMAGE_FILE}, if the mark names one that actually exists. */
+	public Optional<Path> markImageFile() {
+		return Optional.ofNullable(markImageFile);
+	}
+
+	private Path resolveMarkImageFile(Branding branding) {
+		if (branding.markKind() != Branding.MarkKind.IMAGE_FILE) {
+			return null;
+		}
+		Path directory = file.getParent();
+		Path candidate = directory.resolve(branding.mark()).normalize();
+		if (!candidate.startsWith(directory) || !Files.isRegularFile(candidate)) {
+			LOGGER.warn("Branding mark names an image that was not found next to the branding file: {}", branding.mark());
+			return null;
+		}
+		return candidate;
 	}
 }
