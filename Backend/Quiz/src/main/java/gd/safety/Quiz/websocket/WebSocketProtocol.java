@@ -166,7 +166,9 @@ public final class WebSocketProtocol {
 			QuestionView question,
 			ResultsView results,
 			List<ParticipantView> participants,
-			List<StandingView> standings) {
+			List<StandingView> standings,
+			// Lets clients discard a state response that raced a newer one and resolved out of order.
+			long updatedAtEpochMs) {
 
 		static SessionView from(GameSessionSnapshot snapshot) {
 			long durationMs = snapshot.currentQuestionIndex() < 0
@@ -200,7 +202,8 @@ public final class WebSocketProtocol {
 					participants,
 					snapshot.podiumOpen()
 							|| snapshot.state() == gd.safety.Quiz.session.GameState.LEADERBOARD
-									? StandingView.from(snapshot) : List.of());
+									? StandingView.from(snapshot) : List.of(),
+					snapshot.updatedAtEpochMs());
 		}
 	}
 

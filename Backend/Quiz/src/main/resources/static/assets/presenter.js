@@ -48,6 +48,11 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	let resultsRevealTimer = null;
 	let confettiShown = false;
 	let confettiTimer = null;
+	let pollInFlight = false;
+	// A poll fired right after a command can resolve after a slower in-flight poll from the
+	// regular interval, rolling the UI back to a stale state (and silently killing the pending
+	// confetti timer since it looks like FINAL_RESULTS was left). Reject anything older.
+	let lastAppliedUpdatedAtEpochMs = -1;
 
 	if (!codehash) {
 		showMessage("This presenter link is invalid.", true);
@@ -129,6 +134,9 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	}
 
 	async function pollState() {
+		// An immediate post-command poll can overlap the regular interval tick; never run two at once.
+		if (pollInFlight) return;
+		pollInFlight = true;
 		try {
 			// The cache-busting query param defeats proxies that cache GETs despite Cache-Control: no-store.
 			applyStateMessage(await requestJson(
@@ -142,6 +150,8 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 				return;
 			}
 			setFeedStatus("offline", "Reconnecting");
+		} finally {
+			pollInFlight = false;
 		}
 	}
 
@@ -165,6 +175,12 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	function applyStateMessage(received) {
 		if (received?.type !== "STATE" || received.payload?.codehash !== codehash) return;
+		// Reject responses that raced a newer one and resolved out of order (see pollInFlight above).
+		const updatedAt = Number(received.payload.updatedAtEpochMs);
+		if (Number.isFinite(updatedAt)) {
+			if (updatedAt < lastAppliedUpdatedAtEpochMs) return;
+			lastAppliedUpdatedAtEpochMs = updatedAt;
+		}
 		session = received.payload;
 		lastStateAtMs = Date.now();
 		window.clearTimeout(feedWatchdog);
