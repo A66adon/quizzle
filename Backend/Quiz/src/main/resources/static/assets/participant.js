@@ -37,8 +37,13 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	if (!codehash) {
 		showTerminal("This quiz link is invalid.", false);
-	} else {
+	} else if (reconnectToken) {
+		// A saved reconnect token is handled by the JOIN/reconnect flow itself, so skip the pre-check.
 		preloadAvatarStyles().then(connect);
+	} else {
+		preloadAvatarStyles().then(() => checkJoinable().then(joinable => {
+			if (joinable) connect();
+		}));
 	}
 
 	joinForm.addEventListener("submit", event => {
@@ -110,6 +115,20 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		candidate.addEventListener("error", () => {
 			if (socket === candidate && candidate.readyState === WebSocket.OPEN) candidate.close();
 		});
+	}
+
+	// Checked once up front so a quiz that already started is rejected before the name form is even shown.
+	function checkJoinable() {
+		return fetch(`/${codehash}/status`, { cache: "no-store" })
+			.then(response => response.ok ? response.json() : null)
+			.then(status => {
+				if (status && status.joinable === false) {
+					showTerminal("This quiz has already started; new players cannot join.", false);
+					return false;
+				}
+				return true;
+			})
+			.catch(() => true);
 	}
 
 	function sendJoin() {

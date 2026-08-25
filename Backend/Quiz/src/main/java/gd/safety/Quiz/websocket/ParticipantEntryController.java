@@ -1,12 +1,16 @@
 package gd.safety.Quiz.websocket;
 
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
 import gd.safety.Quiz.session.GameSessionRegistry;
+import gd.safety.Quiz.session.GameState;
 
 @Controller
 public final class ParticipantEntryController {
@@ -33,4 +37,19 @@ public final class ParticipantEntryController {
 		}
 		return "redirect:/" + codehash + "/";
 	}
+
+	// Lets the join form check eligibility before a name is entered, instead of only after submitting it.
+	@GetMapping("/{codehash:[A-Za-z0-9_-]{8,32}}/status")
+	@ResponseBody
+	public ResponseEntity<StatusResponse> status(@PathVariable String codehash) {
+		return sessionRegistry.find(codehash)
+				.map(snapshot -> ResponseEntity.ok()
+						.cacheControl(CacheControl.noStore())
+						.body(new StatusResponse(snapshot.state() == GameState.LOBBY)))
+				.orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+	}
+
+	public record StatusResponse(boolean joinable) {
+	}
 }
+

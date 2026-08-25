@@ -108,9 +108,7 @@
 	display: grid;
 	grid-template-columns: minmax(0, 21rem) minmax(0, 1fr);
 	gap: 2rem;
-	align-items: stretch;
-	flex: 1 1 auto;
-	min-height: 0;
+	align-items: start;
 }
 
 .join-card,
@@ -120,17 +118,6 @@
 	border-radius: 1.25rem;
 	background: var(--surface);
 	box-shadow: var(--shadow);
-}
-
-.join-card {
-	/* The join card keeps its natural size; only the lobby-main column stretches to dock its control bar. */
-	align-self: start;
-}
-
-.lobby-main {
-	display: flex;
-	flex-direction: column;
-	min-height: 0;
 }
 
 .centered-card {
@@ -831,7 +818,6 @@
 @media (max-width: 900px) {
 	.lobby-layout {
 		grid-template-columns: minmax(0, 1fr);
-		grid-template-rows: auto 1fr;
 	}
 
 	.podium {
