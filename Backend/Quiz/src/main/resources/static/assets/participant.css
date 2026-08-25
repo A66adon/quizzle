@@ -83,9 +83,11 @@ h2 { color: var(--primary); }
 .answer-tile:nth-child(6n+6) { --tile: var(--answer-6); --shape: "★"; }
 /* An odd answer count leaves a lone tile in the last row; span it and center it instead of stretching it. */
 .answer-tile:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - .35rem); justify-self: center; }
-.answer-tile:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0,0,0,.16); }
+.answer-tile:hover:not(:disabled):not(.selected) { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0,0,0,.16); }
 .answer-grid.multiple.has-selection .answer-tile:not(.selected) { opacity: .6; }
 .answer-tile.selected { border-color: #fff; box-shadow: 0 0 0 4px var(--primary), 0 10px 24px rgba(4,0,102,.25); }
+/* Touch devices keep :hover "stuck" on the last-tapped tile; without :not(.selected) above, its higher-specificity box-shadow masked the selection ring. */
+.answer-tile.selected:hover:not(:disabled) { transform: translateY(-2px); }
 .answer-tile.selected:focus-visible { outline-color: var(--primary); }
 .answer-grid:not(.multiple) .answer-tile.selected .answer-marker { color: var(--primary); background: #fff; }
 .answer-grid:not(.multiple) .answer-tile.selected .answer-marker::before { content: "✓"; font-weight: 900; }
