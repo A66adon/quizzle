@@ -18,9 +18,11 @@ colors:
   dangerSoft: "#fff3f5"
   success: "#13854e"
 
-# Colors of the four answer tiles, in order.
+# Colors of the six answer tiles, in order.
 answerColors:
   - "#c52f42"
   - "#1664ad"
   - "#b28200"
   - "#26824b"
+  - "#7a3fa0"
+  - "#c2660a"

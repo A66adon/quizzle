@@ -351,28 +351,47 @@
 }
 
 /* The palette and shapes mirror the participant answer tiles so both screens match. */
-.option-tile:nth-child(4n + 1),
-.result-column:nth-child(4n + 1) {
+.option-tile:nth-child(6n + 1),
+.result-column:nth-child(6n + 1) {
 	--tile: var(--answer-1);
 	--shape: "\25B2";
 }
 
-.option-tile:nth-child(4n + 2),
-.result-column:nth-child(4n + 2) {
+.option-tile:nth-child(6n + 2),
+.result-column:nth-child(6n + 2) {
 	--tile: var(--answer-2);
 	--shape: "\25C6";
 }
 
-.option-tile:nth-child(4n + 3),
-.result-column:nth-child(4n + 3) {
+.option-tile:nth-child(6n + 3),
+.result-column:nth-child(6n + 3) {
 	--tile: var(--answer-3);
 	--shape: "\25CF";
 }
 
-.option-tile:nth-child(4n + 4),
-.result-column:nth-child(4n + 4) {
+.option-tile:nth-child(6n + 4),
+.result-column:nth-child(6n + 4) {
 	--tile: var(--answer-4);
 	--shape: "\25A0";
+}
+
+.option-tile:nth-child(6n + 5),
+.result-column:nth-child(6n + 5) {
+	--tile: var(--answer-5);
+	--shape: "\25B6";
+}
+
+.option-tile:nth-child(6n + 6),
+.result-column:nth-child(6n + 6) {
+	--tile: var(--answer-6);
+	--shape: "\2605";
+}
+
+/* An odd answer count leaves a lone tile in the last row; span it and center it instead of stretching it. */
+.option-tile:last-child:nth-child(odd) {
+	grid-column: 1 / -1;
+	width: calc(50% - 0.5rem);
+	justify-self: center;
 }
 
 /* The mirrored trailing column keeps every marker on the same left edge while the text stays centred. */

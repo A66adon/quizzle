@@ -21,7 +21,7 @@ public record Branding(
 		String success,
 		List<String> answerColors) {
 
-	public static final int ANSWER_COLOR_COUNT = 4;
+	public static final int ANSWER_COLOR_COUNT = 6;
 
 	/** How {@link #mark()} should be presented: plain wording, a hosted image file, or a remote image. */
 	public enum MarkKind { TEXT, IMAGE_FILE, IMAGE_URL }
@@ -62,6 +62,6 @@ public record Branding(
 				"#a32035",
 				"#fff3f5",
 				"#13854e",
-				List.of("#c52f42", "#1664ad", "#b28200", "#26824b"));
+				List.of("#c52f42", "#1664ad", "#b28200", "#26824b", "#7a3fa0", "#c2660a"));
 	}
 }

@@ -72,10 +72,14 @@ h2 { color: var(--primary); }
 .answer-marker { display: grid; flex: none; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: .6rem; background: rgba(255,255,255,.24); font-size: 1.1rem; line-height: 1; }
 .answer-marker::before { content: var(--shape); }
 .answer-text { overflow-wrap: anywhere; }
-.answer-tile:nth-child(4n+1) { --tile: var(--answer-1); --shape: "▲"; }
-.answer-tile:nth-child(4n+2) { --tile: var(--answer-2); --shape: "◆"; }
-.answer-tile:nth-child(4n+3) { --tile: var(--answer-3); --shape: "●"; }
-.answer-tile:nth-child(4n+4) { --tile: var(--answer-4); --shape: "■"; }
+.answer-tile:nth-child(6n+1) { --tile: var(--answer-1); --shape: "▲"; }
+.answer-tile:nth-child(6n+2) { --tile: var(--answer-2); --shape: "◆"; }
+.answer-tile:nth-child(6n+3) { --tile: var(--answer-3); --shape: "●"; }
+.answer-tile:nth-child(6n+4) { --tile: var(--answer-4); --shape: "■"; }
+.answer-tile:nth-child(6n+5) { --tile: var(--answer-5); --shape: "▶"; }
+.answer-tile:nth-child(6n+6) { --tile: var(--answer-6); --shape: "★"; }
+/* An odd answer count leaves a lone tile in the last row; span it and center it instead of stretching it. */
+.answer-tile:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - .35rem); justify-self: center; }
 .answer-tile:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0,0,0,.16); }
 .answer-grid.multiple.has-selection .answer-tile:not(.selected) { opacity: .6; }
 .answer-tile.selected { border-color: #fff; box-shadow: 0 0 0 4px var(--primary), 0 10px 24px rgba(4,0,102,.25); }
@@ -125,6 +129,7 @@ h2 { color: var(--primary); }
 	.hero-card { grid-template-columns: 1fr; text-align: center; }
 	.my-avatar { margin: auto; }
 	.answer-grid { grid-template-columns: 1fr; }
+	.answer-tile:last-child:nth-child(odd) { width: 100%; }
 	.connection-status { right: .7rem; top: .7rem; }
 }
 

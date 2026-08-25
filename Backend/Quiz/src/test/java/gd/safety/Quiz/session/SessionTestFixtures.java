@@ -27,7 +27,7 @@ public final class SessionTestFixtures {
 	}
 
 	public static QuizValidationProperties validationLimits() {
-		return new QuizValidationProperties(1_048_576, 160, 2_000, 120, 80, 500, 300, 200, 12,
+		return new QuizValidationProperties(1_048_576, 160, 2_000, 120, 80, 500, 300, 200, 6,
 				100_000, 600);
 	}
 
