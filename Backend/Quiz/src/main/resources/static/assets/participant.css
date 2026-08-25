@@ -86,8 +86,8 @@ h2 { color: var(--primary); }
 .answer-tile:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0,0,0,.16); }
 .answer-grid.multiple.has-selection .answer-tile:not(.selected) { opacity: .6; }
 .answer-tile.selected { border-color: #fff; box-shadow: 0 0 0 4px var(--primary), 0 10px 24px rgba(4,0,102,.25); }
-.answer-tile.selected .answer-marker { color: var(--primary); background: #fff; }
-.answer-tile.selected .answer-marker::before { content: "✓"; font-weight: 900; }
+.answer-grid:not(.multiple) .answer-tile.selected .answer-marker { color: var(--primary); background: #fff; }
+.answer-grid:not(.multiple) .answer-tile.selected .answer-marker::before { content: "✓"; font-weight: 900; }
 .question-hint { margin: -.35rem 0 0; }
 .selection-status { margin: .8rem 0 0; padding: .6rem .85rem; border: 1px solid var(--border); border-radius: .7rem; color: var(--text); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); font-size: .85rem; font-weight: 700; animation: enter .2s ease both; }
 #confirm-multiple-button { width: 100%; margin-top: 1rem; }
