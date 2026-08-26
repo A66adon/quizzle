@@ -75,12 +75,12 @@ h2 { color: var(--primary); }
 .answer-checkbox { flex: none; width: 1.5rem; height: 1.5rem; margin-left: auto; border: 2px solid rgba(255,255,255,.85); border-radius: .35rem; }
 .answer-tile.selected .answer-checkbox { display: grid; place-items: center; border-color: #fff; background: #fff; }
 .answer-tile.selected .answer-checkbox::before { content: "\2713"; color: var(--primary); font-size: 1rem; font-weight: 900; }
-.answer-tile:nth-child(6n+1) { --tile: var(--answer-1); --shape: "▲"; }
-.answer-tile:nth-child(6n+2) { --tile: var(--answer-2); --shape: "◆"; }
-.answer-tile:nth-child(6n+3) { --tile: var(--answer-3); --shape: "●"; }
-.answer-tile:nth-child(6n+4) { --tile: var(--answer-4); --shape: "■"; }
-.answer-tile:nth-child(6n+5) { --tile: var(--answer-5); --shape: "▶"; }
-.answer-tile:nth-child(6n+6) { --tile: var(--answer-6); --shape: "★"; }
+.answer-tile:nth-child(6n+1) { --tile: var(--answer-1); --shape: "\25B2"; }
+.answer-tile:nth-child(6n+2) { --tile: var(--answer-2); --shape: "\25C6"; }
+.answer-tile:nth-child(6n+3) { --tile: var(--answer-3); --shape: "\23FA"; }
+.answer-tile:nth-child(6n+4) { --tile: var(--answer-4); --shape: "\25A0"; }
+.answer-tile:nth-child(6n+5) { --tile: var(--answer-5); --shape: "\2605"; }
+.answer-tile:nth-child(6n+6) { --tile: var(--answer-6); --shape: "\25B6"; }
 /* An odd answer count leaves a lone tile in the last row; span it and center it instead of stretching it. */
 .answer-tile:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - .35rem); justify-self: center; }
 .answer-tile:hover:not(:disabled):not(.selected) { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0,0,0,.16); }

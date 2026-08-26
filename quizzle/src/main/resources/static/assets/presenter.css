@@ -397,7 +397,7 @@
 .option-tile:nth-child(6n + 3),
 .result-column:nth-child(6n + 3) {
 	--tile: var(--answer-3);
-	--shape: "\25CF";
+	--shape: "\23FA";
 }
 
 .option-tile:nth-child(6n + 4),
@@ -409,13 +409,13 @@
 .option-tile:nth-child(6n + 5),
 .result-column:nth-child(6n + 5) {
 	--tile: var(--answer-5);
-	--shape: "\25B6";
+	--shape: "\2605";
 }
 
 .option-tile:nth-child(6n + 6),
 .result-column:nth-child(6n + 6) {
 	--tile: var(--answer-6);
-	--shape: "\2605";
+	--shape: "\25B6";
 }
 
 /* An odd answer count leaves a lone tile in the last row; span it and center it instead of stretching it. */
