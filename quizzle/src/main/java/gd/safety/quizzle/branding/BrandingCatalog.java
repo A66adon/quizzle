@@ -57,7 +57,7 @@ public final class BrandingCatalog {
 			return null;
 		}
 		Path directory = file.getParent();
-		Path candidate = directory.resolve(branding.mark()).normalize();
+		Path candidate = directory.resolve("./images/" + branding.mark()).normalize();
 		if (!candidate.startsWith(directory) || !Files.isRegularFile(candidate)) {
 			LOGGER.warn("Branding mark names an image that was not found next to the branding file: {}", branding.mark());
 			return null;
