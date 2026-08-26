@@ -23,7 +23,8 @@ public final class BrandingYamlParser {
 
 	private static final long MAX_FILE_BYTES = 32_768;
 	private static final int MAX_NAME_LENGTH = 60;
-	private static final int MAX_MARK_LENGTH = 60;
+	// Long enough for an image filename or a short logo URL, in addition to plain wording.
+	private static final int MAX_MARK_LENGTH = 200;
 	private static final Pattern COLOR = Pattern.compile("#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})");
 	// Wording ends up in generated CSS and JavaScript, so quoting and markup characters are refused.
 	private static final Pattern FORBIDDEN_IN_TEXT = Pattern.compile("[<>&\"'\\\\\\u0000-\\u001f\\u007f]");

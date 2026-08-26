@@ -1,0 +1,244 @@
+title: "Das große Büro- und IT-Überlebensquiz"
+description: "Ein humorvolles Quiz über typische Situationen aus dem Büro- und IT-Alltag."
+author: "G+D Quiz Team"
+
+questions:
+  - id: "technical-problem"
+    text: "Was ist die häufigste Lösung für ein technisches Problem?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "technical-problem-a"
+        text: "Den Quellcode neu schreiben"
+        correct: false
+      - id: "technical-problem-b"
+        text: "Den Computer neu starten"
+        correct: true
+      - id: "technical-problem-c"
+        text: "Den Bildschirm freundlich bitten"
+        correct: false
+      - id: "technical-problem-d"
+        text: "Eine strategische Taskforce gründen"
+        correct: false
+
+  - id: "almost-finished"
+    text: "Was bedeutet die Aussage „Ich bin gleich fertig“ in einem IT-Projekt?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "almost-finished-a"
+        text: "Noch fünf Minuten"
+        correct: false
+      - id: "almost-finished-b"
+        text: "Noch eine Stunde"
+        correct: false
+      - id: "almost-finished-c"
+        text: "Niemand weiß es genau"
+        correct: true
+      - id: "almost-finished-d"
+        text: "Das Projekt ist bereits abgeschlossen"
+        correct: false
+
+  - id: "secure-password"
+    text: "Welches Passwort ist am sichersten?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "secure-password-a"
+        text: "Passwort123"
+        correct: false
+      - id: "secure-password-b"
+        text: "Oliver2026"
+        correct: false
+      - id: "secure-password-c"
+        text: "12345678"
+        correct: false
+      - id: "secure-password-d"
+        text: "Kaktus!Mond7-Turbine?Keks"
+        correct: true
+
+  - id: "presentation-problem"
+    text: "Was passiert typischerweise zwei Minuten vor einer wichtigen Präsentation?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "presentation-problem-a"
+        text: "Alles funktioniert perfekt"
+        correct: false
+      - id: "presentation-problem-b"
+        text: "PowerPoint installiert automatisch ein Update"
+        correct: true
+      - id: "presentation-problem-c"
+        text: "Der Beamer erkennt den Laptop sofort"
+        correct: false
+      - id: "presentation-problem-d"
+        text: "Alle Teilnehmenden erscheinen pünktlich"
+        correct: false
+
+  - id: "short-meeting"
+    text: "Was bedeutet „kurzer Abstimmungstermin“?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "short-meeting-a"
+        text: "Ein Gespräch von fünf Minuten"
+        correct: false
+      - id: "short-meeting-b"
+        text: "Eine E-Mail"
+        correct: false
+      - id: "short-meeting-c"
+        text: "Ein Meeting mit zwölf Personen und 47 Folien"
+        correct: true
+      - id: "short-meeting-d"
+        text: "Gemeinsames Musizieren"
+        correct: false
+
+  - id: "last-piece-of-cake"
+    text: "Warum bleibt nach einem Meeting oft ein Stück Kuchen übrig?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "last-piece-of-cake-a"
+        text: "Niemand mag Kuchen"
+        correct: false
+      - id: "last-piece-of-cake-b"
+        text: "Es dient als Backup"
+        correct: false
+      - id: "last-piece-of-cake-c"
+        text: "Alle warten darauf, dass jemand anderes das letzte Stück nimmt"
+        correct: true
+      - id: "last-piece-of-cake-d"
+        text: "Es gehört offiziell der IT-Abteilung"
+        correct: false
+
+  - id: "urgent-email"
+    text: "Du erhältst eine E-Mail mit dem Betreff „DRINGEND!!!“. Wie dringend ist sie wahrscheinlich?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "urgent-email-a"
+        text: "Das Gebäude brennt"
+        correct: false
+      - id: "urgent-email-b"
+        text: "Eine wichtige Frist läuft in zehn Minuten ab"
+        correct: false
+      - id: "urgent-email-c"
+        text: "Jemand sucht eine Excel-Datei aus dem Jahr 2019"
+        correct: true
+      - id: "urgent-email-d"
+        text: "Die Kaffeemaschine ist verschwunden"
+        correct: false
+
+  - id: "workaround"
+    text: "Was ist ein „Workaround“?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "workaround-a"
+        text: "Eine endgültige und elegante Lösung"
+        correct: false
+      - id: "workaround-b"
+        text: "Eine Lösung, die funktioniert, solange niemand sie berührt"
+        correct: true
+      - id: "workaround-c"
+        text: "Ein Spaziergang während der Arbeitszeit"
+        correct: false
+      - id: "workaround-d"
+        text: "Eine neue Projektmanagement-Methode"
+        correct: false
+
+  - id: "important-file"
+    text: "Was ist die natürliche Umgebung einer wichtigen Datei?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "important-file-a"
+        text: "Ein ordentlich strukturiertes Dokumentenarchiv"
+        correct: false
+      - id: "important-file-b"
+        text: "Ein versioniertes Repository"
+        correct: false
+      - id: "important-file-c"
+        text: "Der Desktop mit dem Namen Final_final_NEU_v3_wirklichfinal.xlsx"
+        correct: true
+      - id: "important-file-d"
+        text: "Ein feuerfester Tresor"
+        correct: false
+
+  - id: "online-meeting-panic"
+    text: "Welche Aussage sorgt in einem Online-Meeting für sofortige Panik?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "online-meeting-panic-a"
+        text: "Guten Morgen!"
+        correct: false
+      - id: "online-meeting-panic-b"
+        text: "Ich teile kurz meinen Bildschirm."
+        correct: true
+      - id: "online-meeting-panic-c"
+        text: "Wir sind heute sogar früher fertig."
+        correct: false
+      - id: "online-meeting-panic-d"
+        text: "Hat jemand die Dokumentation gelesen?"
+        correct: false
+
+  - id: "excel-function"
+    text: "Was ist die wichtigste Funktion von Excel?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "excel-function-a"
+        text: "Daten analysieren"
+        correct: false
+      - id: "excel-function-b"
+        text: "Diagramme erstellen"
+        correct: false
+      - id: "excel-function-c"
+        text: "Als Datenbank, Projektplan, Taschenrechner und Lebensphilosophie dienen"
+        correct: true
+      - id: "excel-function-d"
+        text: "Ausschließlich Tabellen drucken"
+        correct: false
+
+  - id: "program-works"
+    text: "Dein Programm funktioniert plötzlich. Was solltest du tun?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "program-works-a"
+        text: "Dir sofort erklären, warum"
+        correct: false
+      - id: "program-works-b"
+        text: "Nichts mehr verändern"
+        correct: true
+      - id: "program-works-c"
+        text: "Den gesamten Code optimieren"
+        correct: false
+      - id: "program-works-d"
+        text: "Den Laptop schütteln, um die Stabilität zu testen"
+        correct: false

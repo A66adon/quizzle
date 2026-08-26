@@ -27,14 +27,8 @@ h2 { color: var(--primary); }
 
 .participant-shell { display: flex; flex-direction: column; width: min(900px, calc(100% - 2rem)); min-height: 100dvh; margin: 0 auto; padding: 1.25rem 0 1.5rem; }
 .participant-header { display: flex; align-items: center; gap: .75rem; margin-bottom: clamp(1rem, 4vw, 2rem); color: var(--primary); font-weight: 850; }
-.brand-mark {
-	content:  var(--mark);
-	display: inline-block;
-	vertical-align: middle;
-	margin-right: 8px;
-	max-height: 3rem;
-	max-width: 5rem;
-}
+.brand-mark { display: inline-grid; place-items: center; min-width: 3.2rem; height: 2rem; padding: 0 .5rem; border-radius: .5rem; color: var(--primary); background: var(--accent); font-size: .78rem; font-weight: 900; }
+.brand-mark.brand-mark--image { display: inline-block; min-width: 0; height: auto; max-height: 3rem; max-width: 8rem; padding: 0; border-radius: 0; background: none; content: var(--mark); }
 
 .connection-status { position: fixed; z-index: 20; top: 1rem; right: 1rem; display: flex; align-items: center; gap: .55rem; padding: .55rem .8rem; border: 1px solid var(--border); border-radius: 999px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 8px 22px rgba(4,0,102,.09); color: var(--muted); font-size: .78rem; font-weight: 750; }
 .status-dot { width: .65rem; height: .65rem; border-radius: 50%; background: #d28a00; }
@@ -78,16 +72,29 @@ h2 { color: var(--primary); }
 .answer-marker { display: grid; flex: none; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: .6rem; background: rgba(255,255,255,.24); font-size: 1.1rem; line-height: 1; }
 .answer-marker::before { content: var(--shape); }
 .answer-text { overflow-wrap: anywhere; }
-.answer-tile:nth-child(4n+1) { --tile: var(--answer-1); --shape: "▲"; }
-.answer-tile:nth-child(4n+2) { --tile: var(--answer-2); --shape: "◆"; }
-.answer-tile:nth-child(4n+3) { --tile: var(--answer-3); --shape: "●"; }
-.answer-tile:nth-child(4n+4) { --tile: var(--answer-4); --shape: "■"; }
-.answer-tile:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0,0,0,.16); }
+.answer-checkbox { flex: none; width: 1.5rem; height: 1.5rem; margin-left: auto; border: 2px solid rgba(255,255,255,.85); border-radius: .35rem; }
+.answer-tile.selected .answer-checkbox { display: grid; place-items: center; border-color: #fff; background: #fff; }
+.answer-tile.selected .answer-checkbox::before { content: "\2713"; color: var(--primary); font-size: 1rem; font-weight: 900; }
+.answer-tile:nth-child(6n+1) { --tile: var(--answer-1); --shape: "▲"; }
+.answer-tile:nth-child(6n+2) { --tile: var(--answer-2); --shape: "◆"; }
+.answer-tile:nth-child(6n+3) { --tile: var(--answer-3); --shape: "●"; }
+.answer-tile:nth-child(6n+4) { --tile: var(--answer-4); --shape: "■"; }
+.answer-tile:nth-child(6n+5) { --tile: var(--answer-5); --shape: "▶"; }
+.answer-tile:nth-child(6n+6) { --tile: var(--answer-6); --shape: "★"; }
+/* An odd answer count leaves a lone tile in the last row; span it and center it instead of stretching it. */
+.answer-tile:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - .35rem); justify-self: center; }
+.answer-tile:hover:not(:disabled):not(.selected) { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0,0,0,.16); }
 .answer-grid.multiple.has-selection .answer-tile:not(.selected) { opacity: .6; }
 .answer-tile.selected { border-color: #fff; box-shadow: 0 0 0 4px var(--primary), 0 10px 24px rgba(4,0,102,.25); }
-.answer-tile.selected .answer-marker { color: var(--primary); background: #fff; }
-.answer-tile.selected .answer-marker::before { content: "✓"; font-weight: 900; }
+/* Touch devices keep :hover "stuck" on the last-tapped tile; without :not(.selected) above, its higher-specificity box-shadow masked the selection ring. */
+.answer-tile.selected:hover:not(:disabled) { transform: translateY(-2px); }
+.answer-tile.selected:focus-visible { outline-color: var(--primary); }
+.answer-grid:not(.multiple) .answer-tile.selected .answer-marker { color: var(--primary); background: #fff; }
+.answer-grid:not(.multiple) .answer-tile.selected .answer-marker::before { content: "✓"; font-weight: 900; }
+.question-hint { margin: -.35rem 0 0; }
+.selection-status { margin: .8rem 0 0; padding: .6rem .85rem; border: 1px solid var(--border); border-radius: .7rem; color: var(--text); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); font-size: .85rem; font-weight: 700; animation: enter .2s ease both; }
 #confirm-multiple-button { width: 100%; margin-top: 1rem; }
+#confirm-multiple-button.just-activated { animation: submit-pulse .35s ease; }
 
 .centered-card { max-width: 38rem; margin: 4vh auto; text-align: center; }
 .waiting-pulse { width: 4rem; height: 4rem; margin: 0 auto 1.5rem; border: .45rem solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 3.2s linear infinite; }
@@ -124,6 +131,7 @@ h2 { color: var(--primary); }
 @keyframes pulse { 50% { opacity: .45; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes enter { from { opacity: 0; transform: translateY(5px); } }
+@keyframes submit-pulse { 50% { transform: scale(1.035); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent); } }
 
 @media (max-width: 620px) {
 	.participant-shell { padding-top: 3.6rem; }
@@ -131,14 +139,6 @@ h2 { color: var(--primary); }
 	.hero-card { grid-template-columns: 1fr; text-align: center; }
 	.my-avatar { margin: auto; }
 	.answer-grid { grid-template-columns: 1fr; }
+	.answer-tile:last-child:nth-child(odd) { width: 100%; }
 	.connection-status { right: .7rem; top: .7rem; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-	/* Without capping the iterations, looping animations race at .01ms per turn instead of stopping. */
-	*, *::before, *::after {
-		animation-duration: .01ms !important;
-		animation-iteration-count: 1 !important;
-		transition-duration: .01ms !important;
-	}
 }

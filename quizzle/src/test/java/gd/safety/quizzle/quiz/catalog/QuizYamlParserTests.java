@@ -76,7 +76,7 @@ class QuizYamlParserTests {
 	@Test
 	void rejectsFilesAboveTheConfiguredLimit() throws IOException {
 		QuizValidationProperties smallLimit = new QuizValidationProperties(
-				10, 160, 2_000, 120, 80, 500, 300, 200, 12, 100_000, 600);
+				10, 160, 2_000, 120, 80, 500, 300, 200, 6, 100_000, 600);
 		Path quizFile = write("large.yaml", QuizTestFixtures.validYaml());
 
 		QuizFileException exception = assertThrows(
