@@ -397,7 +397,7 @@
 .option-tile:nth-child(6n + 3),
 .result-column:nth-child(6n + 3) {
 	--tile: var(--answer-3);
-	--shape: "\23FA";
+	--shape: "\25CF";
 }
 
 .option-tile:nth-child(6n + 4),
