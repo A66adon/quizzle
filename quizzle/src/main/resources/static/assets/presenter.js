@@ -13,6 +13,9 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	const standingsToggle = document.querySelector("#standings-toggle");
 	const standingsList = document.querySelector("#standings-list");
 	const podium = document.querySelector("#podium");
+	const backgroundMusic = document.querySelector("#background-music");
+	const musicToggle = document.querySelector("#music-toggle");
+	const MUSIC_MUTED_KEY = "quizzle-presenter-music-muted";
 	const COLUMN_STAGGER_MS = 320;
 	const COLUMN_GROW_MS = 1_100;
 	const SSE_GRACE_MS = 6_000;
@@ -43,8 +46,8 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	let renderedLeaderboardSignature = null;
 	let renderedFinalSignature = null;
 	let resultsRevealTimer = null;
-	let confettiShown = false;
 	let confettiTimer = null;
+	let confettiPodiumKey = null;
 
 	if (!codehash) {
 		showMessage("This presenter link is invalid.", true);
@@ -52,6 +55,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		document.querySelector("#session-code-chip").textContent = codehash;
 		loadJoinDetails();
 		preloadAvatarStyles().then(subscribe);
+		setupBackgroundMusic();
 	}
 
 	document.querySelector("#start-button").addEventListener("click", () => sendCommand("START"));
@@ -95,6 +99,8 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		eventSource.addEventListener("state", event => {
 			setFeedStatus("live", "Live");
 			applyState(event.data);
+			// A proxy can start silently swallowing the stream mid-session, not just at the start.
+			startFeedWatchdog();
 		});
 		eventSource.addEventListener("error", () => {
 			if (pollTimer) return;
@@ -124,7 +130,10 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	async function pollState() {
 		try {
-			applyStateMessage(await requestJson(`/admin/api/sessions/${codehash}/state`));
+			// The cache-busting query param defeats proxies that cache GETs despite Cache-Control: no-store.
+			applyStateMessage(await requestJson(
+				`/admin/api/sessions/${codehash}/state?_=${Date.now()}`,
+				{ headers: { "Cache-Control": "no-cache" } }));
 			setFeedStatus("live", "Live (polling)");
 		} catch (error) {
 			// A closed session is deleted on the server, so polling it starts to answer with 404.
@@ -161,6 +170,9 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		window.clearTimeout(feedWatchdog);
 		serverClockOffsetMs = Number(session.serverEpochMs) - Date.now();
 		hideMessage();
+		// Runs before the dedup below and outside render(), so neither a repeated state nor a
+		// failing podium render can leave the winner screen without confetti.
+		syncConfetti();
 		const signature = stateSignature(session);
 		if (signature === renderedStateSignature) return;
 		renderedStateSignature = signature;
@@ -175,34 +187,41 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	function render() {
 		stopCountdown();
-		if (session.state !== "FINAL_RESULTS") {
-			renderedFinalSignature = null;
-			cancelConfetti();
-		}
+		if (session.state !== "FINAL_RESULTS") renderedFinalSignature = null;
 		if (session.state !== "LEADERBOARD") renderedLeaderboardSignature = null;
 		switch (session.state) {
 			case "LOBBY": renderLobby(); break;
 			case "QUESTION_OPEN": renderQuestion(); break;
 			case "RESULTS": renderResults(); break;
 			case "LEADERBOARD": renderLeaderboard(); break;
-			case "FINAL_RESULTS": renderFinalResults(); scheduleConfetti(); break;
+			case "FINAL_RESULTS": renderFinalResults(); break;
 			case "CLOSED": showView("closed-view"); break;
 			default: break;
 		}
 	}
 
-	// The podium reveals place by place, so the confetti waits for the winner to be on screen.
-	function scheduleConfetti() {
-		const placeCount = Math.min(3, (session.standings || []).length);
-		if (confettiShown || placeCount === 0) return;
-		confettiShown = true;
+	// Confetti belongs to the podium, so it is derived from the current state on every update
+	// rather than scheduled once: the podium key makes re-runs idempotent, and any state
+	// without a podium tears it down again.
+	function syncConfetti() {
+		const standings = session.state === "FINAL_RESULTS" ? (session.standings || []) : [];
+		const placeCount = Math.min(3, standings.length);
+		if (placeCount === 0) {
+			if (confettiPodiumKey !== null) cancelConfetti();
+			return;
+		}
+		const podiumKey = standings.slice(0, placeCount).map(standing => standing.playerId).join("|");
+		if (confettiPodiumKey === podiumKey) return;
+		cancelConfetti();
+		confettiPodiumKey = podiumKey;
+		// The podium reveals place by place, so the confetti waits for the winner to be on screen.
 		confettiTimer = window.setTimeout(() => launchConfetti(), placeCount * 1_700 + 900);
 	}
 
 	function cancelConfetti() {
 		window.clearTimeout(confettiTimer);
 		confettiTimer = null;
-		confettiShown = false;
+		confettiPodiumKey = null;
 		stopConfetti();
 	}
 
@@ -548,6 +567,37 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	function setFeedStatus(state, label) {
 		feedStatus.className = `feed-status ${state}`;
 		feedStatus.textContent = label;
+	}
+
+	// Autoplay with sound needs a user gesture, so playback is retried on the first interaction if blocked.
+	function setupBackgroundMusic() {
+		if (!backgroundMusic || !musicToggle) return;
+		backgroundMusic.volume = 0.4;
+		const muted = window.localStorage.getItem(MUSIC_MUTED_KEY) === "true";
+		applyMusicMuted(muted);
+
+		const tryPlay = () => backgroundMusic.play().catch(() => {});
+		tryPlay();
+		const resumeOnGesture = () => {
+			tryPlay();
+			document.removeEventListener("pointerdown", resumeOnGesture);
+			document.removeEventListener("keydown", resumeOnGesture);
+		};
+		document.addEventListener("pointerdown", resumeOnGesture);
+		document.addEventListener("keydown", resumeOnGesture);
+
+		musicToggle.addEventListener("click", () => {
+			applyMusicMuted(!backgroundMusic.muted);
+			tryPlay();
+		});
+	}
+
+	function applyMusicMuted(muted) {
+		backgroundMusic.muted = muted;
+		musicToggle.setAttribute("aria-pressed", String(muted));
+		musicToggle.setAttribute("aria-label", muted ? "Unmute background music" : "Mute background music");
+		musicToggle.querySelector("span").textContent = muted ? "🔇" : "🔊";
+		window.localStorage.setItem(MUSIC_MUTED_KEY, String(muted));
 	}
 
 	function setAvatar(image, participant) {

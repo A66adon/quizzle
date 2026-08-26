@@ -28,6 +28,10 @@ public record QuizValidationProperties(
 		if (maxAnswersPerQuestion < 2) {
 			throw new IllegalArgumentException("quiz.validation.max-answers-per-question must be at least 2");
 		}
+		if (maxAnswersPerQuestion > 6) {
+			// The UI only ships icons and colors for six answer tiles.
+			throw new IllegalArgumentException("quiz.validation.max-answers-per-question must be at most 6");
+		}
 		requirePositive(maxPoints, "max-points");
 		requirePositive(maxTimeSeconds, "max-time-seconds");
 	}
