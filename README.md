@@ -1,6 +1,6 @@
 # Quizzle
 
-A self-hosted, Kahoot-style live quiz for safety trainings. An admin picks a quiz from a folder of
+A self-hosted, live quiz for safety trainings. An admin picks a quiz from a folder of
 YAML files, the server hands out a join code plus QR code, participants join from their phones, and
 the presenter drives the quiz question by question on a beamer.
 
@@ -298,3 +298,10 @@ Make sure the reverse proxy in front of Quizzle forwards WebSocket upgrades (`Up
 receive live updates. Quizzle sends `X-Accel-Buffering: no` on the event stream, which nginx honours
 on its own. If the stream still delivers nothing within six seconds, the presenter view falls back
 to polling `/admin/api/sessions/{codehash}/state` every two seconds and shows `Live (polling)`.
+
+
+## TODO
+
+- mute by default
+- avoid scrollable views. set max lengths of texts & scale long down in font. add responsive fullscreen mode with all on the page visible (logic for many players - maybe from 20 or 50 on hide some details. also maybe hide/shrink top bar while quiz)
+- auto mode (start quiz and auto show leader board, scroll through, then go to next question until quiz finished with podium)
