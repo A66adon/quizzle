@@ -9,6 +9,11 @@
 
 :root {
 	color-scheme: light;
+	--radius-control: 0.5rem;
+	--radius-card: 0.75rem;
+	--radius-panel: 0.875rem;
+	--shadow-control: 0 1px 2px rgba(13, 23, 42, 0.08);
+	--shadow-card: 0 12px 30px rgba(13, 23, 42, 0.08);
 }
 
 :root[data-theme="dark"] {
@@ -74,15 +79,15 @@
 .theme-toggle {
 	display: inline-grid;
 	place-items: center;
-	width: 2.25rem;
-	height: 2.25rem;
+	width: 2.5rem;
+	height: 2.5rem;
 	border: 1px solid var(--border);
-	border-radius: 50%;
-	background: var(--surface);
+	border-radius: var(--radius-control);
+	background: var(--surface-raised, var(--surface));
 	color: var(--primary);
-	font-size: 1.05rem;
 	line-height: 1;
-	transition: background-color 160ms ease, border-color 160ms ease;
+	box-shadow: var(--shadow-control);
+	transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
 .theme-toggle:hover {
@@ -91,7 +96,19 @@
 }
 
 .theme-toggle .theme-toggle-icon {
+	display: block;
+	width: 1rem;
+	height: 1rem;
+	background: currentColor;
+	font-size: 0;
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
 	pointer-events: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .theme-toggle-icon {
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41'/%3E%3C/svg%3E");
 }
 
 /* Floating placement used by the participant page, which has no header bar. */
@@ -100,7 +117,7 @@
 	z-index: 30;
 	top: 1rem;
 	left: 1rem;
-	box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+	box-shadow: 0 8px 20px rgba(13, 23, 42, 0.12);
 }
 
 @media (max-width: 620px) {
@@ -153,10 +170,7 @@
 	min-width: 3.1rem;
 }
 .theme-toggle {
-	width: 2.5rem;
-	height: 2.5rem;
 	border-color: var(--control-border);
-	transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 .theme-toggle:hover {
 	border-color: color-mix(in srgb, var(--primary) 55%, var(--control-border));

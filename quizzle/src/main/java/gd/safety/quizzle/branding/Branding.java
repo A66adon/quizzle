@@ -50,7 +50,7 @@ public record Branding(
 	public static Branding defaults() {
 		return new Branding(
 				"Quizzle",
-				"GD_Logo.png",
+				"qizzle.svg",
 				"#040066",
 				"#ececff",
 				"#00d4ff",

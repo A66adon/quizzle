@@ -20,9 +20,7 @@ body {
 	margin: 0;
 	min-width: 320px;
 	min-height: 100vh;
-	background:
-		radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 30rem),
-		var(--background);
+	background: var(--background);
 }
 
 button,
@@ -51,9 +49,9 @@ p {
 h1 {
 	margin-bottom: 0.65rem;
 	color: var(--heading);
-	font-size: clamp(2rem, 4vw, 3.5rem);
-	line-height: 1.05;
-	letter-spacing: -0.04em;
+	font-size: clamp(1.9rem, 3vw, 2.75rem);
+	line-height: 1.1;
+	letter-spacing: -0.035em;
 }
 
 h2 {
@@ -102,14 +100,17 @@ h2 {
 }
 
 .site-header {
+	position: sticky;
+	top: 0;
+	z-index: 40;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	height: 4.75rem;
+	height: 4.25rem;
 	padding: 0 clamp(1.25rem, 5vw, 4rem);
 	border-bottom: 1px solid var(--border);
-	background: color-mix(in srgb, var(--surface) 90%, transparent);
-	backdrop-filter: blur(16px);
+	background: var(--surface-raised);
+	box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 60%, transparent);
 }
 
 .brand {
@@ -122,7 +123,8 @@ h2 {
 }
 
 .brand [data-brand-name] {
-	font-size: 2rem;
+	font-size: 1.35rem;
+	line-height: 1;
 }
 
 .header-actions {
@@ -134,8 +136,8 @@ h2 {
 
 .text-button {
 	padding: 0.6rem 0.9rem;
-	border: 0;
-	border-radius: 0.6rem;
+	border: 1px solid transparent;
+	border-radius: var(--radius-control);
 	color: var(--primary);
 	background: transparent;
 	font-weight: 750;
@@ -143,13 +145,14 @@ h2 {
 }
 
 .text-button:hover {
+	border-color: color-mix(in srgb, var(--primary) 20%, var(--border));
 	background: var(--primary-soft);
 }
 
 .page-shell {
-	width: min(1240px, calc(100% - 2.5rem));
+	width: min(1180px, calc(100% - 2.5rem));
 	margin: 0 auto;
-	padding: clamp(2.75rem, 6vw, 4.75rem) 0 5rem;
+	padding: clamp(2.25rem, 5vw, 3.75rem) 0 4.5rem;
 }
 
 .page-heading,
@@ -161,7 +164,7 @@ h2 {
 }
 
 .page-heading {
-	margin-bottom: 2.25rem;
+	margin-bottom: 1.75rem;
 }
 
 .page-heading .muted {
@@ -170,25 +173,29 @@ h2 {
 }
 
 .summary-pill {
-	display: grid;
-	min-width: 7rem;
-	padding: 1rem 1.25rem;
+	display: inline-flex;
+	align-items: baseline;
+	justify-content: center;
+	gap: 0.45rem;
+	min-width: 0;
+	padding: 0.65rem 0.85rem;
 	border: 1px solid var(--border);
-	border-radius: 1rem;
+	border-radius: var(--radius-control);
 	background: var(--surface-raised);
+	box-shadow: var(--shadow-control);
 	text-align: center;
 }
 
 .summary-pill strong {
 	color: var(--primary);
-	font-size: 1.7rem;
+	font-size: 1.25rem;
 	line-height: 1;
+	font-variant-numeric: tabular-nums;
 }
 
 .summary-pill span {
-	margin-top: 0.35rem;
 	color: var(--muted);
-	font-size: 0.72rem;
+	font-size: 0.68rem;
 	font-weight: 800;
 	letter-spacing: 0.09em;
 	text-transform: uppercase;
@@ -197,10 +204,15 @@ h2 {
 .status-card,
 .empty-card {
 	padding: 1.2rem 1.35rem;
-	border: 1px dashed var(--border);
-	border-radius: 0.9rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-card);
 	color: var(--muted);
-	background: color-mix(in srgb, var(--surface) 62%, transparent);
+	background: var(--surface-raised);
+}
+
+.empty-card {
+	border-style: dashed;
+	background: transparent;
 }
 
 .status-card[data-error="true"] {
@@ -243,15 +255,16 @@ h2 {
 	gap: 1.25rem;
 	padding: 1.2rem;
 	border: 1px solid var(--border);
-	border-radius: 1rem;
+	border-radius: var(--radius-card);
 	background: var(--surface-raised);
+	box-shadow: var(--shadow-control);
 }
 
 .session-qr {
 	width: 8.75rem;
 	height: 8.75rem;
 	border: 0;
-	border-radius: 0.75rem;
+	border-radius: var(--radius-control);
 	background: #fff;
 }
 
@@ -307,16 +320,15 @@ h2 {
 	min-height: 16.5rem;
 	padding: 1.45rem;
 	border: 1px solid var(--border);
-	border-radius: 1rem;
+	border-radius: var(--radius-card);
 	background: var(--surface-raised);
-	box-shadow: none;
-	transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+	box-shadow: var(--shadow-control);
+	transition: box-shadow 160ms ease, border-color 160ms ease;
 }
 
 .quiz-card:hover {
-	transform: translateY(-2px);
-	border-color: color-mix(in srgb, var(--border) 70%, var(--muted));
-	box-shadow: var(--shadow);
+	border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+	box-shadow: 0 8px 22px rgba(13, 23, 42, 0.08);
 }
 
 .quiz-card-topline,
@@ -344,7 +356,8 @@ h2 {
 
 .ready-chip {
 	padding: 0.32rem 0.58rem;
-	border-radius: 999px;
+	border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent);
+	border-radius: var(--radius-control);
 	color: var(--primary);
 	background: color-mix(in srgb, var(--accent) 18%, transparent);
 	font-size: 0.7rem;
@@ -417,7 +430,7 @@ h2 {
 	gap: 1.25rem;
 	padding: 1rem 1.15rem;
 	border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--surface));
-	border-radius: 0.8rem;
+	border-radius: var(--radius-card);
 	background: var(--danger-soft);
 }
 
@@ -438,9 +451,7 @@ h2 {
 	display: grid;
 	place-items: center;
 	padding: 1.25rem;
-	background:
-		radial-gradient(circle at 15% 5%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 24rem),
-		linear-gradient(145deg, color-mix(in srgb, var(--background) 60%, var(--surface)) 0%, var(--background) 100%);
+	background: var(--background);
 }
 
 .login-shell {
@@ -450,9 +461,10 @@ h2 {
 .login-card {
 	padding: clamp(2rem, 7vw, 3.25rem);
 	border: 1px solid var(--border);
-	border-radius: 1.25rem;
-	background: var(--surface);
-	box-shadow: var(--shadow);
+	border-top: 3px solid var(--primary);
+	border-radius: var(--radius-panel);
+	background: var(--surface-raised);
+	box-shadow: var(--shadow-card);
 
 }
 
@@ -475,7 +487,8 @@ h2 {
 .form-error {
 	margin: 1.5rem 0;
 	padding: 0.85rem 1rem;
-	border-radius: 0.7rem;
+	border: 1px solid color-mix(in srgb, var(--danger) 28%, var(--border));
+	border-radius: var(--radius-control);
 	color: var(--danger);
 	background: var(--danger-soft);
 	font-size: 0.9rem;
@@ -499,7 +512,7 @@ h2 {
 	min-height: 3.15rem;
 	padding: 0.75rem 0.9rem;
 	border: 1px solid color-mix(in srgb, var(--border) 70%, var(--muted));
-	border-radius: 0.7rem;
+	border-radius: var(--radius-control);
 	color: var(--text);
 	background: var(--surface);
 	transition: border-color 160ms ease, box-shadow 160ms ease;
@@ -515,17 +528,17 @@ h2 {
 	margin-top: 0.5rem;
 	padding: 0.75rem 1rem;
 	border: 0;
-	border-radius: 0.7rem;
+	border-radius: var(--radius-control);
 	color: #fff;
 	background: var(--primary);
 	font-weight: 800;
-	box-shadow: 0 10px 22px rgba(4, 0, 102, 0.18);
+	box-shadow: 0 4px 12px rgba(4, 0, 102, 0.16);
 	transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
 .primary-button:hover {
 	transform: translateY(-1px);
-	box-shadow: 0 13px 26px rgba(4, 0, 102, 0.24);
+	box-shadow: 0 6px 16px rgba(4, 0, 102, 0.2);
 }
 
 .link-button {
@@ -593,7 +606,7 @@ a:focus-visible {
 	letter-spacing: -0.025em;
 }
 .brand [data-brand-name] {
-	font-size: clamp(1.95rem, 2.4vw, 2.2rem);
+	font-size: clamp(1.25rem, 2.4vw, 1.45rem);
 	line-height: 1;
 }
 .login-form input {
@@ -628,7 +641,7 @@ a:focus-visible {
 		padding-block: 0.65rem;
 	}
 	.brand [data-brand-name] {
-		font-size: 1.7rem;
+		font-size: 1.25rem;
 	}
 }
 
