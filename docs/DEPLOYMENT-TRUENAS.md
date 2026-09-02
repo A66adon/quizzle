@@ -4,11 +4,12 @@ TrueNAS SCALE 24.10 and newer can install plain Docker Compose files through
 **Apps → Discover Apps → ⋮ → Install via YAML**. This guide uses that path.
 
 There is no published Quizzle container image, so the stack uses the official
-`gradle:9.5.1-jdk21` image as its base: on startup it clones (or updates) the repository, builds the
-Spring Boot jar and runs it. Quizzle stores its state in an embedded SQLite file, so **no database
-container is needed**.
+`gradle:9.5.1-jdk21` image: on startup it clones (or updates) the repository, builds the Spring Boot
+JAR, and runs it. Quizzle stores its state in an embedded SQLite file, so **no database container is
+needed**.
 
-The application listens on port **17713** in this setup.
+The application listens on port **17713 in this TrueNAS setup**. The repository's regular Docker
+Compose configuration continues to use port `8080`.
 
 ## 1. Prepare the datasets
 
@@ -22,11 +23,14 @@ Create these directories (for example as datasets under an existing pool):
 ```
 
 Copy at least one quiz YAML into `quizzes/`. The format is described in the
-[README](../README.md#writing-a-quiz); you can start from
-`Backend/Quiz/quizzes/safety-basics.yaml`.
+[README](../README.md#create-a-quiz); you can start from
+[`quizzes/safety-basics.yaml`](../quizzes/safety-basics.yaml).
 
-To use your own wording and colors, copy `Backend/Quiz/branding/branding.yaml` into `branding/` and
-edit it – see [Branding](../README.md#branding). Without that file the built-in defaults apply.
+To use your own wording and colors, copy
+[`branding/branding.yaml`](../branding/branding.yaml) and the optional `branding/images/` directory
+into the `branding/` dataset, preserving that layout. Then edit the YAML—see
+[Customize the look](../README.md#customize-the-look). Without that file, the built-in defaults
+apply.
 
 ## 2. Install the app
 
@@ -80,9 +84,9 @@ services:
         else
           git clone --depth 1 https://git.olli.info/Oliver/quizzle.git /workspace/quizzle
         fi
-        cd /workspace/quizzle/Backend/Quiz
+        cd /workspace/quizzle/quizzle
         gradle --no-daemon bootJar
-        exec java -jar build/libs/Quiz-0.0.1-SNAPSHOT.jar
+        exec java -jar build/libs/quizzle-0.0.1-SNAPSHOT.jar
 ```
 
 Replace `ADMIN_PASSWORD` and `PUBLIC_BASE_URL` before starting, then install.

@@ -10,7 +10,7 @@ services:
       - "8080:8080"
     volumes:
       - ./quizzes:/data/quizzes:ro
-      - ./quizzle/branding:/data/branding:ro
+      - ./branding:/data/branding:ro
       - quizzle-db:/data/db
     restart: unless-stopped
 
