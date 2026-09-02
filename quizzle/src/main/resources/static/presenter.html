@@ -24,7 +24,7 @@
 	<script type="module" src="/assets/presenter.js"></script>
 </head>
 <body class="presenter-body">
-	<audio id="background-music" loop preload="auto">
+	<audio id="background-music" loop preload="auto" muted>
 		<source src="/assets/audio/presenter-background-music.mp3" type="audio/mpeg">
 	</audio>
 	<header class="site-header">
@@ -36,8 +36,11 @@
 			<button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
 				<span class="theme-toggle-icon" aria-hidden="true">🌙</span>
 			</button>
-			<button id="music-toggle" class="music-toggle" type="button" aria-pressed="false" aria-label="Mute background music">
-				<span aria-hidden="true">🔊</span>
+			<button id="music-toggle" class="music-toggle" type="button" aria-pressed="true" aria-label="Unmute background music">
+				<span aria-hidden="true">🔇</span>
+			</button>
+			<button id="auto-advance-toggle" class="auto-advance-toggle" type="button" aria-pressed="false" aria-label="Enable automatic progression" title="Automatic progression">
+				<span aria-hidden="true"></span>
 			</button>
 			<span id="feed-status" class="feed-status connecting">Connecting</span>
 		</div>

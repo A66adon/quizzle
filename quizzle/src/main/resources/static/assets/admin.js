@@ -29,6 +29,7 @@
 
 	loadAdminData();
 	confirmDeleteSession.addEventListener("click", deletePendingSession);
+	cancelDeleteSession.addEventListener("click", () => deleteSessionDialog.close("cancel"));
 	deleteSessionDialog.addEventListener("close", () => {
 		pendingDeleteSession = null;
 		deleteSessionError.hidden = true;

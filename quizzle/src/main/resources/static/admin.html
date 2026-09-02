@@ -90,6 +90,22 @@
 		</section>
 	</main>
 
+	<dialog id="delete-session-dialog" class="delete-session-dialog" aria-labelledby="delete-session-title">
+		<form>
+			<p class="eyebrow">Delete open session</p>
+			<h2 id="delete-session-title">Delete this session?</h2>
+			<p class="delete-session-copy">
+				<strong id="delete-session-name"></strong>
+				<span>Connected participants will be disconnected and the session cannot be restored.</span>
+			</p>
+			<p id="delete-session-error" class="form-error" role="alert" hidden></p>
+			<div class="delete-dialog-actions">
+				<button id="cancel-delete-session" class="text-button" type="button" autofocus>Keep session</button>
+				<button id="confirm-delete-session" class="dialog-delete-button" type="button">Delete session</button>
+			</div>
+		</form>
+	</dialog>
+
 	<template id="quiz-template">
 		<article class="quiz-card">
 			<button class="quiz-card-action" type="button"></button>
@@ -109,7 +125,6 @@
 			<a class="session-card-action"></a>
 			<div class="session-qr-panel">
 				<img class="session-qr" width="160" height="160" alt="Join this quiz session">
-				<span>Scan to join</span>
 			</div>
 			<div class="session-details">
 				<div class="quiz-card-topline">
@@ -120,8 +135,12 @@
 				</div>
 				<h3 class="session-title"></h3>
 				<p class="session-created small muted"></p>
+			</div>
+			<div class="session-join">
 				<p class="session-code-label">Join code</p>
 				<code class="session-code"></code>
+			</div>
+			<div class="session-footer quiz-meta">
 				<a class="session-link" target="_blank" rel="noopener noreferrer"></a>
 			</div>
 		</article>
@@ -134,21 +153,6 @@
 		</article>
 	</template>
 
-	<dialog id="delete-session-dialog" class="delete-session-dialog" aria-labelledby="delete-session-title">
-		<form method="dialog">
-			<p class="eyebrow">Delete open session</p>
-			<h2 id="delete-session-title">Delete this session?</h2>
-			<p class="delete-session-copy">
-				<strong id="delete-session-name"></strong>
-				<span>Connected participants will be disconnected and the session cannot be restored.</span>
-			</p>
-			<p id="delete-session-error" class="form-error" role="alert" hidden></p>
-			<div class="delete-dialog-actions">
-				<button id="cancel-delete-session" class="text-button" type="submit" value="cancel">Keep session</button>
-				<button id="confirm-delete-session" class="dialog-delete-button" type="button">Delete session</button>
-			</div>
-		</form>
-	</dialog>
 </body>
 </html>
 

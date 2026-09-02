@@ -31,7 +31,8 @@
 	gap: 0.65rem;
 }
 
-.music-toggle {
+.music-toggle,
+.auto-advance-toggle {
 	display: inline-grid;
 	place-items: center;
 	width: 2.5rem;
@@ -60,13 +61,30 @@
 	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 5 6 9H2v6h4l5 4V5Z'/%3E%3Cpath d='m17 9 5 5M22 9l-5 5'/%3E%3C/svg%3E");
 }
 
-.music-toggle:hover {
+.music-toggle:hover,
+.auto-advance-toggle:hover {
 	background: var(--primary-soft);
 }
 
 .music-toggle[aria-pressed="true"] {
 	color: var(--muted);
 	background: color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.auto-advance-toggle span {
+	display: block;
+	width: 1rem;
+	height: 1rem;
+	background: currentColor;
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 5 9 7-9 7V5Z'/%3E%3Cpath d='M18 5v14'/%3E%3C/svg%3E") center / contain no-repeat;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 5 9 7-9 7V5Z'/%3E%3Cpath d='M18 5v14'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.auto-advance-toggle[aria-pressed="true"] {
+	border-color: var(--accent);
+	color: var(--on-accent);
+	background: var(--accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent), var(--shadow-control);
 }
 
 .feed-status {
@@ -1038,14 +1056,16 @@
 }
 
 /* Presenter polish favors projector readability and keeps controls predictable on narrow screens. */
-.music-toggle {
+.music-toggle,
+.auto-advance-toggle {
 	width: 2.5rem;
 	height: 2.5rem;
 	border-color: var(--control-border);
 	color: var(--primary);
 	transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
-.music-toggle:active {
+.music-toggle:active,
+.auto-advance-toggle:active {
 	transform: scale(0.96);
 }
 .stage-title {

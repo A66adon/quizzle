@@ -16,7 +16,9 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	const podium = document.querySelector("#podium");
 	const backgroundMusic = document.querySelector("#background-music");
 	const musicToggle = document.querySelector("#music-toggle");
+	const autoAdvanceToggle = document.querySelector("#auto-advance-toggle");
 	const MUSIC_MUTED_KEY = "quizzle-presenter-music-muted";
+	const AUTO_ADVANCE_DELAY_MS = 5_000;
 	const COLUMN_STAGGER_MS = 320;
 	const COLUMN_GROW_MS = 1_100;
 	const SSE_GRACE_MS = 6_000;
@@ -51,6 +53,9 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	let confettiTimer = null;
 	let confettiPodiumKey = null;
 	let stageFitFrame = null;
+	let autoAdvanceTimer = null;
+	let autoAdvanceEnabled = false;
+	let lifecycleCommandPending = false;
 	// Tracks each player's previous leaderboard rank so a rank change can animate with a direction.
 	let previousRanks = new Map();
 	let leaderboardToggleBusy = false;
@@ -68,6 +73,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	document.querySelector("#end-early-button").addEventListener("click", () => sendCommand("END_EARLY"));
 	document.querySelector("#next-button").addEventListener("click", () => sendCommand("NEXT"));
 	document.querySelector("#leaderboard-next-button").addEventListener("click", () => sendCommand("NEXT"));
+	autoAdvanceToggle.addEventListener("click", () => setAutoAdvanceEnabled(!autoAdvanceEnabled));
 
 	for (const button of document.querySelectorAll("[data-abort]")) {
 		button.addEventListener("click", () => {
@@ -184,6 +190,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		window.clearInterval(pollTimer);
 		pollTimer = null;
 		stopCountdown();
+		clearAutoAdvance();
 		cancelConfetti();
 		hideMessage();
 		showView("closed-view");
@@ -233,7 +240,36 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			case "CLOSED": showView("closed-view"); break;
 			default: break;
 		}
+		syncAutoAdvance();
 		scheduleStageFit();
+	}
+
+	function setAutoAdvanceEnabled(enabled) {
+		autoAdvanceEnabled = enabled;
+		autoAdvanceToggle.setAttribute("aria-pressed", String(enabled));
+		autoAdvanceToggle.setAttribute("aria-label",
+			enabled ? "Disable automatic progression" : "Enable automatic progression");
+		autoAdvanceToggle.title = enabled
+			? "Automatic progression enabled"
+			: "Automatic progression";
+		syncAutoAdvance();
+	}
+
+	function syncAutoAdvance() {
+		clearAutoAdvance();
+		if (lifecycleCommandPending || !autoAdvanceEnabled
+				|| !["RESULTS", "LEADERBOARD"].includes(session?.state)) return;
+		const expectedState = session.state;
+		autoAdvanceTimer = window.setTimeout(() => {
+			autoAdvanceTimer = null;
+			if (!autoAdvanceEnabled || session?.state !== expectedState) return;
+			sendCommand("NEXT");
+		}, AUTO_ADVANCE_DELAY_MS);
+	}
+
+	function clearAutoAdvance() {
+		window.clearTimeout(autoAdvanceTimer);
+		autoAdvanceTimer = null;
 	}
 
 	// Confetti belongs to the podium, so it is derived from the current state on every update
@@ -588,6 +624,11 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	}
 
 	async function sendCommand(command) {
+		if (lifecycleCommandPending) return;
+		clearAutoAdvance();
+		lifecycleCommandPending = true;
+		let resyncAutomaticAdvance = false;
+		const stateBeforeCommand = session?.state;
 		setControlsDisabled(true);
 		try {
 			await requestJson(`/admin/api/sessions/${codehash}/commands`, {
@@ -601,8 +642,11 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			showMessage(error.status === 409
 				? "That step is not possible in the current quiz state."
 				: "The command could not be sent. Check the connection and try again.", true);
+			resyncAutomaticAdvance = true;
 		} finally {
+			lifecycleCommandPending = false;
 			setControlsDisabled(false);
+			if (resyncAutomaticAdvance || session?.state !== stateBeforeCommand) syncAutoAdvance();
 		}
 	}
 
@@ -661,7 +705,8 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	function setupBackgroundMusic() {
 		if (!backgroundMusic || !musicToggle) return;
 		backgroundMusic.volume = 0.4;
-		const muted = window.localStorage.getItem(MUSIC_MUTED_KEY) === "true";
+		const storedPreference = window.localStorage.getItem(MUSIC_MUTED_KEY);
+		const muted = storedPreference === null || storedPreference === "true";
 		applyMusicMuted(muted);
 
 		const tryPlay = () => backgroundMusic.play().catch(() => {});
