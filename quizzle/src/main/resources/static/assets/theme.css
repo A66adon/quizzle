@@ -1,0 +1,177 @@
+/*
+ * Shared dark-mode theme layer for every Quizzle surface.
+ *
+ * The light and dark palettes live in /assets/branding.css. This file contains only shared
+ * theme behavior and component treatment. theme.js applies the resolved theme as an explicit
+ * data-theme="dark|light" attribute on <html>, so no media query is needed.
+ */
+
+:root {
+	color-scheme: light;
+	--radius-control: 0.5rem;
+	--radius-card: 0.75rem;
+	--radius-panel: 0.875rem;
+	--shadow-control: 0 1px 2px rgba(13, 23, 42, 0.08);
+	--shadow-card: 0 12px 30px rgba(13, 23, 42, 0.08);
+}
+
+:root[data-theme="dark"] {
+	color-scheme: dark;
+}
+
+/* The text badge/logo sits on the bright accent, so keep its text dark for contrast. */
+:root[data-theme="dark"] .brand-mark:not(.brand-mark--image) {
+	color: var(--on-accent);
+}
+
+/* Image marks use a real background area instead of CSS generated content. The extra
+   specificity keeps this shared fix ahead of the page-specific legacy rules loaded later. */
+:root .brand-mark.brand-mark--image {
+	width: clamp(4.5rem, 10vw, 8rem);
+	height: 3rem;
+	min-width: 4.5rem;
+	padding: 0;
+	border-radius: 0;
+	background-color: transparent;
+	background-image: var(--mark);
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+	content: none;
+}
+
+/* The configured Quizzle mark is monochrome black, so invert it on dark surfaces. */
+:root[data-theme="dark"] .brand-mark.brand-mark--image {
+	filter: brightness(0) invert(1);
+}
+
+/* QR codes must stay on a light plate to remain scannable regardless of theme. */
+:root[data-theme="dark"] .join-qr,
+:root[data-theme="dark"] .session-qr {
+	background: var(--qr-surface);
+}
+
+/* Theme toggle control, reused on every page. */
+.theme-toggle {
+	display: inline-grid;
+	place-items: center;
+	width: 2.5rem;
+	height: 2.5rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-control);
+	background: var(--surface-raised, var(--surface));
+	color: var(--primary);
+	line-height: 1;
+	box-shadow: var(--shadow-control);
+	transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.theme-toggle:hover {
+	background: var(--primary-soft);
+	border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+
+.theme-toggle .theme-toggle-icon {
+	display: block;
+	width: 1rem;
+	height: 1rem;
+	background: currentColor;
+	font-size: 0;
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
+	pointer-events: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .theme-toggle-icon {
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41'/%3E%3C/svg%3E");
+}
+
+/* Floating placement used on pages without a header bar. Keep it aligned with
+   the right-hand header actions used throughout the rest of the application. */
+.theme-toggle.theme-toggle--floating {
+	position: fixed;
+	z-index: 30;
+	top: 1rem;
+	right: 1rem;
+	box-shadow: 0 8px 20px rgba(13, 23, 42, 0.12);
+}
+
+@media (max-width: 620px) {
+	.theme-toggle.theme-toggle--floating {
+		top: 0.7rem;
+		right: 0.7rem;
+	}
+}
+
+/* Shared visual-polish tokens keep light and dark themes consistent across every role. */
+:root {
+	--surface-raised: var(--surface);
+	--heading: var(--primary);
+	--control-border: color-mix(in srgb, var(--border) 35%, var(--muted));
+	--primary-hover: color-mix(in srgb, var(--primary) 88%, #ffffff);
+	--on-primary: #ffffff;
+	--on-accent: #071622;
+	--on-danger: #ffffff;
+	--focus-ring: color-mix(in srgb, var(--accent) 72%, #ffffff);
+	--disabled-surface: color-mix(in srgb, var(--border) 58%, var(--surface));
+	--disabled-text: color-mix(in srgb, var(--muted) 78%, var(--surface));
+}
+:root .brand-mark.brand-mark--image {
+	width: clamp(3.1rem, 4vw, 3.75rem);
+	height: 2.75rem;
+	min-width: 3.1rem;
+}
+.theme-toggle {
+	border-color: var(--control-border);
+}
+.theme-toggle:hover {
+	border-color: color-mix(in srgb, var(--primary) 55%, var(--control-border));
+}
+.theme-toggle:active {
+	transform: scale(0.96);
+}
+:root[data-theme="dark"] .primary-button {
+	color: var(--on-primary);
+	background: var(--primary);
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.26), inset 0 1px rgba(255, 255, 255, 0.32);
+}
+:root[data-theme="dark"] .primary-button:hover:not(:disabled) {
+	background: var(--primary-hover);
+	box-shadow: 0 11px 24px rgba(0, 0, 0, 0.3), inset 0 1px rgba(255, 255, 255, 0.38);
+}
+:root[data-theme="dark"] .secondary-button {
+	border-color: color-mix(in srgb, var(--primary) 38%, var(--control-border));
+	color: var(--primary);
+	background: color-mix(in srgb, var(--primary) 12%, var(--surface-raised));
+}
+:root[data-theme="dark"] .danger-button {
+	color: var(--on-danger);
+	background: var(--danger);
+}
+:root[data-theme="dark"] :where(.theme-toggle, .music-toggle, .auto-advance-toggle, .ghost-button, input) {
+	border-color: var(--control-border);
+}
+:root[data-theme="dark"] :where(.primary-button, .secondary-button, .danger-button):disabled {
+	border-color: var(--border);
+	color: var(--disabled-text);
+	background: var(--disabled-surface);
+	box-shadow: none;
+}
+:root[data-theme="dark"] :where(.correct-tag, .podium-block) {
+	color: var(--on-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+	.confetti-canvas {
+		display: none !important;
+	}
+}
+

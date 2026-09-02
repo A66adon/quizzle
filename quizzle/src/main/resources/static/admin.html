@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en" data-theme-scope="presenter">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title data-page-title="Quiz sessions">Quiz sessions</title>
+	<script>
+		(function () {
+			var s = document.documentElement.dataset.themeScope || "app";
+			var v = localStorage.getItem("quizzle-theme-" + s);
+			var t = (v === "dark" || v === "light")
+				? v
+				: (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+			document.documentElement.dataset.theme = t;
+		})();
+	</script>
+	<link rel="stylesheet" href="/assets/branding.css">
+	<link rel="stylesheet" href="/assets/theme.css">
+	<link rel="stylesheet" href="/assets/admin.css">
+	<script type="module" src="/assets/branding.js"></script>
+	<script type="module" src="/assets/theme.js"></script>
+	<script src="/assets/admin.js" defer></script>
+</head>
+<body>
+	<header class="site-header">
+		<a class="brand" href="/admin" aria-label="Admin home">
+			<span class="brand-mark" data-brand-mark aria-hidden="true"></span>
+			<span data-brand-name></span>
+		</a>
+		<div class="header-actions">
+			<button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
+				<span class="theme-toggle-icon" aria-hidden="true">🌙</span>
+			</button>
+			<form action="/admin/logout" method="post">
+				<button class="text-button" type="submit">Sign out</button>
+			</form>
+		</div>
+	</header>
+
+	<main class="page-shell">
+		<section class="page-heading" aria-labelledby="catalog-title">
+			<div>
+				<h1 id="catalog-title">Administration</h1>
+				<p class="muted">Choose a quiz to play or resume a running session.</p>
+			</div>
+		</section>
+
+		<p class="status-card" id="catalog-status" role="status">Loading quiz catalog…</p>
+		<p class="status-card" id="action-status" role="status" hidden></p>
+
+		<section id="session-section" aria-labelledby="session-heading" hidden>
+			<div class="section-heading">
+				<h2 id="session-heading">Sessions</h2>
+				<div class="summary-pill" aria-live="polite">
+					<strong id="session-count">0</strong>
+					<span id="session-count-label">sessions</span>
+				</div>
+			</div>
+			<div id="session-grid" class="session-grid"></div>
+			<p id="session-empty" class="empty-card" hidden>
+				No sessions yet. Choose a quiz below to create one.
+			</p>
+		</section>
+
+		<section id="quiz-section" class="catalog-section" aria-labelledby="quiz-heading" hidden>
+			<div class="section-heading">
+				<div>
+					<h2 id="quiz-heading">Quizzes</h2>
+					<p id="loaded-at" class="catalog-loaded-at small muted"></p>
+				</div>
+				<div class="summary-pill" aria-live="polite">
+					<strong id="quiz-count">—</strong>
+					<span>ready</span>
+				</div>
+			</div>
+			<div id="quiz-grid" class="quiz-grid"></div>
+			<p id="quiz-empty" class="empty-card" hidden>
+				No quizzes were found. Add a <code>.yaml</code> or <code>.yml</code> file and restart the server.
+			</p>
+		</section>
+
+		<section id="issue-section" class="issue-section" aria-labelledby="issue-heading" hidden>
+			<div class="section-heading">
+				<h2 id="issue-heading">Files requiring attention</h2>
+				<span id="issue-count" class="error-count"></span>
+			</div>
+			<p class="small muted">These files were skipped. Valid quizzes above remain available.</p>
+			<div id="issue-list" class="issue-list"></div>
+		</section>
+	</main>
+
+	<dialog id="delete-session-dialog" class="delete-session-dialog" aria-labelledby="delete-session-title">
+		<form>
+			<p class="eyebrow">Delete open session</p>
+			<h2 id="delete-session-title">Delete this session?</h2>
+			<p class="delete-session-copy">
+				<strong id="delete-session-name"></strong>
+				<span>Connected participants will be disconnected and the session cannot be restored.</span>
+			</p>
+			<p id="delete-session-error" class="form-error" role="alert" hidden></p>
+			<div class="delete-dialog-actions">
+				<button id="cancel-delete-session" class="text-button" type="button" autofocus>Keep session</button>
+				<button id="confirm-delete-session" class="dialog-delete-button" type="button">Delete session</button>
+			</div>
+		</form>
+	</dialog>
+
+	<template id="quiz-template">
+		<article class="quiz-card">
+			<button class="quiz-card-action" type="button"></button>
+			<div class="quiz-card-topline">
+				<span class="question-count"></span>
+			</div>
+			<h3 class="quiz-title"></h3>
+			<p class="quiz-description"></p>
+			<div class="quiz-meta">
+				<span class="quiz-author"></span>
+			</div>
+		</article>
+	</template>
+
+	<template id="session-template">
+		<article class="session-card">
+			<a class="session-card-action"></a>
+			<div class="session-qr-panel">
+				<img class="session-qr" width="160" height="160" alt="Join this quiz session">
+				<span class="session-qr-caption">Scan to join</span>
+			</div>
+			<div class="session-details">
+				<div class="quiz-card-topline">
+					<span class="session-state"></span>
+					<button class="delete-session-button" type="button">
+						<span class="delete-session-icon" aria-hidden="true"></span>
+					</button>
+				</div>
+				<h3 class="session-title"></h3>
+				<p class="session-created small muted"></p>
+			</div>
+			<div class="session-join">
+				<p class="session-code-label">Join code</p>
+				<code class="session-code"></code>
+			</div>
+			<div class="session-footer quiz-meta">
+				<a class="session-link" target="_blank" rel="noopener noreferrer"></a>
+			</div>
+		</article>
+	</template>
+
+	<template id="issue-template">
+		<article class="issue-card">
+			<code class="issue-file"></code>
+			<p class="issue-reason"></p>
+		</article>
+	</template>
+
+</body>
+</html>
+

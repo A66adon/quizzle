@@ -1,15 +1,15 @@
 FROM gradle:9.5.1-jdk21 AS build
 WORKDIR /build
-COPY Backend/Quiz/settings.gradle Backend/Quiz/build.gradle ./
-COPY Backend/Quiz/src ./src
+COPY quizzle/settings.gradle quizzle/build.gradle ./
+COPY quizzle/src ./src
 RUN gradle --no-daemon bootJar
 
 FROM eclipse-temurin:21-jre
 RUN useradd --system --create-home --uid 10001 quizzle
 WORKDIR /app
-COPY --from=build /build/build/libs/Quiz-0.0.1-SNAPSHOT.jar app.jar
-COPY Backend/Quiz/quizzes /data/quizzes
-COPY Backend/Quiz/branding /data/branding
+COPY --from=build /build/build/libs/quizzle-0.0.1-SNAPSHOT.jar app.jar
+COPY ./quizzes  /data/quizzes
+COPY ./branding /data/branding
 RUN mkdir -p /data/db && chown -R quizzle:quizzle /data
 
 USER quizzle

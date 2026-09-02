@@ -9,8 +9,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./Backend/Quiz/quizzes:/data/quizzes:ro
-      - ./Backend/Quiz/branding:/data/branding:ro
+      - ./quizzes:/data/quizzes:ro
+      - ./branding:/data/branding:ro
       - quizzle-db:/data/db
     restart: unless-stopped
 

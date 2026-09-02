@@ -1,307 +1,333 @@
 # Quizzle
 
-A self-hosted, live quiz for safety trainings. An admin picks a quiz from a folder of
-YAML files, the server hands out a join code plus QR code, participants join from their phones, and
-the presenter drives the quiz question by question on a beamer.
+**A self-hosted live quiz platform for interactive safety training.**
 
-Everything runs from a single Spring Boot process with no external services: quizzes are plain YAML
-files, state is persisted in an embedded SQLite database, and avatars are rendered in the browser
-from a vendored copy of DiceBear. The only network the application needs is the LAN between the
-server and its participants.
+![Java 21](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot 4.1](https://img.shields.io/badge/Spring_Boot-4.1-6DB33F?logo=springboot&logoColor=white)
+![Gradle](https://img.shields.io/badge/Gradle-Wrapper-02303A?logo=gradle&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 
-## Table of contents
+Quizzle turns YAML files into presenter-led quizzes. An admin starts a session, participants join by
+QR code from their phones, and the presenter controls each question from a shared screen. The whole
+application runs as one Spring Boot process with embedded SQLite storage and no required external
+services.
 
-- [Features](#features)
-- [Repository layout](#repository-layout)
-- [Quick start](#quick-start)
-- [Configuration](#configuration)
-- [Writing a quiz](#writing-a-quiz)
-- [Branding](#branding)
-- [How a quiz runs](#how-a-quiz-runs)
-- [Scoring](#scoring)
-- [Connections and reconnects](#connections-and-reconnects)
-- [Persistence](#persistence)
-- [Avatars](#avatars)
-- [Building and testing](#building-and-testing)
-- [Deployment](#deployment)
+## At a glance
 
-## Features
+- **Easy to host:** one Java process or Docker Compose stack.
+- **Real-time:** WebSockets connect participants; Server-Sent Events update the presenter.
+- **Resilient:** active sessions are snapshotted to SQLite and restored after a restart.
+- **Offline-friendly:** quizzes, branding, and DiceBear avatar assets are stored locally.
+- **Safe by default:** the server validates quiz files, state transitions, and answer timing.
+- **Customizable:** edit YAML files to change quizzes, wording, logo, and light/dark colors.
 
-- **Admin area** protected by a single password from a local `.env` file.
-- **YAML quiz catalog** loaded at startup; invalid files are skipped and listed with the exact
-  validation error instead of breaking the whole catalog.
-- **Join code and QR code** generated per session; participants open `https://host/<codehash>/`.
-- **One persistent WebSocket per participant** for joining, questions, answers and state updates.
-- **Presenter view** with lobby, floating participant avatars, live countdown, answer counter, early
-  question end, per-answer bar chart and an animated winners' podium.
-- **Server-authoritative state machine** – clients can never skip ahead or answer out of turn.
-- **Crash-safe** – sessions survive a server restart via an SQLite snapshot.
+## Quick start with Docker
 
-## Repository layout
+Requirements: [Docker](https://docs.docker.com/get-docker/) with Docker Compose. Run the commands
+from the repository root.
 
-```
-Backend/Quiz/                 Spring Boot application (Gradle project, root name "Quiz")
-  quizzes/                    Quiz YAML files that the catalog reads at startup
-  branding/                   branding.yaml with the wording and color palette
-  src/main/java/gd/safety/Quiz/
-    admin/                    Login, catalog and session REST endpoints, presenter page routing
-    branding/                 Branding file loading and the generated CSS/JS assets
-    config/                   Typed configuration properties and the .env loader
-    persistence/              SQLite snapshot repository
-    quiz/catalog/             YAML parsing and quiz validation
-    quiz/model/               Quiz, question and answer records
-    session/                  Game state machine, session registry, grading, QR codes
-    websocket/                Protocol, connection hub, participant and presenter fan-out
-  src/main/resources/static/  Participant, presenter and admin front-ends (vanilla JS)
-docs/DEPLOYMENT-TRUENAS.md    Running Quizzle on TrueNAS SCALE
+**PowerShell**
+
+```powershell
+$env:ADMIN_PASSWORD = 'replace-with-a-long-password'
+docker compose up --build
 ```
 
-## Quick start
-
-Requirements: JDK 21 (or Docker, see [Building and testing](#building-and-testing)).
+**Bash**
 
 ```bash
-cd Backend/Quiz
-cp .env.example .env          # then set ADMIN_PASSWORD to a long value
+ADMIN_PASSWORD='replace-with-a-long-password' docker compose up --build
+```
+
+Open <http://localhost:8080/admin/login>, sign in, choose a quiz, and create a session. Stop the
+stack with <kbd>Ctrl</kbd>+<kbd>C</kbd>, then run `docker compose down` when you no longer need it.
+
+> [!IMPORTANT]
+> `ADMIN_PASSWORD` is required. Use a long, unique value and never commit it to the repository.
+
+### Run directly with Java
+
+Requirements: JDK 21. The path overrides below connect the Gradle project in `quizzle/` to the
+repository-level sample quizzes, branding, and data directory.
+
+**PowerShell**
+
+```powershell
+Set-Location .\quizzle
+$env:ADMIN_PASSWORD = 'replace-with-a-long-password'
+$env:QUIZ_FOLDER = '../quizzes'
+$env:BRANDING_FOLDER = '../branding'
+$env:QUIZ_DATABASE_PATH = '../data/quiz-snapshots.db'
+.\gradlew.bat bootRun
+```
+
+**Bash**
+
+```bash
+cd quizzle
+ADMIN_PASSWORD='replace-with-a-long-password' \
+QUIZ_FOLDER='../quizzes' \
+BRANDING_FOLDER='../branding' \
+QUIZ_DATABASE_PATH='../data/quiz-snapshots.db' \
 ./gradlew bootRun
 ```
 
-Open <http://localhost:8080/admin/login>, sign in, and create a session from a quiz in the catalog.
+You can persist the same entries in an ignored `quizzle/.env` file; copy
+[`quizzle/.env.example`](quizzle/.env.example) to get started. Process environment variables take
+precedence over `.env`; `.env` takes precedence over built-in defaults.
 
-| Page | URL | Who |
+## Application pages
+
+| Page | Path | Audience |
 | --- | --- | --- |
-| Admin login | `/admin/login` | Admin |
-| Session overview | `/admin` | Admin |
-| Presenter view | `/admin/sessions/{codehash}` | Admin, on the beamer |
-| Participant | `/{codehash}/` | Everyone, via QR code |
+| Admin login | `/admin/login` | Quiz administrator |
+| Session overview | `/admin` | Quiz administrator |
+| Presenter | `/admin/sessions/{codehash}` | Shared presentation screen |
+| Participant | `/{codehash}/` | Players joining by link or QR code |
 
-The server refuses to start when `ADMIN_PASSWORD` is missing or blank.
+`PUBLIC_BASE_URL` must be reachable from participant devices. `localhost` only works when the
+browser and Quizzle run on the same machine.
 
 ## Configuration
 
-Configuration comes from environment variables, or from a `.env` file next to the working directory.
-Real environment variables win over `.env`, and `.env` wins over the built-in defaults. See
-[`.env.example`](Backend/Quiz/.env.example).
+Configuration comes from environment variables or from a `.env` file next to the working directory.
+Process environment variables win over `.env`, and `.env` wins over the built-in defaults. Copy
+[`quizzle/.env.example`](quizzle/.env.example) to `quizzle/.env` as a starting point; the file is
+ignored by Git.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `ADMIN_PASSWORD` | – | **Required.** Admin login password. |
-| `SERVER_PORT` | `8080` | HTTP port. |
-| `PUBLIC_BASE_URL` | `http://localhost:8080` | Base URL printed into join links and QR codes. Must be what participants can actually reach. |
-| `SESSION_COOKIE_SECURE` | `false` | Set to `true` when served over HTTPS. |
-| `QUIZ_FOLDER` | `./quizzes` | Folder scanned for `.yaml` / `.yml` quiz files. |
-| `BRANDING_FOLDER` | `./branding` | Folder that holds the branding file. |
-| `BRANDING_FILE` | `branding.yaml` | Branding file name inside that folder. |
-| `QUIZ_DATABASE_PATH` | `./data/quiz-snapshots.db` | SQLite file for session snapshots. |
-| `SNAPSHOT_INTERVAL_MS` | `30000` | Interval of the periodic snapshot flush. |
-| `SESSION_CODEHASH_LENGTH` | `10` | Length of the generated join code. |
+| `ADMIN_PASSWORD` | — | **Required.** Shared password for the admin area. |
+| `SERVER_PORT` | `8080` | HTTP listening port. |
+| `PUBLIC_BASE_URL` | `http://localhost:8080` | Base URL used in participant links and QR codes. |
+| `SESSION_COOKIE_SECURE` | `false` | Set to `true` when the public URL uses HTTPS. |
+| `QUIZ_FOLDER` | `./quizzes` | Directory scanned for `.yaml` and `.yml` quizzes. |
+| `BRANDING_FOLDER` | `./branding` | Directory containing branding configuration and images. |
+| `BRANDING_FILE` | `branding.yaml` | Branding filename inside `BRANDING_FOLDER`. |
+| `QUIZ_DATABASE_PATH` | `./data/quiz-snapshots.db` | SQLite snapshot database. |
+| `SNAPSHOT_INTERVAL_MS` | `30000` | Periodic snapshot interval. |
+| `SQLITE_BUSY_TIMEOUT_MS` | `5000` | SQLite lock wait timeout. |
+| `SESSION_CODEHASH_LENGTH` | `10` | Length of generated session join codes. |
 | `WEBSOCKET_HEARTBEAT_INTERVAL_MS` | `15000` | Server ping interval. |
 | `WEBSOCKET_HEARTBEAT_TIMEOUT_MS` | `40000` | Time without a pong before the socket is closed. |
-| `WEBSOCKET_DISCONNECT_GRACE_MS` | `120000` | Time a disconnected player stays reconnectable before expiring. |
+| `WEBSOCKET_DISCONNECT_GRACE_MS` | `120000` | Reconnect window for disconnected participants. |
 | `PLAYER_NAME_MAX_LENGTH` | `32` | Maximum participant name length. |
 
-Validation limits (`QUIZ_MAX_QUESTIONS`, `QUIZ_MAX_POINTS`, `QUIZ_MAX_TIME_SECONDS`, …) can be
-overridden the same way; the defaults are listed in
-[`application.properties`](Backend/Quiz/src/main/resources/application.properties).
+Quiz-validation limits (`QUIZ_MAX_QUESTIONS`, `QUIZ_MAX_POINTS`, `QUIZ_MAX_TIME_SECONDS`, …) and the
+WebSocket message-size limits can be overridden the same way. Their names and defaults are listed in
+[`application.properties`](quizzle/src/main/resources/application.properties).
 
-## Writing a quiz
+## Create a quiz
 
-One YAML file describes exactly one quiz. Drop it into the quiz folder and restart the server.
+Add one YAML file per quiz alongside
+[`quizzes/safety-basics.yaml`](quizzes/safety-basics.yaml), then restart Quizzle so the catalog
+reloads it. Start with that file or use this minimal example:
 
 ```yaml
 title: "Workplace Safety Basics"
-description: "A short introduction to safe conduct in office and technical work areas."
-author: "G+D Safety Team"
-
+description: "A short introduction to safe conduct at work."
+author: "Safety Team"
 questions:
   - id: "emergency-exit"
     text: "What should you do when the evacuation alarm sounds?"
     points: 1000
     timeSeconds: 20
     multiple: false
-    shuffle_answers: true   # optional, defaults to true
+    shuffle_answers: true
     answers:
-      - id: "a"
+      - id: "leave"
         text: "Leave by the nearest safe emergency exit"
         correct: true
-      - id: "b"
-        text: "Finish the current task before leaving"
-        correct: false
-      - id: "c"
-        text: "Use the elevator to leave faster"
+      - id: "wait"
+        text: "Wait at your desk"
         correct: false
 ```
 
-Answers are shuffled once per session, so the correct option is not always in the same place and the
-order stays identical on every screen, after a reveal, a reconnect and a server restart. Set
-`shuffle_answers: false` on a question whose answers must keep their file order (for example a chronological list).
+Quizzes must have unique question IDs, at least two answers per question, and at least one correct
+answer. A single-choice question must have exactly one correct answer. Invalid files are skipped and
+shown in the admin catalog with a precise validation error; they do not prevent valid quizzes from
+loading.
 
-Rules enforced before a quiz enters the catalog:
+Answers are shuffled once per session by default. Set `shuffle_answers: false` when order matters.
+For multiple-choice questions, a participant must select the exact correct set to score points.
 
-- `title`, `description` and `author` are present and within the configured length limits.
-- At least one question, and at most `QUIZ_MAX_QUESTIONS`.
-- Question IDs are unique across the quiz; answer IDs are unique **within their question**, so `a`,
-  `b`, `c` … can be reused in every question.
-- IDs must not start or end with whitespace.
-- Each question has at least two answers and at least one correct answer.
-- With `multiple: false` there must be exactly one correct answer.
-- `points` and `timeSeconds` are positive and within their configured maximums.
-- `shuffle_answers` is optional and must be `true` or `false`.
+## Customize the look
 
-A file that fails any of these checks is skipped and shown in the admin view with the reason, so a
-single broken quiz never blocks the rest of the catalog. Duplicate YAML keys are rejected with the
-line number.
-
-## Branding
-
-Wording and colors live in [`Backend/Quiz/branding/branding.yaml`](Backend/Quiz/branding/branding.yaml)
-instead of the stylesheets, so a deployment can be rebranded without touching the front-end.
+Edit [`branding/branding.yaml`](branding/branding.yaml) to change the product name, logo, light/dark
+palette, and six answer colors. The included configuration uses
+[`branding/images/quizzle.svg`](branding/images/quizzle.svg).
 
 ```yaml
-name: "Safety Quiz"      # product name in the header and page titles
-mark: "G+D"              # short badge next to it, at most 10 characters
+name: "Quizzle"
+mark: "quizzle.svg" # text, a local image filename, or an HTTPS URL
 colors:
-  primary: "#040066"     # headings, buttons, podium
-  primarySoft: "#ececff"
-  accent: "#00d4ff"      # highlights, timers, winner ring
-  surface: "#ffffff"     # cards
-  background: "#f5f7fb"  # page background
-  text: "#17162d"
-  muted: "#66687a"
-  border: "#e3e6ef"
-  danger: "#a32035"
-  dangerSoft: "#fff3f5"
-  success: "#13854e"
-answerColors: ["#c52f42", "#1664ad", "#b28200", "#26824b"]
+  primary: "#040066"
+  accent: "#00d4ff"
+answerColors:
+  - "#c52f42"
+  - "#1664ad"
+  - "#b28200"
+  - "#26824b"
+  - "#7a3fa0"
+  - "#c2660a"
 ```
 
-- Every field is optional; anything left out keeps the built-in value.
-- Colors must be hex (`#rgb` or `#rrggbb`), and `answerColors` must list exactly four of them.
-- The file is read once at startup and served as `/assets/branding.css` and `/assets/branding.js`,
-  which every page loads. Restart Quizzle after changing it.
-- An unreadable or invalid file is logged and ignored – the app then starts with the defaults.
+All fields are optional. Colors use `#rgb` or `#rrggbb`; `answerColors` must contain exactly six
+values. Restart Quizzle after changing the file. Invalid branding is logged and safely replaced by
+built-in defaults.
 
-The container reads the folder from `BRANDING_FOLDER` (`/data/branding` in Docker), so mounting your
-own `branding.yaml` there is enough.
-
-## How a quiz runs
-
-The server owns the state; every transition is validated against a state machine and rejected
-otherwise.
+## How a session works
 
 ```mermaid
 stateDiagram-v2
     [*] --> LOBBY
-    LOBBY --> QUESTION_OPEN: START
-    QUESTION_OPEN --> RESULTS: END_EARLY / timer expired / everyone answered
-    RESULTS --> LEADERBOARD: NEXT (more questions)
-    RESULTS --> FINAL_RESULTS: NEXT (last question)
-    LEADERBOARD --> QUESTION_OPEN: NEXT
-    FINAL_RESULTS --> CLOSED: CLOSE
-    LOBBY --> CLOSED: ABORT
-    QUESTION_OPEN --> CLOSED: ABORT
-    RESULTS --> CLOSED: ABORT
-    LEADERBOARD --> CLOSED: ABORT
+    LOBBY --> QUESTION_OPEN: Start
+    QUESTION_OPEN --> RESULTS: Timer / everyone answered / end early
+    RESULTS --> LEADERBOARD: More questions
+    LEADERBOARD --> QUESTION_OPEN: Next question
+    RESULTS --> FINAL_RESULTS: Last question
+    FINAL_RESULTS --> CLOSED: Close
 ```
 
-- Participants can only join in `LOBBY`.
-- Answers are only accepted in `QUESTION_OPEN`, for the currently open question, before the
-  deadline, and only once per participant and question.
-- A question closes as soon as every connected participant has answered it.
-- While a question is open the presenter sees the number of answers received, never the
-  distribution. The bar chart appears in `RESULTS`, the standings in `LEADERBOARD`.
-- `FINAL_RESULTS` opens the podium right away.
-- `ABORT` and `CLOSE` are behind a confirmation dialog in the presenter view.
-- A session that reaches `CLOSED` is dropped from the registry and deleted from the snapshot store
-  right away, so it disappears from the admin list and does not come back after a restart.
+- Participants join only in `LOBBY` and answer only during `QUESTION_OPEN`.
+- The server accepts one answer per participant and question, before the server-side deadline.
+- Points decay with the remaining time and are rounded to the nearest 10.
+- During a question, the presenter sees an answer count—not the answer distribution.
+- Dropped participant connections retry with backoff during the configured grace period.
+- Every state change is persisted. Active sessions return after a restart; closed sessions are
+  removed.
 
-## Scoring
+Participant avatars use a vendored DiceBear `bottts-neutral` bundle, so no avatar service is called
+at runtime. A participant UUID provides a stable avatar across screens and reconnects.
 
-- A question counts as answered correctly only when the selected set matches the correct set
-  **exactly** – a partially correct multiple-choice answer scores zero.
-- Points decay linearly with the remaining time:
-  `points × remaining / duration`, rounded to the nearest 10. Answering instantly yields the full
-  value, answering at the buzzer yields close to zero.
-- Ties are broken by the summed response time of all correct answers, then by the single fastest
-  correct answer. Because points are time-weighted, exact ties are rare to begin with.
-- The elapsed time is measured server-side from the moment the question opened, so a slow client
-  clock cannot be exploited.
+## Project structure
 
-## Connections and reconnects
+```text
+.
+├── quizzle/                  Spring Boot 4.1 application and Gradle wrapper
+│   └── src/main/
+│       ├── java/gd/safety/quizzle/
+│       └── resources/       Static admin, presenter, and participant clients
+├── quizzes/                 Quiz catalog YAML files
+├── branding/                Branding YAML and image assets
+├── data/                    Local SQLite data (ignored by Git)
+├── docs/                    Deployment documentation
+├── Dockerfile
+└── docker-compose.yml
+```
 
-Each participant holds exactly one WebSocket for the whole quiz: `JOIN` → `JOINED` → `STATE` updates
-→ `ANSWER` → `ANSWER_ACCEPTED`. The server pings every 15 s and closes sockets that stop responding.
+The backend is split into admin endpoints, quiz catalog/model, session state, persistence, branding,
+and WebSocket packages. The browser clients use vanilla JavaScript—there is no separate frontend
+build.
 
-Participants move through four states:
+## Build and test
 
-| State | Meaning |
-| --- | --- |
-| `CONNECTED` | Socket is alive. |
-| `TEMPORARILY_DISCONNECTED` | Socket dropped; the reconnect token is still valid. |
-| `EXPIRED` | Did not come back within `WEBSOCKET_DISCONNECT_GRACE_MS`. |
-| `KICKED` | Removed by the presenter. |
+Run the Gradle wrapper from `quizzle/`:
 
-On disconnect the client retries with exponential backoff and jitter (roughly 1, 2, 4, 8, 15 s, then
-slower), sending the reconnect token stored in a one-day cookie scoped to the session path. A kicked
-participant receives a final message, deletes its token and stops retrying.
+**PowerShell**
 
-## Persistence
+```powershell
+Set-Location .\quizzle
+.\gradlew.bat test
+.\gradlew.bat bootJar
+```
 
-Sessions are written to SQLite on every state change and additionally flushed on a timer. After a
-restart the registry rehydrates all sessions: previously connected players become
-`TEMPORARILY_DISCONNECTED` so their cookies still work, and a question that was open when the server
-went down gets a fresh timer instead of an already-expired one. Closed sessions are deleted instead
-of restored.
-
-## Avatars
-
-Avatars are generated in the browser with a vendored copy of
-[DiceBear](https://www.dicebear.com) – `@dicebear/core` plus the `bottts-neutral` style definition
-under `src/main/resources/static/assets/vendor/dicebear/`. Nothing is fetched from
-`api.dicebear.com` at runtime, so the quiz works on an isolated network. The participant's UUID is
-used as the seed, which makes each avatar stable across reconnects and identical on every screen.
-If the style definition cannot be loaded, all views fall back to a neutral placeholder.
-
-## Building and testing
+**Bash**
 
 ```bash
-cd Backend/Quiz
-./gradlew test        # unit and MockMvc tests
-./gradlew bootJar     # build/libs/Quiz-0.0.1-SNAPSHOT.jar
+cd quizzle
+./gradlew test
+./gradlew bootJar
 ```
 
-Without a local JDK, use the same image the deployment uses:
+The executable JAR is written to `quizzle/build/libs/quizzle-0.0.1-SNAPSHOT.jar`. Tests include unit
+and Spring MVC coverage. The repository also contains `smoke-test.ps1`, a restart/persistence smoke
+test for a preconfigured `quizzle-test` container listening on port `18080`.
+
+> [!NOTE]
+> Run the Gradle tests without Quizzle configuration variables such as `ADMIN_PASSWORD`,
+> `QUIZ_FOLDER`, or `BRANDING_FILE` in the process environment. Some tests intentionally verify
+> precedence between process variables, `.env`, and test fixtures.
+
+## Deploy
+
+### Container image
+
+Build a production image from the repository root. The multi-stage [`Dockerfile`](Dockerfile) builds
+the JAR with `gradle:9.5.1-jdk21` and runs it on `eclipse-temurin:21-jre` as the unprivileged user
+`quizzle` (UID 10001):
 
 ```bash
-docker run --rm -v "$PWD:/app" -w /app gradle:9.5.1-jdk21 gradle test
+docker build -t quizzle:local .
 ```
 
-> Do not set `ADMIN_PASSWORD` in the environment while running the tests – one test asserts the
-> precedence order between real environment variables and `.env`.
+The image expects three paths under `/data`, all owned by UID 10001:
 
-## Deployment
+| Path | Contents | Mount |
+| --- | --- | --- |
+| `/data/quizzes` | Quiz YAML files | read-only |
+| `/data/branding` | `branding.yaml` and `images/` | read-only |
+| `/data/db` | SQLite snapshot database | read-write, **must be persistent** |
 
-See [docs/DEPLOYMENT-TRUENAS.md](docs/DEPLOYMENT-TRUENAS.md) for running Quizzle on TrueNAS SCALE
-behind a reverse proxy.
+[`docker-compose.yml`](docker-compose.yml) wires exactly that up and publishes port `8080`. Set
+`ADMIN_PASSWORD` in the environment (or an ignored `.env` next to the compose file) before starting:
 
-For any other host, the short version is:
+```bash
+ADMIN_PASSWORD='a-long-password' docker compose up -d --build
+```
+
+### Standalone JAR
+
+Set `ADMIN_PASSWORD`, point `PUBLIC_BASE_URL` at the address participants actually reach, and enable
+`SESSION_COOKIE_SECURE` when serving over HTTPS. Run the JAR from the repository root so the default
+relative paths resolve:
 
 ```bash
 export ADMIN_PASSWORD='a-long-password'
 export PUBLIC_BASE_URL='https://quiz.example.org'
 export SESSION_COOKIE_SECURE=true
-java -jar Quiz-0.0.1-SNAPSHOT.jar
+export QUIZ_FOLDER=./quizzes
+export BRANDING_FOLDER=./branding
+export QUIZ_DATABASE_PATH=./data/quiz-snapshots.db
+java -jar quizzle/build/libs/quizzle-0.0.1-SNAPSHOT.jar
 ```
 
-Make sure the reverse proxy in front of Quizzle forwards WebSocket upgrades (`Upgrade` and
-`Connection` headers) and does not buffer `text/event-stream`, otherwise the presenter view will not
-receive live updates. Quizzle sends `X-Accel-Buffering: no` on the event stream, which nginx honours
-on its own. If the stream still delivers nothing within six seconds, the presenter view falls back
-to polling `/admin/api/sessions/{codehash}/state` every two seconds and shows `Live (polling)`.
+### Reverse proxy
 
+A reverse proxy in front of Quizzle must:
 
-## TODO
+- forward WebSocket upgrades — pass through the `Upgrade` and `Connection` headers, otherwise
+  participants cannot join or answer;
+- **not** buffer `text/event-stream` responses, otherwise the presenter view receives no live
+  updates. Quizzle sends `X-Accel-Buffering: no` on the event stream, which nginx honours on its own;
+- allow idle connections to live longer than `WEBSOCKET_HEARTBEAT_TIMEOUT_MS` (default 40 s);
+- forward the original host/scheme if `PUBLIC_BASE_URL` is not set explicitly.
 
-- mute by default
-- avoid scrollable views. set max lengths of texts & scale long down in font. add responsive fullscreen mode with all on the page visible (logic for many players - maybe from 20 or 50 on hide some details. also maybe hide/shrink top bar while quiz)
-- auto mode (start quiz and auto show leader board, scroll through, then go to next question until quiz finished with podium)
+If the event stream delivers nothing within six seconds, the presenter falls back to polling
+`/admin/api/sessions/{codehash}/state` every two seconds and shows `Live (polling)`.
+
+### Data and updates
+
+Sessions are written to SQLite on every state change and flushed again on a timer. After a restart
+the registry rehydrates open sessions: previously connected players become
+`TEMPORARILY_DISCONNECTED` so their cookies keep working, and a question that was open when the
+server stopped gets a fresh timer instead of an already-expired one. Closed sessions are deleted
+instead of restored. Back up and persist `QUIZ_DATABASE_PATH`; everything else is rebuilt from the
+quiz and branding files.
+
+Quiz and branding files are read once at startup, so restart Quizzle after editing them.
+
+For a complete TrueNAS SCALE setup, including persistent datasets, reverse proxy configuration,
+updates, backups, and troubleshooting, see
+[`docs/DEPLOYMENT-TRUENAS.md`](docs/DEPLOYMENT-TRUENAS.md).
+
+## Common problems
+
+| Symptom | Check |
+| --- | --- |
+| Server exits immediately | `ADMIN_PASSWORD` is missing or blank. |
+| Quiz catalog is empty | `QUIZ_FOLDER` points to the directory containing the YAML files. |
+| QR code opens the wrong host | `PUBLIC_BASE_URL` is not reachable from participant devices. |
+| Participants repeatedly disconnect | The reverse proxy is not forwarding WebSocket upgrades. |
+| Presenter shows `Live (polling)` | The proxy is buffering or blocking Server-Sent Events. |
+| Sessions disappear after restart | `QUIZ_DATABASE_PATH` is not on persistent storage. |

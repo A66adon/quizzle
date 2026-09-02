@@ -1,0 +1,52 @@
+# Branding for this deployment. Every field is optional; anything left out keeps the built-in value.
+# The file is read once at startup, so restart Quizzle after changing it.
+name: "Quizzle"
+mark: "quizzle.svg"
+
+colors:
+  primary: "#040066"
+  primarySoft: "#ececff"
+  accent: "#00d4ff"
+  surface: "#ffffff"
+  background: "#f5f7fb"
+  text: "#17162d"
+  muted: "#66687a"
+  border: "#e3e6ef"
+  danger: "#a32035"
+  dangerSoft: "#fff3f5"
+  success: "#13854e"
+
+# Dark-mode semantic colors. Every value is optional and falls back to the built-in palette.
+darkColors:
+  primary: "#a9c9ff"
+  primaryHover: "#c2d9ff"
+  primarySoft: "#293549"
+  accent: "#00d4ff"
+  surface: "#141d2b"
+  surfaceRaised: "#1a2637"
+  background: "#090f19"
+  text: "#e9eff8"
+  heading: "#f6f8fc"
+  muted: "#a7b3c6"
+  border: "#2d3a50"
+  controlBorder: "#53657f"
+  danger: "#ff9cac"
+  dangerSoft: "#3b1f31"
+  success: "#7ae3ac"
+  onPrimary: "#081221"
+  onAccent: "#071622"
+  onDanger: "#2b0e14"
+  focusRing: "#38ddff"
+  disabledSurface: "#2b3545"
+  disabledText: "#8290a5"
+  qrSurface: "#ffffff"
+  shadow: "#000000"
+
+# Colors of the six answer tiles, in order.
+answerColors:
+  - "#c52f42"
+  - "#1664ad"
+  - "#b28200"
+  - "#26824b"
+  - "#7a3fa0"
+  - "#c2660a"

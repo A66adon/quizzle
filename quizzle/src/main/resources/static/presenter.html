@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en" data-theme-scope="presenter">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title data-page-title="Presenter">Presenter</title>
+	<script>
+		(function () {
+			var s = document.documentElement.dataset.themeScope || "app";
+			var v = localStorage.getItem("quizzle-theme-" + s);
+			var t = (v === "dark" || v === "light")
+				? v
+				: (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+			document.documentElement.dataset.theme = t;
+		})();
+	</script>
+	<link rel="stylesheet" href="/assets/branding.css">
+	<link rel="stylesheet" href="/assets/theme.css">
+	<link rel="stylesheet" href="/assets/admin.css">
+	<link rel="stylesheet" href="/assets/presenter.css">
+	<script type="module" src="/assets/branding.js"></script>
+	<script type="module" src="/assets/theme.js"></script>
+	<script type="module" src="/assets/presenter.js"></script>
+</head>
+<body class="presenter-body">
+	<audio id="background-music" loop preload="auto" muted>
+		<source src="/assets/audio/presenter-background-music.mp3" type="audio/mpeg">
+	</audio>
+	<header class="site-header">
+		<a class="brand" href="/admin" aria-label="Back to quiz sessions">
+			<span class="brand-mark" data-brand-mark aria-hidden="true"></span>
+			<span data-brand-name></span>
+		</a>
+		<div class="header-status">
+			<button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
+				<span class="theme-toggle-icon" aria-hidden="true">🌙</span>
+			</button>
+			<button id="music-toggle" class="music-toggle" type="button" aria-pressed="true" aria-label="Unmute background music">
+				<span aria-hidden="true">🔇</span>
+			</button>
+			<button id="auto-advance-toggle" class="auto-advance-toggle" type="button" aria-pressed="false" aria-label="Enable automatic progression" title="Automatic progression">
+				<span aria-hidden="true"></span>
+			</button>
+			<span id="feed-status" class="feed-status connecting">Connecting</span>
+		</div>
+	</header>
+
+	<main class="presenter-shell">
+		<p id="presenter-message" class="status-card" role="status" hidden></p>
+
+		<section id="lobby-view" class="view" aria-labelledby="lobby-title" hidden>
+			<div class="lobby-layout">
+				<article class="join-card">
+					<p class="eyebrow">Scan to join</p>
+					<img id="join-qr" class="join-qr" width="260" height="260" alt="QR code with the join link">
+					<p class="session-code-label">Join code</p>
+					<code id="join-code" class="session-code"></code>
+					<a id="join-link" class="session-link" target="_blank" rel="noopener noreferrer"></a>
+				</article>
+
+				<div class="lobby-main">
+					<p class="eyebrow">Lobby</p>
+					<h1 id="lobby-title"></h1>
+					<p id="lobby-description" class="muted"></p>
+
+					<div class="lobby-metrics">
+						<div class="summary-pill"><strong id="connected-count">0</strong><span>connected</span></div>
+						<div class="summary-pill"><strong id="disconnected-count">0</strong><span>disconnected</span></div>
+						<div class="summary-pill"><strong id="question-total">0</strong><span>questions</span></div>
+					</div>
+
+					<div id="avatar-field" class="avatar-field" aria-label="Connected participants"></div>
+					<p id="lobby-empty" class="empty-card">Waiting for the first participant…</p>
+
+					<div class="section-heading offline-heading" hidden>
+						<h2>Disconnected</h2>
+					</div>
+					<div id="offline-list" class="offline-list"></div>
+				</div>
+			</div>
+
+			<div class="control-bar">
+				<button class="ghost-button abort-button" type="button" data-abort>Abort quiz</button>
+				<label id="leaderboard-toggle" class="switch-control" for="leaderboard-switch">
+					<input id="leaderboard-switch" type="checkbox" checked>
+					<span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+					<span class="switch-label">Show leaderboard between questions</span>
+				</label>
+				<button id="start-button" class="primary-button push-right" type="button">Start quiz</button>
+			</div>
+		</section>
+
+		<section id="question-view" class="view" aria-labelledby="question-title" hidden>
+			<div class="question-topline">
+				<span id="question-progress" class="eyebrow"></span>
+				<div class="live-metrics">
+					<div class="summary-pill"><strong id="answers-received">0</strong><span>answers in</span></div>
+					<div class="summary-pill countdown-pill"><strong id="countdown">0.0</strong><span>seconds left</span></div>
+				</div>
+			</div>
+			<div class="timer-track" aria-hidden="true"><span id="timer-fill"></span></div>
+			<h1 id="question-title" class="stage-title"></h1>
+			<p id="question-mode" class="muted stage-subtitle"></p>
+			<div id="question-options" class="option-grid"></div>
+			<div class="control-bar">
+				<button class="ghost-button abort-button" type="button" data-abort>Abort quiz</button>
+				<button id="end-early-button" class="primary-button push-right" type="button">End question early</button>
+			</div>
+		</section>
+
+		<section id="results-view" class="view" aria-labelledby="results-title" hidden>
+			<div class="stage-heading">
+				<span class="stage-heading-side"></span>
+				<div class="stage-heading-main">
+					<p id="results-progress" class="eyebrow"></p>
+					<h1 id="results-title" class="stage-title"></h1>
+				</div>
+				<div class="stage-heading-side end">
+					<div class="summary-pill"><strong id="results-answer-count">0</strong><span>answers</span></div>
+				</div>
+			</div>
+			<div id="results-chart" class="results-chart"></div>
+			<div class="control-bar">
+				<button class="ghost-button abort-button" type="button" data-abort>Abort quiz</button>
+				<button id="next-button" class="primary-button push-right" type="button">Next question</button>
+			</div>
+		</section>
+
+		<section id="leaderboard-view" class="view" aria-labelledby="leaderboard-title" hidden>
+			<div class="stage-heading">
+				<span class="stage-heading-side"></span>
+				<div class="stage-heading-main">
+					<p id="leaderboard-progress" class="eyebrow"></p>
+					<h1 id="leaderboard-title" class="stage-title">Leaderboard</h1>
+				</div>
+				<span class="stage-heading-side end"></span>
+			</div>
+			<div id="leaderboard-list" class="standings-list leaderboard-list"></div>
+			<p id="leaderboard-empty" class="leaderboard-empty" role="status" hidden>
+				No scores yet. Participants will appear here after they answer a question.
+			</p>
+			<div class="control-bar">
+				<button class="ghost-button abort-button" type="button" data-abort>Abort quiz</button>
+				<button id="leaderboard-next-button" class="primary-button push-right" type="button">Next question</button>
+			</div>
+		</section>
+
+		<section id="final-view" class="view" aria-labelledby="final-title" hidden>
+			<p class="eyebrow center-text">Final results</p>
+			<h1 id="final-title" class="stage-title">Congratulations</h1>
+			<p id="final-subtitle" class="muted stage-subtitle"></p>
+
+			<div id="podium" class="podium" hidden>
+				<div class="podium-place second" data-place="2">
+					<div class="podium-player">
+						<img class="podium-avatar" alt="">
+						<strong class="podium-name"></strong>
+						<span class="podium-points"></span>
+					</div>
+					<div class="podium-block"><span>2</span></div>
+				</div>
+				<div class="podium-place first" data-place="1">
+					<div class="podium-player">
+						<svg class="podium-crown" viewBox="0 0 64 44" aria-hidden="true" focusable="false">
+							<path d="M4 40h56l4-32-16 12L32 2 16 20 0 8z" fill="#ffc53d" stroke="#e0a300" stroke-width="2" stroke-linejoin="round"/>
+							<circle cx="32" cy="30" r="3.5" fill="#fff6da"/>
+						</svg>
+						<img class="podium-avatar" alt="">
+						<strong class="podium-name"></strong>
+						<span class="podium-points"></span>
+					</div>
+					<div class="podium-block"><span>1</span></div>
+				</div>
+				<div class="podium-place third" data-place="3">
+					<div class="podium-player">
+						<img class="podium-avatar" alt="">
+						<strong class="podium-name"></strong>
+						<span class="podium-points"></span>
+					</div>
+					<div class="podium-block"><span>3</span></div>
+				</div>
+			</div>
+
+			<div class="control-bar">
+				<button id="standings-toggle" class="ghost-button" type="button" aria-expanded="false">
+					Show full ranking
+				</button>
+				<button class="ghost-button abort-button push-right" type="button" data-abort data-command="CLOSE">
+					Close quiz
+				</button>
+			</div>
+
+			<div id="standings-list" class="standings-list" hidden></div>
+		</section>
+
+		<section id="closed-view" class="view centered-card" aria-labelledby="closed-title" hidden>
+			<p class="eyebrow">Session closed</p>
+			<h1 id="closed-title">This quiz session has ended</h1>
+			<a class="primary-button link-button" href="/admin">Back to sessions</a>
+		</section>
+	</main>
+
+	<dialog id="abort-dialog" class="confirm-dialog">
+		<form method="dialog">
+			<p class="eyebrow">Please confirm</p>
+			<h2>Abort this quiz?</h2>
+			<p class="muted">
+				All participants are disconnected immediately and the session cannot be resumed.
+			</p>
+			<div class="dialog-actions">
+				<button class="ghost-button" type="submit" value="cancel">Keep playing</button>
+				<button id="confirm-abort-button" class="danger-button" type="button">Abort quiz</button>
+			</div>
+		</form>
+	</dialog>
+
+	<dialog id="kick-dialog" class="confirm-dialog">
+		<form method="dialog">
+			<p class="eyebrow">Please confirm</p>
+			<h2>Remove participant?</h2>
+			<p class="muted"><strong id="kick-name"></strong> is removed and cannot rejoin this session.</p>
+			<div class="dialog-actions">
+				<button class="ghost-button" type="submit" value="cancel">Cancel</button>
+				<button id="confirm-kick-button" class="danger-button" type="button">Remove</button>
+			</div>
+		</form>
+	</dialog>
+</body>
+</html>
