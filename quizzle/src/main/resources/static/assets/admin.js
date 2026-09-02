@@ -7,6 +7,7 @@
 	const sessionGrid = document.querySelector("#session-grid");
 	const sessionEmpty = document.querySelector("#session-empty");
 	const sessionCount = document.querySelector("#session-count");
+	const sessionCountLabel = document.querySelector("#session-count-label");
 	const quizSection = document.querySelector("#quiz-section");
 	const quizGrid = document.querySelector("#quiz-grid");
 	const quizEmpty = document.querySelector("#quiz-empty");
@@ -18,9 +19,23 @@
 	const sessionTemplate = document.querySelector("#session-template");
 	const quizTemplate = document.querySelector("#quiz-template");
 	const issueTemplate = document.querySelector("#issue-template");
+	const deleteSessionDialog = document.querySelector("#delete-session-dialog");
+	const deleteSessionName = document.querySelector("#delete-session-name");
+	const deleteSessionError = document.querySelector("#delete-session-error");
+	const cancelDeleteSession = document.querySelector("#cancel-delete-session");
+	const confirmDeleteSession = document.querySelector("#confirm-delete-session");
 	let sessions = [];
+	let pendingDeleteSession = null;
 
 	loadAdminData();
+	confirmDeleteSession.addEventListener("click", deletePendingSession);
+	deleteSessionDialog.addEventListener("close", () => {
+		pendingDeleteSession = null;
+		deleteSessionError.hidden = true;
+	});
+	deleteSessionDialog.addEventListener("cancel", event => {
+		if (confirmDeleteSession.disabled) event.preventDefault();
+	});
 
 	async function loadAdminData() {
 		try {
@@ -52,7 +67,9 @@
 			throw new Error("Admin session expired");
 		}
 		if (!response.ok) {
-			throw new Error(`Request failed with status ${response.status}`);
+			const error = new Error(`Request failed with status ${response.status}`);
+			error.status = response.status;
+			throw error;
 		}
 		return response.json();
 	}
@@ -89,15 +106,17 @@
 		card.querySelector(".question-count").textContent = quiz.questionCount === 1
 			? "1 question"
 			: `${quiz.questionCount} questions`;
-		const createButton = card.querySelector(".create-session-button");
-		createButton.addEventListener("click", () => createSession(quiz.fileName, createButton));
+		const action = card.querySelector(".quiz-card-action");
+		action.setAttribute("aria-label", `Create a session for ${quiz.title}`);
+		action.addEventListener("click", () => createSession(quiz.fileName, card, action));
 		return card;
 	}
 
-	async function createSession(quizFileName, button) {
-		const originalLabel = button.textContent;
-		button.disabled = true;
-		button.textContent = "Creating…";
+	async function createSession(quizFileName, card, action) {
+		if (action.disabled) return;
+		action.disabled = true;
+		card.setAttribute("aria-busy", "true");
+		card.classList.add("is-loading");
 		actionStatus.hidden = true;
 		try {
 			const createdSession = await requestJson("/admin/api/sessions", {
@@ -107,24 +126,58 @@
 			});
 			sessions = [createdSession, ...sessions.filter(session => session.codehash !== createdSession.codehash)];
 			renderSessions();
-			actionStatus.textContent = `Session ${createdSession.codehash} is ready.`;
-			actionStatus.dataset.error = "false";
-			actionStatus.hidden = false;
 			sessionSection.scrollIntoView({ behavior: "smooth", block: "start" });
 		} catch (error) {
 			actionStatus.textContent = "The session could not be created. Please try again.";
 			actionStatus.dataset.error = "true";
 			actionStatus.hidden = false;
 		} finally {
-			button.disabled = false;
-			button.textContent = originalLabel;
+			action.disabled = false;
+			card.removeAttribute("aria-busy");
+			card.classList.remove("is-loading");
+		}
+	}
+
+	function askToDeleteSession(session) {
+		pendingDeleteSession = session;
+		deleteSessionName.textContent = `${session.quizTitle} · ${session.codehash}`;
+		deleteSessionError.hidden = true;
+		deleteSessionDialog.showModal();
+	}
+
+	async function deletePendingSession() {
+		const session = pendingDeleteSession;
+		if (!session) return;
+		confirmDeleteSession.disabled = true;
+		cancelDeleteSession.disabled = true;
+		confirmDeleteSession.textContent = "Deleting…";
+		actionStatus.hidden = true;
+		try {
+			await requestJson(`/admin/api/sessions/${session.codehash}/commands`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ command: "ABORT" })
+			});
+			sessions = sessions.filter(candidate => candidate.codehash !== session.codehash);
+			renderSessions();
+			deleteSessionDialog.close("deleted");
+		} catch (error) {
+			deleteSessionError.textContent = error.status === 409
+				? "This session can no longer be deleted from its current state."
+				: "The session could not be deleted. Please try again.";
+			deleteSessionError.hidden = false;
+		} finally {
+			confirmDeleteSession.disabled = false;
+			cancelDeleteSession.disabled = false;
+			confirmDeleteSession.textContent = "Delete session";
 		}
 	}
 
 	function renderSessions() {
 		sessionGrid.replaceChildren(...sessions.map(createSessionCard));
 		sessionEmpty.hidden = sessions.length !== 0;
-		sessionCount.textContent = sessions.length === 1 ? "1 session" : `${sessions.length} sessions`;
+		sessionCount.textContent = String(sessions.length);
+		sessionCountLabel.textContent = sessions.length === 1 ? "session" : "sessions";
 		sessionSection.hidden = false;
 	}
 
@@ -139,8 +192,13 @@
 		const link = card.querySelector(".session-link");
 		link.href = session.joinUrl;
 		link.textContent = session.joinUrl;
-		card.querySelector(".session-presenter").href = `/admin/sessions/${session.codehash}`;
+		const cardAction = card.querySelector(".session-card-action");
+		cardAction.href = `/admin/sessions/${session.codehash}`;
+		cardAction.setAttribute("aria-label", `Open ${session.quizTitle} session ${session.codehash}`);
 		card.querySelector(".session-qr").src = session.qrUrl;
+		const deleteButton = card.querySelector(".delete-session-button");
+		deleteButton.setAttribute("aria-label", `Delete session ${session.codehash} for ${session.quizTitle}`);
+		deleteButton.addEventListener("click", () => askToDeleteSession(session));
 		return card;
 	}
 
@@ -152,7 +210,7 @@
 		const date = new Date(epochMs);
 		return Number.isNaN(date.getTime())
 			? ""
-			: new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
+			: `Created ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date)}`;
 	}
 
 	function createIssueCard(issue) {

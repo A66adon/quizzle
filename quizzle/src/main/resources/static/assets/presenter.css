@@ -73,6 +73,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 0.5rem;
+	height: 2.5rem;
 	padding: 0.4rem 0.75rem;
 	border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
 	border-radius: var(--radius-control);
@@ -102,17 +103,6 @@
 	color: var(--danger);
 }
 
-.code-chip {
-	padding: 0.4rem 0.65rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-control);
-	color: var(--primary);
-	background: var(--surface-raised);
-	font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-	font-size: 1rem;
-	font-weight: 850;
-	letter-spacing: 0.1em;
-}
 
 .view {
 	/* flex:1 lets the view stretch to the shell's height, so a short view's control bar still lands at the bottom. */

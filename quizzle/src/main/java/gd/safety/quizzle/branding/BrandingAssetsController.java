@@ -54,6 +54,32 @@ public final class BrandingAssetsController {
 		for (int index = 0; index < branding.answerColors().size(); index++) {
 			appendVariable(css, "answer-" + (index + 1), branding.answerColors().get(index));
 		}
+		css.append("}\n\n:root[data-theme=\"dark\"] {\n");
+		Branding.DarkColors dark = branding.darkColors();
+		appendVariable(css, "primary", dark.primary());
+		appendVariable(css, "primary-hover", dark.primaryHover());
+		appendVariable(css, "primary-soft", dark.primarySoft());
+		appendVariable(css, "accent", dark.accent());
+		appendVariable(css, "surface", dark.surface());
+		appendVariable(css, "surface-raised", dark.surfaceRaised());
+		appendVariable(css, "background", dark.background());
+		appendVariable(css, "text", dark.text());
+		appendVariable(css, "heading", dark.heading());
+		appendVariable(css, "muted", dark.muted());
+		appendVariable(css, "border", dark.border());
+		appendVariable(css, "control-border", dark.controlBorder());
+		appendVariable(css, "danger", dark.danger());
+		appendVariable(css, "danger-soft", dark.dangerSoft());
+		appendVariable(css, "green", dark.success());
+		appendVariable(css, "on-primary", dark.onPrimary());
+		appendVariable(css, "on-accent", dark.onAccent());
+		appendVariable(css, "on-danger", dark.onDanger());
+		appendVariable(css, "focus-ring", dark.focusRing());
+		appendVariable(css, "disabled-surface", dark.disabledSurface());
+		appendVariable(css, "disabled-text", dark.disabledText());
+		appendVariable(css, "qr-surface", dark.qrSurface());
+		appendVariable(css, "dark-shadow", dark.shadow());
+		css.append("\t--shadow: 0 20px 48px color-mix(in srgb, var(--dark-shadow) 32%, transparent);\n");
 		css.append("}\n");
 		return respond(css.toString(), MediaType.parseMediaType("text/css;charset=UTF-8"));
 	}

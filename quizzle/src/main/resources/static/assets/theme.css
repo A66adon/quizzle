@@ -1,10 +1,9 @@
 /*
  * Shared dark-mode theme layer for every Quizzle surface.
  *
- * The light palette lives in /assets/branding.css (:root). Here we only override the
- * *semantic* tokens for the dark theme, deriving readable foregrounds from the raw
- * --brand-* hues that branding.css also emits. The resolved theme is applied by theme.js
- * as an explicit data-theme="dark|light" attribute on <html>, so no media query is needed.
+ * The light and dark palettes live in /assets/branding.css. This file contains only shared
+ * theme behavior and component treatment. theme.js applies the resolved theme as an explicit
+ * data-theme="dark|light" attribute on <html>, so no media query is needed.
  */
 
 :root {
@@ -18,34 +17,11 @@
 
 :root[data-theme="dark"] {
 	color-scheme: dark;
-
-	--surface: #1b1f2b;
-	--background: #10121b;
-	--text: #eaecf6;
-	--muted: #a6abc2;
-	--border: #2d3346;
-
-	/* The brand primary is dark navy in the reference palette, so it is lightened for dark surfaces
-	   while keeping the brand hue. Components that use --primary as a background get a dark foreground
-	   fix below. */
-	--primary: color-mix(in srgb, var(--brand-primary, #6f78ff) 26%, #e9ecff);
-	--primary-soft: color-mix(in srgb, var(--brand-primary, #6f78ff) 34%, #10121b);
-	--danger: color-mix(in srgb, var(--brand-danger, #ff5a72) 42%, #ffd7dd);
-	--danger-soft: color-mix(in srgb, var(--brand-danger, #ff5a72) 24%, #10121b);
-	--green: color-mix(in srgb, var(--brand-success, #34c77b) 46%, #d6ffe6);
-
-	--shadow: 0 20px 48px rgba(0, 0, 0, 0.55);
-}
-
-/* Surfaces that use --primary as a solid background need a dark label in dark mode,
-   because --primary is now a light tint. */
-:root[data-theme="dark"] .primary-button {
-	color: #12141c;
 }
 
 /* The text badge/logo sits on the bright accent, so keep its text dark for contrast. */
 :root[data-theme="dark"] .brand-mark:not(.brand-mark--image) {
-	color: #0c111f;
+	color: var(--on-accent);
 }
 
 /* Image marks use a real background area instead of CSS generated content. The extra
@@ -72,7 +48,7 @@
 /* QR codes must stay on a light plate to remain scannable regardless of theme. */
 :root[data-theme="dark"] .join-qr,
 :root[data-theme="dark"] .session-qr {
-	background: #ffffff;
+	background: var(--qr-surface);
 }
 
 /* Theme toggle control, reused on every page. */
@@ -140,30 +116,6 @@
 	--focus-ring: color-mix(in srgb, var(--accent) 72%, #ffffff);
 	--disabled-surface: color-mix(in srgb, var(--border) 58%, var(--surface));
 	--disabled-text: color-mix(in srgb, var(--muted) 78%, var(--surface));
-}
-:root[data-theme="dark"] {
-	/* Neutral operational chrome lets the six answer colors remain the product's visual signature. */
-	--surface: #141d2b;
-	--surface-raised: #1a2637;
-	--background: #090f19;
-	--text: #e9eff8;
-	--heading: #f6f8fc;
-	--muted: #a7b3c6;
-	--border: #2d3a50;
-	--control-border: #53657f;
-	--primary: #a9c9ff;
-	--primary-hover: #c2d9ff;
-	--primary-soft: color-mix(in srgb, var(--primary) 14%, var(--surface));
-	--on-primary: #081221;
-	--on-accent: #071622;
-	--danger: #ff9cac;
-	--danger-soft: color-mix(in srgb, #9f2340 28%, var(--surface));
-	--on-danger: #2b0e14;
-	--green: #7ae3ac;
-	--focus-ring: color-mix(in srgb, var(--accent) 78%, #ffffff);
-	--disabled-surface: #2b3545;
-	--disabled-text: #8290a5;
-	--shadow: 0 20px 48px rgba(0, 0, 0, 0.32);
 }
 :root .brand-mark.brand-mark--image {
 	width: clamp(3.1rem, 4vw, 3.75rem);

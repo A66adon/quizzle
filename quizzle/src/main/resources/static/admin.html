@@ -44,10 +44,6 @@
 				<h1 id="catalog-title">Administration</h1>
 				<p class="muted">Choose a quiz to play or resume a running session.</p>
 			</div>
-			<div class="summary-pill" aria-live="polite">
-				<strong id="quiz-count">—</strong>
-				<span>ready</span>
-			</div>
 		</section>
 
 		<p class="status-card" id="catalog-status" role="status">Loading quiz catalog…</p>
@@ -56,7 +52,10 @@
 		<section id="session-section" aria-labelledby="session-heading" hidden>
 			<div class="section-heading">
 				<h2 id="session-heading">Sessions</h2>
-				<span id="session-count" class="session-count"></span>
+				<div class="summary-pill" aria-live="polite">
+					<strong id="session-count">0</strong>
+					<span id="session-count-label">sessions</span>
+				</div>
 			</div>
 			<div id="session-grid" class="session-grid"></div>
 			<p id="session-empty" class="empty-card" hidden>
@@ -66,8 +65,14 @@
 
 		<section id="quiz-section" class="catalog-section" aria-labelledby="quiz-heading" hidden>
 			<div class="section-heading">
-				<h2 id="quiz-heading">Quizzes</h2>
-				<p id="loaded-at" class="small muted"></p>
+				<div>
+					<h2 id="quiz-heading">Quizzes</h2>
+					<p id="loaded-at" class="catalog-loaded-at small muted"></p>
+				</div>
+				<div class="summary-pill" aria-live="polite">
+					<strong id="quiz-count">—</strong>
+					<span>ready</span>
+				</div>
 			</div>
 			<div id="quiz-grid" class="quiz-grid"></div>
 			<p id="quiz-empty" class="empty-card" hidden>
@@ -87,6 +92,7 @@
 
 	<template id="quiz-template">
 		<article class="quiz-card">
+			<button class="quiz-card-action" type="button"></button>
 			<div class="quiz-card-topline">
 				<span class="question-count"></span>
 			</div>
@@ -95,23 +101,28 @@
 			<div class="quiz-meta">
 				<span class="quiz-author"></span>
 			</div>
-			<button class="primary-button create-session-button" type="button">Create session</button>
 		</article>
 	</template>
 
 	<template id="session-template">
 		<article class="session-card">
-			<img class="session-qr" width="160" height="160" alt="Join this quiz session">
+			<a class="session-card-action"></a>
+			<div class="session-qr-panel">
+				<img class="session-qr" width="160" height="160" alt="Join this quiz session">
+				<span>Scan to join</span>
+			</div>
 			<div class="session-details">
 				<div class="quiz-card-topline">
 					<span class="session-state"></span>
-					<span class="session-created small muted"></span>
+					<button class="delete-session-button" type="button">
+						<span class="delete-session-icon" aria-hidden="true"></span>
+					</button>
 				</div>
 				<h3 class="session-title"></h3>
+				<p class="session-created small muted"></p>
 				<p class="session-code-label">Join code</p>
 				<code class="session-code"></code>
 				<a class="session-link" target="_blank" rel="noopener noreferrer"></a>
-				<a class="primary-button link-button session-presenter">Open Quiz</a>
 			</div>
 		</article>
 	</template>
@@ -122,6 +133,22 @@
 			<p class="issue-reason"></p>
 		</article>
 	</template>
+
+	<dialog id="delete-session-dialog" class="delete-session-dialog" aria-labelledby="delete-session-title">
+		<form method="dialog">
+			<p class="eyebrow">Delete open session</p>
+			<h2 id="delete-session-title">Delete this session?</h2>
+			<p class="delete-session-copy">
+				<strong id="delete-session-name"></strong>
+				<span>Connected participants will be disconnected and the session cannot be restored.</span>
+			</p>
+			<p id="delete-session-error" class="form-error" role="alert" hidden></p>
+			<div class="delete-dialog-actions">
+				<button id="cancel-delete-session" class="text-button" type="submit" value="cancel">Keep session</button>
+				<button id="confirm-delete-session" class="dialog-delete-button" type="button">Delete session</button>
+			</div>
+		</form>
+	</dialog>
 </body>
 </html>
 

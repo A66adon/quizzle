@@ -154,12 +154,12 @@ line number.
 
 ## Branding
 
-Wording and colors live in [`Backend/Quiz/branding/branding.yaml`](Backend/Quiz/branding/branding.yaml)
+Wording and all light/dark theme colors live in [`branding/branding.yaml`](branding/branding.yaml)
 instead of the stylesheets, so a deployment can be rebranded without touching the front-end.
 
 ```yaml
 name: "Safety Quiz"      # product name in the header and page titles
-mark: "G+D"              # short badge next to it, at most 10 characters
+mark: "G+D"              # wording, a local image filename, or an HTTP(S) image URL
 colors:
   primary: "#040066"     # headings, buttons, podium
   primarySoft: "#ececff"
@@ -172,11 +172,35 @@ colors:
   danger: "#a32035"
   dangerSoft: "#fff3f5"
   success: "#13854e"
-answerColors: ["#c52f42", "#1664ad", "#b28200", "#26824b"]
+darkColors:
+  primary: "#a9c9ff"
+  primaryHover: "#c2d9ff"
+  primarySoft: "#293549"
+  accent: "#00d4ff"
+  surface: "#141d2b"
+  surfaceRaised: "#1a2637"
+  background: "#090f19"
+  text: "#e9eff8"
+  heading: "#f6f8fc"
+  muted: "#a7b3c6"
+  border: "#2d3a50"
+  controlBorder: "#53657f"
+  danger: "#ff9cac"
+  dangerSoft: "#3b1f31"
+  success: "#7ae3ac"
+  onPrimary: "#081221"
+  onAccent: "#071622"
+  onDanger: "#2b0e14"
+  focusRing: "#38ddff"
+  disabledSurface: "#2b3545"
+  disabledText: "#8290a5"
+  qrSurface: "#ffffff"
+  shadow: "#000000"
+answerColors: ["#c52f42", "#1664ad", "#b28200", "#26824b", "#7a3fa0", "#c2660a"]
 ```
 
 - Every field is optional; anything left out keeps the built-in value.
-- Colors must be hex (`#rgb` or `#rrggbb`), and `answerColors` must list exactly four of them.
+- Colors must be hex (`#rgb` or `#rrggbb`), and `answerColors` must list exactly six of them.
 - The file is read once at startup and served as `/assets/branding.css` and `/assets/branding.js`,
   which every page loads. Restart Quizzle after changing it.
 - An unreadable or invalid file is logged and ignored – the app then starts with the defaults.

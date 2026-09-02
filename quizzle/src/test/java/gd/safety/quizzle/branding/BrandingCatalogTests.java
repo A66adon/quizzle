@@ -1,6 +1,7 @@
 package gd.safety.quizzle.branding;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -37,6 +38,53 @@ class BrandingCatalogTests {
 		assertEquals("#123456", branding.primary());
 		assertEquals(Branding.defaults().mark(), branding.mark());
 		assertEquals(Branding.defaults().answerColors(), branding.answerColors());
+	}
+
+	@Test
+	void appliesConfiguredDarkColorsAndKeepsOmittedDarkDefaults() throws Exception {
+		write("""
+				darkColors:
+				  primary: "#abcdef"
+				  surfaceRaised: "#123456"
+				""");
+
+		Branding branding = parser.parse(temporaryDirectory.resolve("branding.yaml"));
+
+		assertEquals("#abcdef", branding.darkColors().primary());
+		assertEquals("#123456", branding.darkColors().surfaceRaised());
+		assertEquals(Branding.defaults().darkColors().accent(), branding.darkColors().accent());
+	}
+
+	@Test
+	void rejectsInvalidDarkColors() throws Exception {
+		write("""
+				darkColors:
+				  focusRing: "transparent"
+				""");
+
+		BrandingFileException exception = assertThrows(BrandingFileException.class,
+				() -> parser.parse(temporaryDirectory.resolve("branding.yaml")));
+
+		assertTrue(exception.getMessage().contains("branding.darkColors.focusRing"));
+	}
+
+	@Test
+	void servesParsedDarkColorsAsThemeVariables() throws Exception {
+		write("""
+				darkColors:
+				  background: "#112233"
+				  onPrimary: "#ddeeff"
+				""");
+		BrandingCatalog catalog = createCatalog();
+		catalog.loadAtStartup();
+		BrandingAssetsController controller = new BrandingAssetsController(catalog, null);
+
+		String stylesheet = controller.stylesheet().getBody();
+
+		assertNotNull(stylesheet);
+		assertTrue(stylesheet.contains(":root[data-theme=\"dark\"]"));
+		assertTrue(stylesheet.contains("--background: #112233;"));
+		assertTrue(stylesheet.contains("--on-primary: #ddeeff;"));
 	}
 
 	@Test

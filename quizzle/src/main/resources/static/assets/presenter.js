@@ -58,7 +58,6 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	if (!codehash) {
 		showMessage("This presenter link is invalid.", true);
 	} else {
-		document.querySelector("#session-code-chip").textContent = codehash;
 		loadJoinDetails();
 		preloadAvatarStyles();
 		subscribe();
@@ -170,7 +169,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			applyStateMessage(await requestJson(
 				`/admin/api/sessions/${codehash}/state?_=${Date.now()}`,
 				{ headers: { "Cache-Control": "no-cache" } }));
-			setFeedStatus("live", "Live (polling)");
+			setFeedStatus("live", "Live");
 		} catch (error) {
 			// A closed session is deleted on the server, so polling it starts to answer with 404.
 			if (error.status === 404) {
