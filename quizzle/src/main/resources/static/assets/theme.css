@@ -111,19 +111,20 @@
 	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41'/%3E%3C/svg%3E");
 }
 
-/* Floating placement used by the participant page, which has no header bar. */
+/* Floating placement used on pages without a header bar. Keep it aligned with
+   the right-hand header actions used throughout the rest of the application. */
 .theme-toggle.theme-toggle--floating {
 	position: fixed;
 	z-index: 30;
 	top: 1rem;
-	left: 1rem;
+	right: 1rem;
 	box-shadow: 0 8px 20px rgba(13, 23, 42, 0.12);
 }
 
 @media (max-width: 620px) {
 	.theme-toggle.theme-toggle--floating {
 		top: 0.7rem;
-		left: 0.7rem;
+		right: 0.7rem;
 	}
 }
 

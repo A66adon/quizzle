@@ -354,6 +354,10 @@ h2 {
 	margin-bottom: 1.5rem;
 }
 
+.quiz-card > .quiz-card-topline {
+	justify-content: flex-start;
+}
+
 .ready-chip {
 	padding: 0.32rem 0.58rem;
 	border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent);
@@ -367,9 +371,15 @@ h2 {
 }
 
 .question-count {
-	color: var(--muted);
-	font-size: 0.8rem;
-	font-weight: 700;
+	padding: 0.32rem 0.58rem;
+	border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent);
+	border-radius: var(--radius-control);
+	color: var(--primary);
+	background: color-mix(in srgb, var(--accent) 18%, transparent);
+	font-size: 0.7rem;
+	font-weight: 850;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 }
 
 .quiz-title {
@@ -402,7 +412,6 @@ h2 {
 	font-weight: 700;
 }
 
-.quiz-file,
 .issue-file {
 	overflow-wrap: anywhere;
 	color: var(--muted);

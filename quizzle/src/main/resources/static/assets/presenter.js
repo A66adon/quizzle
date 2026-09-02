@@ -21,6 +21,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	const COLUMN_GROW_MS = 1_100;
 	const SSE_GRACE_MS = 6_000;
 	const POLL_INTERVAL_MS = 2_000;
+	const FITTED_STAGE_IDS = new Set(["question-view", "results-view", "leaderboard-view"]);
 	const closingCommands = {
 		ABORT: {
 			heading: "Abort this quiz?",
@@ -49,6 +50,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	let resultsRevealTimer = null;
 	let confettiTimer = null;
 	let confettiPodiumKey = null;
+	let stageFitFrame = null;
 	// Tracks each player's previous leaderboard rank so a rank change can animate with a direction.
 	let previousRanks = new Map();
 	let leaderboardToggleBusy = false;
@@ -100,6 +102,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	if (leaderboardSwitch) {
 		leaderboardSwitch.addEventListener("change", () => setLeaderboardEnabled(leaderboardSwitch.checked));
 	}
+	window.addEventListener("resize", scheduleStageFit);
 
 	async function setLeaderboardEnabled(enabled) {
 		if (leaderboardToggleBusy) return;
@@ -231,6 +234,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			case "CLOSED": showView("closed-view"); break;
 			default: break;
 		}
+		scheduleStageFit();
 	}
 
 	// Confetti belongs to the podium, so it is derived from the current state on every update
@@ -694,6 +698,20 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	function showView(viewId) {
 		for (const view of views) view.hidden = view.id !== viewId;
+		const fittedStage = FITTED_STAGE_IDS.has(viewId);
+		document.body.classList.toggle("presenter-stage-active", fittedStage);
+		if (!fittedStage) document.body.classList.remove("presenter-stage-compact");
+	}
+
+	function scheduleStageFit() {
+		window.cancelAnimationFrame(stageFitFrame);
+		document.body.classList.remove("presenter-stage-compact");
+		stageFitFrame = window.requestAnimationFrame(() => {
+			const activeView = views.find(view => !view.hidden);
+			if (!activeView || !FITTED_STAGE_IDS.has(activeView.id)) return;
+			const overflows = activeView.scrollHeight > activeView.clientHeight + 1;
+			document.body.classList.toggle("presenter-stage-compact", overflows);
+		});
 	}
 
 	function showMessage(message, isError) {

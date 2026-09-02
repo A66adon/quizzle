@@ -86,7 +86,6 @@
 		card.querySelector(".quiz-title").textContent = quiz.title;
 		card.querySelector(".quiz-description").textContent = quiz.description;
 		card.querySelector(".quiz-author").textContent = `By ${quiz.author}`;
-		card.querySelector(".quiz-file").textContent = quiz.fileName;
 		card.querySelector(".question-count").textContent = quiz.questionCount === 1
 			? "1 question"
 			: `${quiz.questionCount} questions`;
