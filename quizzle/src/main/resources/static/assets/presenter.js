@@ -410,7 +410,9 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		setText("#results-answer-count", session.receivedAnswerCount || 0);
 		document.querySelector("#next-button").textContent = lastQuestion
 			? "Finish quiz"
-			: "Show leaderboard";
+			: session.leaderboardEnabled === false
+				? "Next question"
+				: "Show leaderboard";
 		renderedQuestionId = null;
 
 		// Rebuilding on every state push would restart the reveal, so each question is charted once.

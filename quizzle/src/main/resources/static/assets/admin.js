@@ -24,8 +24,10 @@
 	const deleteSessionError = document.querySelector("#delete-session-error");
 	const cancelDeleteSession = document.querySelector("#cancel-delete-session");
 	const confirmDeleteSession = document.querySelector("#confirm-delete-session");
+	const MIN_SESSION_TITLE_FONT_PX = 13;
 	let sessions = [];
 	let pendingDeleteSession = null;
+	let titleFitFrame = null;
 
 	loadAdminData();
 	confirmDeleteSession.addEventListener("click", deletePendingSession);
@@ -37,6 +39,7 @@
 	deleteSessionDialog.addEventListener("cancel", event => {
 		if (confirmDeleteSession.disabled) event.preventDefault();
 	});
+	window.addEventListener("resize", scheduleSessionTitleFit);
 
 	async function loadAdminData() {
 		try {
@@ -180,6 +183,7 @@
 		sessionCount.textContent = String(sessions.length);
 		sessionCountLabel.textContent = sessions.length === 1 ? "session" : "sessions";
 		sessionSection.hidden = false;
+		scheduleSessionTitleFit();
 	}
 
 	function createSessionCard(session) {
@@ -201,6 +205,32 @@
 		deleteButton.setAttribute("aria-label", `Delete session ${session.codehash} for ${session.quizTitle}`);
 		deleteButton.addEventListener("click", () => askToDeleteSession(session));
 		return card;
+	}
+
+	function scheduleSessionTitleFit() {
+		window.cancelAnimationFrame(titleFitFrame);
+		titleFitFrame = window.requestAnimationFrame(() => {
+			for (const title of sessionGrid.querySelectorAll(".session-title")) fitSessionTitle(title);
+		});
+	}
+
+	function fitSessionTitle(title) {
+		title.style.removeProperty("font-size");
+		const maximumFontSize = Number.parseFloat(window.getComputedStyle(title).fontSize);
+		if (title.scrollHeight <= title.clientHeight + 1) return;
+
+		let lower = MIN_SESSION_TITLE_FONT_PX;
+		let upper = maximumFontSize;
+		title.style.fontSize = `${lower}px`;
+		if (title.scrollHeight > title.clientHeight + 1) return;
+
+		while (upper - lower > 0.25) {
+			const candidate = (lower + upper) / 2;
+			title.style.fontSize = `${candidate}px`;
+			if (title.scrollHeight <= title.clientHeight + 1) lower = candidate;
+			else upper = candidate;
+		}
+		title.style.fontSize = `${lower}px`;
 	}
 
 	function formatState(state) {
