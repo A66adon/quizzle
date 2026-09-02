@@ -41,5 +41,7 @@ out/
 /.nb-gradle/
 
 ### VS Code ###
-.vscode/
-.idea/
+.vscode
+.idea/*
+.github
+.gortex

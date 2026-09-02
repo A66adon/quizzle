@@ -15,7 +15,7 @@ public final class PlayerNamePolicy {
 		maximumLength = properties.maxNameLength();
 	}
 
-	public String validate(String suppliedName) {
+	public String validate(String suppliedName, String codehash) {
 		if (suppliedName == null) {
 			throw new InvalidPlayerNameException("Enter a name to join.");
 		}
@@ -26,6 +26,12 @@ public final class PlayerNamePolicy {
 		int length = name.codePointCount(0, name.length());
 		if (length > maximumLength) {
 			throw new InvalidPlayerNameException("Names may contain at most " + maximumLength + " characters.");
+		}
+		// The room codehash is the session identifier, never a real display name. Rejecting it here stops an
+		// automated or misdirected JOIN (which only tends to appear once there are many participants) from
+		// ever registering a "player" whose name is identical to the session ID.
+		if (codehash != null && name.equalsIgnoreCase(codehash)) {
+			throw new InvalidPlayerNameException("That name is reserved. Please choose a different one.");
 		}
 		for (int offset = 0; offset < name.length();) {
 			int codePoint = name.codePointAt(offset);

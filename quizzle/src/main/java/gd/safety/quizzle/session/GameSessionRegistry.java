@@ -242,6 +242,11 @@ public final class GameSessionRegistry {
 	}
 
 	public PlayerConnection joinPlayer(String codehash, String name) {
+		// Defence in depth: the name policy already blocks it, but a player must never be stored under the
+		// session's own identifier, so a broken join can never surface a "player" named after the room.
+		if (name != null && name.equalsIgnoreCase(codehash)) {
+			throw new ReservedPlayerNameException();
+		}
 		GameSessionAggregate aggregate = requireAggregate(codehash);
 		long nowEpochMs = System.currentTimeMillis();
 		UUID playerId = UUID.randomUUID();
@@ -293,8 +298,22 @@ public final class GameSessionRegistry {
 		return new PlayerConnection(updated, findPlayerByToken(updated, reconnectToken));
 	}
 
-	public GameSessionSnapshot kickPlayer(String codehash, UUID playerId) {
+	// The presenter decides in the lobby whether the mid-quiz leaderboard is shown between questions.
+	public GameSessionSnapshot setLeaderboardEnabled(String codehash, boolean enabled) {
 		GameSessionAggregate aggregate = requireAggregate(codehash);
+		long nowEpochMs = System.currentTimeMillis();
+		return aggregate.update(current -> {
+			if (current.state() != GameState.LOBBY) {
+				throw new LeaderboardSettingLockedException();
+			}
+			if (current.leaderboardEnabled() == enabled) {
+				return current;
+			}
+			return current.withLeaderboardEnabled(enabled, nowEpochMs);
+		}, snapshotRepository::save);
+	}
+
+	public GameSessionSnapshot kickPlayer(String codehash, UUID playerId) {		GameSessionAggregate aggregate = requireAggregate(codehash);
 		long nowEpochMs = System.currentTimeMillis();
 		return aggregate.update(current -> {
 			List<PlayerSnapshot> players = new ArrayList<>(current.players());
@@ -460,6 +479,20 @@ public final class GameSessionRegistry {
 
 		public PlayerNotFoundException(String codehash, UUID playerId) {
 			super("No player " + playerId + " exists in session " + codehash);
+		}
+	}
+
+	public static final class ReservedPlayerNameException extends RuntimeException {
+
+		public ReservedPlayerNameException() {
+			super("A player name must not be identical to the session identifier");
+		}
+	}
+
+	public static final class LeaderboardSettingLockedException extends RuntimeException {
+
+		public LeaderboardSettingLockedException() {
+			super("The mid-quiz leaderboard can only be changed while the session is in the lobby");
 		}
 	}
 

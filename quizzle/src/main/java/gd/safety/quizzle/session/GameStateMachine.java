@@ -19,7 +19,7 @@ public final class GameStateMachine {
 							session.serverStartEpochMs(), false)
 					: rejected(session, command);
 			case RESULTS -> command == GameCommand.NEXT
-					? advanceAfterResults(session)
+					? advanceAfterResults(session, nowEpochMs)
 					: rejected(session, command);
 			case LEADERBOARD -> command == GameCommand.NEXT
 					? new Transition(GameState.QUESTION_OPEN,
@@ -36,13 +36,17 @@ public final class GameStateMachine {
 		};
 	}
 
-	// The leaderboard is only worth showing when another question follows it.
-	private Transition advanceAfterResults(GameSessionSnapshot session) {
+	// The leaderboard is only worth showing when another question follows it, and only when the
+	// presenter enabled the mid-quiz leaderboard in the lobby. Otherwise the next question opens directly.
+	private Transition advanceAfterResults(GameSessionSnapshot session, long nowEpochMs) {
 		int nextQuestionIndex = session.currentQuestionIndex() + 1;
-		if (nextQuestionIndex < session.quiz().questions().size()) {
+		if (nextQuestionIndex >= session.quiz().questions().size()) {
+			return new Transition(GameState.FINAL_RESULTS, session.currentQuestionIndex(), 0, true);
+		}
+		if (session.leaderboardEnabled()) {
 			return new Transition(GameState.LEADERBOARD, session.currentQuestionIndex(), 0, false);
 		}
-		return new Transition(GameState.FINAL_RESULTS, session.currentQuestionIndex(), 0, true);
+		return new Transition(GameState.QUESTION_OPEN, nextQuestionIndex, nowEpochMs, false);
 	}
 
 	private Transition rejected(GameSessionSnapshot session, GameCommand command) {

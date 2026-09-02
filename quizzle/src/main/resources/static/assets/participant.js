@@ -34,6 +34,9 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	let renderedQuestionId = null;
 	let countdownFrame = null;
 	let confettiShown = false;
+	// Tracks each player's previous leaderboard rank so a change can animate with a direction.
+	let previousRanks = new Map();
+	let renderedLeaderboardSignature = null;
 
 	if (!codehash) {
 		showTerminal("This quiz link is invalid.", false);
@@ -255,6 +258,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			confettiShown = false;
 			stopConfetti();
 		}
+		if (currentSession.state !== "LEADERBOARD") renderedLeaderboardSignature = null;
 		switch (currentSession.state) {
 			case "LOBBY": renderLobby(); break;
 			case "QUESTION_OPEN": renderQuestionOrWait(); break;
@@ -268,6 +272,8 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	function renderLobby() {
 		showView("lobby-view");
+		// A fresh game has no rank history, so the first leaderboard shows no move arrows.
+		previousRanks = new Map();
 		setText("#lobby-title", currentSession.quizTitle);
 		setText("#lobby-description", currentSession.quizDescription);
 		setText("#my-name", currentParticipant.name);
@@ -445,12 +451,63 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	function renderLeaderboard() {
 		showView("leaderboard-view");
-		const standings = currentSession.standings || [];
+		// The mid-quiz leaderboard shows only the top 10 to stay readable on a phone.
+		const standings = (currentSession.standings || []).slice(0, 10);
 		setText("#leaderboard-progress",
 			`After question ${currentSession.currentQuestionIndex + 1} of ${currentSession.questionCount}`);
-		document.querySelector("#leaderboard-list")
-			.replaceChildren(...standings.map(createStandingRow));
+		// Repeated STATE pushes for the same leaderboard must not rebuild the list, or the move
+		// arrows would compare each player against themselves and always show "no change".
+		const signature = JSON.stringify(standings);
+		if (renderedLeaderboardSignature !== signature) {
+			renderedLeaderboardSignature = signature;
+			document.querySelector("#leaderboard-list")
+				.replaceChildren(...standings.map(createLeaderboardRow));
+			previousRanks = new Map(standings.map(standing => [standing.playerId, standing.rank]));
+		}
 		renderedQuestionId = null;
+	}
+
+	const MEDALS = { 1: ["gold", "🥇"], 2: ["silver", "🥈"], 3: ["bronze", "🥉"] };
+
+	// Mid-quiz leaderboard row: medal for the top three, plus a move arrow versus the previous question.
+	function createLeaderboardRow(standing) {
+		const row = createStandingRow(standing);
+		if (standing.rank <= 3) row.classList.add(`rank-${standing.rank}`);
+
+		const rank = row.querySelector(".standing-rank");
+		const medal = MEDALS[standing.rank];
+		if (medal) {
+			rank.textContent = "";
+			const badge = document.createElement("span");
+			badge.className = `rank-medal ${medal[0]}`;
+			badge.textContent = medal[1];
+			rank.append(badge);
+		}
+
+		const previousRank = previousRanks.get(standing.playerId);
+		const move = document.createElement("span");
+		move.className = "rank-move";
+		if (previousRank === undefined) {
+			move.classList.add("same");
+			move.textContent = "•";
+			move.setAttribute("aria-label", "New on the leaderboard");
+		} else if (previousRank > standing.rank) {
+			move.classList.add("up");
+			move.textContent = `▲${previousRank - standing.rank}`;
+			move.setAttribute("aria-label", `Up ${previousRank - standing.rank}`);
+			row.classList.add("moved-up");
+		} else if (previousRank < standing.rank) {
+			move.classList.add("down");
+			move.textContent = `▼${standing.rank - previousRank}`;
+			move.setAttribute("aria-label", `Down ${standing.rank - previousRank}`);
+			row.classList.add("moved-down");
+		} else {
+			move.classList.add("same");
+			move.textContent = "–";
+			move.setAttribute("aria-label", "No change");
+		}
+		row.append(move);
+		return row;
 	}
 
 	function renderFinalResults() {

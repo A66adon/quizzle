@@ -18,7 +18,8 @@ public record GameSessionSnapshot(
 		long createdAtEpochMs,
 		long updatedAtEpochMs,
 		List<PlayerSnapshot> players,
-		List<SubmittedAnswerSnapshot> answers) {
+		List<SubmittedAnswerSnapshot> answers,
+		boolean leaderboardEnabled) {
 
 	public GameSessionSnapshot {
 		Objects.requireNonNull(codehash, "codehash is required");
@@ -62,7 +63,8 @@ public record GameSessionSnapshot(
 				nowEpochMs,
 				nowEpochMs,
 				List.of(),
-				List.of());
+				List.of(),
+				true);
 	}
 
 	public GameSessionSnapshot withTransition(GameStateMachine.Transition transition, long nowEpochMs) {
@@ -77,7 +79,8 @@ public record GameSessionSnapshot(
 				createdAtEpochMs,
 				nowEpochMs,
 				players,
-				answers);
+				answers,
+				leaderboardEnabled);
 	}
 
 	public GameSessionSnapshot withPlayers(List<PlayerSnapshot> updatedPlayers, long nowEpochMs) {
@@ -92,7 +95,25 @@ public record GameSessionSnapshot(
 				createdAtEpochMs,
 				nowEpochMs,
 				updatedPlayers,
-				answers);
+				answers,
+				leaderboardEnabled);
+	}
+
+	// The presenter can only flip the mid-quiz leaderboard while the session is still in the lobby.
+	public GameSessionSnapshot withLeaderboardEnabled(boolean enabled, long nowEpochMs) {
+		return new GameSessionSnapshot(
+				codehash,
+				quizFileName,
+				quiz,
+				state,
+				currentQuestionIndex,
+				serverStartEpochMs,
+				podiumOpen,
+				createdAtEpochMs,
+				nowEpochMs,
+				players,
+				answers,
+				enabled);
 	}
 
 	public GameSessionSnapshot withAcceptedAnswer(
@@ -112,7 +133,8 @@ public record GameSessionSnapshot(
 				createdAtEpochMs,
 				nowEpochMs,
 				updatedPlayers,
-				updatedAnswers);
+				updatedAnswers,
+				leaderboardEnabled);
 	}
 
 	public GameSessionSnapshot prepareForRehydration(long nowEpochMs) {
@@ -136,7 +158,8 @@ public record GameSessionSnapshot(
 				createdAtEpochMs,
 				nowEpochMs,
 				restoredPlayers,
-				answers);
+				answers,
+				leaderboardEnabled);
 	}
 
 	public record PlayerSnapshot(

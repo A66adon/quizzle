@@ -60,7 +60,8 @@ class SqliteSnapshotRepositoryTests {
 						2_234,
 						1_234,
 						true,
-						850)));
+						850)),
+				true);
 
 		repository.save(lobby);
 		assertEquals(lobby, repository.loadAll().getFirst());

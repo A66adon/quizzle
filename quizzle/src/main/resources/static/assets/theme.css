@@ -1,0 +1,210 @@
+/*
+ * Shared dark-mode theme layer for every Quizzle surface.
+ *
+ * The light palette lives in /assets/branding.css (:root). Here we only override the
+ * *semantic* tokens for the dark theme, deriving readable foregrounds from the raw
+ * --brand-* hues that branding.css also emits. The resolved theme is applied by theme.js
+ * as an explicit data-theme="dark|light" attribute on <html>, so no media query is needed.
+ */
+
+:root {
+	color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+	color-scheme: dark;
+
+	--surface: #1b1f2b;
+	--background: #10121b;
+	--text: #eaecf6;
+	--muted: #a6abc2;
+	--border: #2d3346;
+
+	/* The brand primary is dark navy in the reference palette, so it is lightened for dark surfaces
+	   while keeping the brand hue. Components that use --primary as a background get a dark foreground
+	   fix below. */
+	--primary: color-mix(in srgb, var(--brand-primary, #6f78ff) 26%, #e9ecff);
+	--primary-soft: color-mix(in srgb, var(--brand-primary, #6f78ff) 34%, #10121b);
+	--danger: color-mix(in srgb, var(--brand-danger, #ff5a72) 42%, #ffd7dd);
+	--danger-soft: color-mix(in srgb, var(--brand-danger, #ff5a72) 24%, #10121b);
+	--green: color-mix(in srgb, var(--brand-success, #34c77b) 46%, #d6ffe6);
+
+	--shadow: 0 20px 48px rgba(0, 0, 0, 0.55);
+}
+
+/* Surfaces that use --primary as a solid background need a dark label in dark mode,
+   because --primary is now a light tint. */
+:root[data-theme="dark"] .primary-button {
+	color: #12141c;
+}
+
+/* The text badge/logo sits on the bright accent, so keep its text dark for contrast. */
+:root[data-theme="dark"] .brand-mark:not(.brand-mark--image) {
+	color: #0c111f;
+}
+
+/* Image marks use a real background area instead of CSS generated content. The extra
+   specificity keeps this shared fix ahead of the page-specific legacy rules loaded later. */
+:root .brand-mark.brand-mark--image {
+	width: clamp(4.5rem, 10vw, 8rem);
+	height: 3rem;
+	min-width: 4.5rem;
+	padding: 0;
+	border-radius: 0;
+	background-color: transparent;
+	background-image: var(--mark);
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+	content: none;
+}
+
+/* The configured Quizzle mark is monochrome black, so invert it on dark surfaces. */
+:root[data-theme="dark"] .brand-mark.brand-mark--image {
+	filter: brightness(0) invert(1);
+}
+
+/* QR codes must stay on a light plate to remain scannable regardless of theme. */
+:root[data-theme="dark"] .join-qr,
+:root[data-theme="dark"] .session-qr {
+	background: #ffffff;
+}
+
+/* Theme toggle control, reused on every page. */
+.theme-toggle {
+	display: inline-grid;
+	place-items: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	border: 1px solid var(--border);
+	border-radius: 50%;
+	background: var(--surface);
+	color: var(--primary);
+	font-size: 1.05rem;
+	line-height: 1;
+	transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.theme-toggle:hover {
+	background: var(--primary-soft);
+	border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+
+.theme-toggle .theme-toggle-icon {
+	pointer-events: none;
+}
+
+/* Floating placement used by the participant page, which has no header bar. */
+.theme-toggle.theme-toggle--floating {
+	position: fixed;
+	z-index: 30;
+	top: 1rem;
+	left: 1rem;
+	box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+}
+
+@media (max-width: 620px) {
+	.theme-toggle.theme-toggle--floating {
+		top: 0.7rem;
+		left: 0.7rem;
+	}
+}
+
+/* Shared visual-polish tokens keep light and dark themes consistent across every role. */
+:root {
+	--surface-raised: var(--surface);
+	--heading: var(--primary);
+	--control-border: color-mix(in srgb, var(--border) 35%, var(--muted));
+	--primary-hover: color-mix(in srgb, var(--primary) 88%, #ffffff);
+	--on-primary: #ffffff;
+	--on-accent: #071622;
+	--on-danger: #ffffff;
+	--focus-ring: color-mix(in srgb, var(--accent) 72%, #ffffff);
+	--disabled-surface: color-mix(in srgb, var(--border) 58%, var(--surface));
+	--disabled-text: color-mix(in srgb, var(--muted) 78%, var(--surface));
+}
+:root[data-theme="dark"] {
+	/* Neutral operational chrome lets the six answer colors remain the product's visual signature. */
+	--surface: #141d2b;
+	--surface-raised: #1a2637;
+	--background: #090f19;
+	--text: #e9eff8;
+	--heading: #f6f8fc;
+	--muted: #a7b3c6;
+	--border: #2d3a50;
+	--control-border: #53657f;
+	--primary: #a9c9ff;
+	--primary-hover: #c2d9ff;
+	--primary-soft: color-mix(in srgb, var(--primary) 14%, var(--surface));
+	--on-primary: #081221;
+	--on-accent: #071622;
+	--danger: #ff9cac;
+	--danger-soft: color-mix(in srgb, #9f2340 28%, var(--surface));
+	--on-danger: #2b0e14;
+	--green: #7ae3ac;
+	--focus-ring: color-mix(in srgb, var(--accent) 78%, #ffffff);
+	--disabled-surface: #2b3545;
+	--disabled-text: #8290a5;
+	--shadow: 0 20px 48px rgba(0, 0, 0, 0.32);
+}
+:root .brand-mark.brand-mark--image {
+	width: clamp(3.1rem, 4vw, 3.75rem);
+	height: 2.75rem;
+	min-width: 3.1rem;
+}
+.theme-toggle {
+	width: 2.5rem;
+	height: 2.5rem;
+	border-color: var(--control-border);
+	transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.theme-toggle:hover {
+	border-color: color-mix(in srgb, var(--primary) 55%, var(--control-border));
+}
+.theme-toggle:active {
+	transform: scale(0.96);
+}
+:root[data-theme="dark"] .primary-button {
+	color: var(--on-primary);
+	background: var(--primary);
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.26), inset 0 1px rgba(255, 255, 255, 0.32);
+}
+:root[data-theme="dark"] .primary-button:hover:not(:disabled) {
+	background: var(--primary-hover);
+	box-shadow: 0 11px 24px rgba(0, 0, 0, 0.3), inset 0 1px rgba(255, 255, 255, 0.38);
+}
+:root[data-theme="dark"] .secondary-button {
+	border-color: color-mix(in srgb, var(--primary) 38%, var(--control-border));
+	color: var(--primary);
+	background: color-mix(in srgb, var(--primary) 12%, var(--surface-raised));
+}
+:root[data-theme="dark"] .danger-button {
+	color: var(--on-danger);
+	background: var(--danger);
+}
+:root[data-theme="dark"] :where(.theme-toggle, .music-toggle, .ghost-button, input) {
+	border-color: var(--control-border);
+}
+:root[data-theme="dark"] :where(.primary-button, .secondary-button, .danger-button):disabled {
+	border-color: var(--border);
+	color: var(--disabled-text);
+	background: var(--disabled-surface);
+	box-shadow: none;
+}
+:root[data-theme="dark"] :where(.correct-tag, .podium-block) {
+	color: var(--on-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+	.confetti-canvas {
+		display: none !important;
+	}
+}
+

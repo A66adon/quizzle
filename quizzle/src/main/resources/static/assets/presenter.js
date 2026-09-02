@@ -12,6 +12,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	const kickDialog = document.querySelector("#kick-dialog");
 	const standingsToggle = document.querySelector("#standings-toggle");
 	const standingsList = document.querySelector("#standings-list");
+	const leaderboardSwitch = document.querySelector("#leaderboard-switch");
 	const podium = document.querySelector("#podium");
 	const backgroundMusic = document.querySelector("#background-music");
 	const musicToggle = document.querySelector("#music-toggle");
@@ -48,13 +49,17 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	let resultsRevealTimer = null;
 	let confettiTimer = null;
 	let confettiPodiumKey = null;
+	// Tracks each player's previous leaderboard rank so a rank change can animate with a direction.
+	let previousRanks = new Map();
+	let leaderboardToggleBusy = false;
 
 	if (!codehash) {
 		showMessage("This presenter link is invalid.", true);
 	} else {
 		document.querySelector("#session-code-chip").textContent = codehash;
 		loadJoinDetails();
-		preloadAvatarStyles().then(subscribe);
+		preloadAvatarStyles();
+		subscribe();
 		setupBackgroundMusic();
 	}
 
@@ -91,6 +96,34 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		standingsToggle.textContent = expanded ? "Show full ranking" : "Hide full ranking";
 		standingsList.hidden = expanded;
 	});
+
+	if (leaderboardSwitch) {
+		leaderboardSwitch.addEventListener("change", () => setLeaderboardEnabled(leaderboardSwitch.checked));
+	}
+
+	async function setLeaderboardEnabled(enabled) {
+		if (leaderboardToggleBusy) return;
+		leaderboardToggleBusy = true;
+		leaderboardSwitch.disabled = true;
+		try {
+			await requestJson(`/admin/api/sessions/${codehash}/leaderboard`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ enabled })
+			});
+			hideMessage();
+			if (pollTimer) pollState();
+		} catch (error) {
+			// Revert the control so it keeps matching the real session state.
+			leaderboardSwitch.checked = !enabled;
+			showMessage(error.status === 409
+				? "The leaderboard can only be changed before the quiz starts."
+				: "The leaderboard setting could not be saved.", true);
+		} finally {
+			leaderboardToggleBusy = false;
+			leaderboardSwitch.disabled = false;
+		}
+	}
 
 	function subscribe() {
 		eventSource = new EventSource(`/admin/api/sessions/${codehash}/events`);
@@ -241,6 +274,11 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		document.querySelector("#lobby-empty").hidden = participants.length !== 0;
 		document.querySelector("#offline-list").replaceChildren(...offline.map(createOfflineRow));
 		document.querySelector(".offline-heading").hidden = offline.length === 0;
+		if (leaderboardSwitch && !leaderboardToggleBusy) {
+			leaderboardSwitch.checked = session.leaderboardEnabled !== false;
+		}
+		// A fresh game starts with no rank history, so the first leaderboard shows no move arrows.
+		previousRanks = new Map();
 		renderedQuestionId = null;
 	}
 
@@ -390,17 +428,64 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	function renderLeaderboard() {
 		showView("leaderboard-view");
-		const standings = session.standings || [];
+		// The mid-quiz leaderboard shows only the top 10 to stay readable on a projector.
+		const standings = (session.standings || []).slice(0, 10);
 		setText("#leaderboard-progress",
 			`After question ${session.currentQuestionIndex + 1} of ${session.questionCount}`);
+		document.querySelector("#leaderboard-empty").hidden = standings.length !== 0;
 		const signature = JSON.stringify(standings);
 		if (renderedLeaderboardSignature !== signature) {
 			renderedLeaderboardSignature = signature;
 			document.querySelector("#leaderboard-list").replaceChildren(
-				...standings.map((standing, index) => createStandingRow(standing, index)));
+				...standings.map((standing, index) => createLeaderboardRow(standing, index)));
+			// Remember the ranks that are now on screen so the next question can compare against them.
+			previousRanks = new Map(standings.map(standing => [standing.playerId, standing.rank]));
 		}
 		renderedQuestionId = null;
 		chartedQuestionId = null;
+	}
+
+	const MEDALS = { 1: ["gold", "🥇"], 2: ["silver", "🥈"], 3: ["bronze", "🥉"] };
+
+	// The mid-quiz leaderboard row: medal for the top three, plus a move arrow versus the previous question.
+	function createLeaderboardRow(standing, index) {
+		const row = createStandingRow(standing, index);
+		if (standing.rank <= 3) row.classList.add(`rank-${standing.rank}`);
+
+		const rank = row.querySelector(".standing-rank");
+		const medal = MEDALS[standing.rank];
+		if (medal) {
+			rank.textContent = "";
+			const badge = document.createElement("span");
+			badge.className = `rank-medal ${medal[0]}`;
+			badge.textContent = medal[1];
+			rank.append(badge);
+		}
+
+		const previousRank = previousRanks.get(standing.playerId);
+		const move = document.createElement("span");
+		move.className = "rank-move";
+		if (previousRank === undefined) {
+			move.classList.add("same");
+			move.textContent = "•";
+			move.setAttribute("aria-label", "New on the leaderboard");
+		} else if (previousRank > standing.rank) {
+			move.classList.add("up");
+			move.textContent = `▲${previousRank - standing.rank}`;
+			move.setAttribute("aria-label", `Up ${previousRank - standing.rank}`);
+			row.classList.add("moved-up");
+		} else if (previousRank < standing.rank) {
+			move.classList.add("down");
+			move.textContent = `▼${standing.rank - previousRank}`;
+			move.setAttribute("aria-label", `Down ${standing.rank - previousRank}`);
+			row.classList.add("moved-down");
+		} else {
+			move.classList.add("same");
+			move.textContent = "–";
+			move.setAttribute("aria-label", "No change");
+		}
+		row.append(move);
+		return row;
 	}
 
 	function renderFinalResults() {

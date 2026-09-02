@@ -96,12 +96,16 @@ public final class GameSessionWebSocketHandler extends AbstractWebSocketHandler 
 			JoinRequest request = protocol.parseJoin(message.getPayload());
 			PlayerConnection playerConnection = request.isReconnect()
 					? sessionRegistry.reconnectPlayer(connection.codehash(), request.reconnectToken())
-					: sessionRegistry.joinPlayer(connection.codehash(), playerNamePolicy.validate(request.name()));
+					: sessionRegistry.joinPlayer(
+							connection.codehash(),
+							playerNamePolicy.validate(request.name(), connection.codehash()));
 			completeJoin(connection, playerConnection, request.isReconnect());
 		} catch (ProtocolException exception) {
 			sendError(connection, exception.code(), exception.getMessage(), true);
 		} catch (InvalidPlayerNameException exception) {
 			sendError(connection, "INVALID_NAME", exception.getMessage(), true);
+		} catch (GameSessionRegistry.ReservedPlayerNameException exception) {
+			sendError(connection, "INVALID_NAME", "That name is reserved. Please choose a different one.", true);
 		} catch (JoinNotAllowedException exception) {
 			sendError(connection, "JOIN_CLOSED",
 					"This quiz has already started; new players cannot join.", false);

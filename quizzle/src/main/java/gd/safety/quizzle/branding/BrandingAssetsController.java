@@ -45,6 +45,12 @@ public final class BrandingAssetsController {
 		appendVariable(css, "danger", branding.danger());
 		appendVariable(css, "danger-soft", branding.dangerSoft());
 		appendVariable(css, "green", branding.success());
+		// Raw brand hues kept under their own names so the dark theme (theme.css) can derive readable
+		// foreground colours from them without redefining a token in terms of itself.
+		appendVariable(css, "brand-primary", branding.primary());
+		appendVariable(css, "brand-accent", branding.accent());
+		appendVariable(css, "brand-danger", branding.danger());
+		appendVariable(css, "brand-success", branding.success());
 		for (int index = 0; index < branding.answerColors().size(); index++) {
 			appendVariable(css, "answer-" + (index + 1), branding.answerColors().get(index));
 		}

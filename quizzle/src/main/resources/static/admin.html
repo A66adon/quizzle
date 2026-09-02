@@ -1,13 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme-scope="presenter">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="robots" content="noindex, nofollow">
 	<title data-page-title="Quiz sessions">Quiz sessions</title>
+	<script>
+		(function () {
+			var s = document.documentElement.dataset.themeScope || "app";
+			var v = localStorage.getItem("quizzle-theme-" + s);
+			var t = (v === "dark" || v === "light")
+				? v
+				: (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+			document.documentElement.dataset.theme = t;
+		})();
+	</script>
 	<link rel="stylesheet" href="/assets/branding.css">
+	<link rel="stylesheet" href="/assets/theme.css">
 	<link rel="stylesheet" href="/assets/admin.css">
 	<script type="module" src="/assets/branding.js"></script>
+	<script type="module" src="/assets/theme.js"></script>
 	<script src="/assets/admin.js" defer></script>
 </head>
 <body>
@@ -16,9 +28,14 @@
 			<span class="brand-mark" data-brand-mark aria-hidden="true"></span>
 			<span data-brand-name></span>
 		</a>
-		<form action="/admin/logout" method="post">
-			<button class="text-button" type="submit">Sign out</button>
-		</form>
+		<div class="header-actions">
+			<button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
+				<span class="theme-toggle-icon" aria-hidden="true">🌙</span>
+			</button>
+			<form action="/admin/logout" method="post">
+				<button class="text-button" type="submit">Sign out</button>
+			</form>
+		</div>
 	</header>
 
 	<main class="page-shell">

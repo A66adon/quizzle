@@ -141,6 +141,24 @@ public final class AdminGameSessionController {
 		}
 	}
 
+	@PostMapping("/{codehash}/leaderboard")
+	public AdminGameSessionResponse leaderboard(
+			@PathVariable String codehash,
+			@RequestBody(required = false) LeaderboardSettingRequest request) {
+		if (request == null || request.enabled() == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+		}
+		try {
+			GameSessionSnapshot updated = sessionRegistry.setLeaderboardEnabled(codehash, request.enabled());
+			realtimePublisher.publish(updated);
+			return AdminGameSessionResponse.from(updated, addressService);
+		} catch (SessionNotFoundException exception) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+		} catch (GameSessionRegistry.LeaderboardSettingLockedException exception) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT);
+		}
+	}
+
 	private GameSessionSnapshot requireSession(String codehash) {
 		return sessionRegistry.find(codehash)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
@@ -150,6 +168,9 @@ public final class AdminGameSessionController {
 	}
 
 	public record LifecycleCommandRequest(String command) {
+	}
+
+	public record LeaderboardSettingRequest(Boolean enabled) {
 	}
 }
 
