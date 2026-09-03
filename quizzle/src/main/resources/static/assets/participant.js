@@ -336,12 +336,6 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			label.className = "answer-text";
 			label.textContent = option.text;
 			button.append(marker, label);
-			if (question.multiple) {
-				const checkbox = document.createElement("span");
-				checkbox.className = "answer-checkbox";
-				checkbox.setAttribute("aria-hidden", "true");
-				button.append(checkbox);
-			}
 			button.addEventListener("click", () => {
 				if (question.multiple) {
 					const wasEmpty = selectedAnswerIds.size === 0;
