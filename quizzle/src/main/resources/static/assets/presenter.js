@@ -277,17 +277,18 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	// without a podium tears it down again.
 	function syncConfetti() {
 		const standings = session.state === "FINAL_RESULTS" ? (session.standings || []) : [];
-		const placeCount = Math.min(3, standings.length);
-		if (placeCount === 0) {
+		if (standings.length === 0) {
 			if (confettiPodiumKey !== null) cancelConfetti();
 			return;
 		}
+		const placeCount = Math.min(3, standings.length);
 		const podiumKey = standings.slice(0, placeCount).map(standing => standing.playerId).join("|");
 		if (confettiPodiumKey === podiumKey) return;
 		cancelConfetti();
 		confettiPodiumKey = podiumKey;
-		// The podium reveals place by place, so the confetti waits for the winner to be on screen.
-		confettiTimer = window.setTimeout(() => launchConfetti(), placeCount * 1_700 + 900);
+		// The podium always reveals third, then second, then first pedestal in sequence (even when
+		// a place is empty), so the confetti always waits for that final, first-place reveal step.
+		confettiTimer = window.setTimeout(() => launchConfetti(), 3 * 1_700 + 900);
 	}
 
 	function cancelConfetti() {
@@ -477,8 +478,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		const signature = JSON.stringify(standings);
 		if (renderedLeaderboardSignature !== signature) {
 			renderedLeaderboardSignature = signature;
-			document.querySelector("#leaderboard-list").replaceChildren(
-				...standings.map((standing, index) => createLeaderboardRow(standing, index)));
+			updateLeaderboardRows(standings);
 			// Remember the ranks that are now on screen so the next question can compare against them.
 			previousRanks = new Map(standings.map(standing => [standing.playerId, standing.rank]));
 		}
@@ -486,11 +486,77 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		chartedQuestionId = null;
 	}
 
+	const LEADERBOARD_FLIP_DELAY_MS = 1_000;
+	const LEADERBOARD_FLIP_DURATION_MS = 1_000;
+
+	// Rebuilds the leaderboard list and, when ranks moved, plays a FLIP transition so every row
+	// glides from its old spot to its new one at the same time and speed. Rows that stay on the
+	// board are reused (not recreated), so their entrance animation only ever plays once and the
+	// slide distance always matches how far a player actually moved, instead of a fixed nudge.
+	function updateLeaderboardRows(standings) {
+		const list = document.querySelector("#leaderboard-list");
+		const isFirstRender = previousRanks.size === 0;
+
+		if (isFirstRender) {
+			// A fresh leaderboard (new game, or first question) always builds fresh rows so every
+			// row's entrance animation plays, and there is no previous layout to glide from yet.
+			list.replaceChildren(...standings.map((standing, index) => createLeaderboardRow(standing, index)));
+			return;
+		}
+
+		const existingRows = new Map([...list.children].map(row => [row.dataset.playerId, row]));
+		const oldTops = new Map();
+		for (const [playerId, row] of existingRows) {
+			oldTops.set(playerId, row.getBoundingClientRect().top);
+		}
+
+		const consumed = new Set();
+		const orderedRows = standings.map((standing, index) => {
+			const key = String(standing.playerId);
+			const existing = existingRows.get(key);
+			if (existing) consumed.add(key);
+			return createLeaderboardRow(standing, index, existing);
+		});
+		for (const [playerId, row] of existingRows) {
+			if (!consumed.has(playerId)) row.remove();
+		}
+		// append() moves rows that are already attached instead of recreating them, so a
+		// continuing player's row keeps its identity (and never replays its entrance animation).
+		for (const row of orderedRows) list.append(row);
+
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+		const flipRows = [];
+		for (const row of orderedRows) {
+			const oldTop = oldTops.get(row.dataset.playerId);
+			if (oldTop === undefined) continue; // brand-new row: let its entrance animation play instead.
+			const delta = oldTop - row.getBoundingClientRect().top;
+			if (Math.round(delta) === 0) continue;
+			row.style.transition = "none";
+			row.style.transform = `translateY(${delta}px)`;
+			flipRows.push(row);
+		}
+		if (flipRows.length === 0) return;
+
+		// Commit the starting offset before animating to the resting position.
+		void list.offsetHeight;
+		// Give viewers a beat to read the new medals, then glide every moved row to its final
+		// spot at the same time and speed so the whole reorder stays easy to follow.
+		window.setTimeout(() => {
+			for (const row of flipRows) {
+				row.style.transition = `transform ${LEADERBOARD_FLIP_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+				row.style.transform = "";
+			}
+		}, LEADERBOARD_FLIP_DELAY_MS);
+	}
+
 	const MEDALS = { 1: ["gold", "🥇"], 2: ["silver", "🥈"], 3: ["bronze", "🥉"] };
 
-	// The mid-quiz leaderboard row: medal for the top three, plus a move arrow versus the previous question.
-	function createLeaderboardRow(standing, index) {
-		const row = createStandingRow(standing, index);
+	// The mid-quiz leaderboard row: medal for the top three, plus a move arrow versus the previous
+	// question. Pass an existing row to update it in place instead of creating a new element.
+	function createLeaderboardRow(standing, index, row) {
+		row = createStandingRow(standing, index, row);
+		row.classList.remove("rank-1", "rank-2", "rank-3");
 		if (standing.rank <= 3) row.classList.add(`rank-${standing.rank}`);
 
 		const rank = row.querySelector(".standing-rank");
@@ -514,12 +580,10 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			move.classList.add("up");
 			move.textContent = `▲${previousRank - standing.rank}`;
 			move.setAttribute("aria-label", `Up ${previousRank - standing.rank}`);
-			row.classList.add("moved-up");
 		} else if (previousRank < standing.rank) {
 			move.classList.add("down");
 			move.textContent = `▼${standing.rank - previousRank}`;
 			move.setAttribute("aria-label", `Down ${standing.rank - previousRank}`);
-			row.classList.add("moved-down");
 		} else {
 			move.classList.add("same");
 			move.textContent = "–";
@@ -532,10 +596,11 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	function renderFinalResults() {
 		showView("final-view");
 		const standings = session.standings || [];
-		podium.hidden = standings.length === 0;
-		standingsToggle.hidden = standings.length === 0;
+		const hasParticipants = standings.length > 0;
+		podium.hidden = !hasParticipants;
+		standingsToggle.hidden = !hasParticipants;
 
-		setText("#final-subtitle", standings.length === 0 ? "Nobody took part in this quiz." : "");
+		setText("#final-subtitle", hasParticipants ? "" : "Nobody took part in this quiz.");
 		renderedQuestionId = null;
 
 		// Reapplying the podium would restart its reveal, so the winner screen is built once.
@@ -543,27 +608,28 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		if (renderedFinalSignature === signature) return;
 		renderedFinalSignature = signature;
 
-		// Third place opens the reveal, so the delays follow the occupied places, not the fixed markup order.
-		let revealIndex = 0;
-		for (const placeNumber of [3, 2, 1]) {
+		// Third place opens the reveal. As soon as one player took part, all three pedestals show;
+		// a place nobody reached still gets an empty pedestal instead of disappearing.
+		[3, 2, 1].forEach((placeNumber, revealIndex) => {
 			const place = podium.querySelector(`.podium-place[data-place="${placeNumber}"]`);
 			const standing = standings[placeNumber - 1];
-			place.hidden = !standing;
-			if (!standing) continue;
 			place.style.setProperty("--podium-index", String(revealIndex));
-			revealIndex++;
-			place.querySelector(".podium-name").textContent = standing.name;
+			place.querySelector(".podium-player").hidden = !standing;
+			place.querySelector(".podium-name").textContent = standing ? standing.name : "";
 			place.querySelector(".podium-points").textContent =
-				`${Math.round(Number(standing.totalPoints) || 0)} points`;
-			setAvatar(place.querySelector(".podium-avatar"), participantFor(standing.playerId));
-		}
+				standing ? `${Math.round(Number(standing.totalPoints) || 0)} points` : "";
+			if (standing) setAvatar(place.querySelector(".podium-avatar"), participantFor(standing.playerId));
+		});
 		standingsList.replaceChildren(...standings.map((standing, index) => createStandingRow(standing, index)));
 	}
 
-	function createStandingRow(standing, index) {
-		const row = document.createElement("article");
+	// Creates a standing row, or refreshes an existing one in place (passed as `row`) so a
+	// continuing player keeps the same DOM element across re-renders.
+	function createStandingRow(standing, index, row = document.createElement("article")) {
 		row.className = "standing-row";
+		row.dataset.playerId = String(standing.playerId);
 		row.style.setProperty("--row-index", String(index));
+		row.replaceChildren();
 		const rank = document.createElement("span");
 		rank.className = "standing-rank";
 		rank.textContent = `#${standing.rank}`;

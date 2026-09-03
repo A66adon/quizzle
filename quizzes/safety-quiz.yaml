@@ -1,6 +1,6 @@
 title: "Quiz zur Sicherheitsunterweisung"
 description: "Ein kurzes Quiz zur Sicherheitsunterweisung."
-author: "G+D Safety Team"
+author: "Safety Team"
 
 questions:
   - id: "arbeitssicherheit_verantwortlich"

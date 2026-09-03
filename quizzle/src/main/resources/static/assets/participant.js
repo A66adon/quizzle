@@ -454,18 +454,83 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		const signature = JSON.stringify(standings);
 		if (renderedLeaderboardSignature !== signature) {
 			renderedLeaderboardSignature = signature;
-			document.querySelector("#leaderboard-list")
-				.replaceChildren(...standings.map(createLeaderboardRow));
+			updateLeaderboardRows(standings);
 			previousRanks = new Map(standings.map(standing => [standing.playerId, standing.rank]));
 		}
 		renderedQuestionId = null;
 	}
 
+	const LEADERBOARD_FLIP_DELAY_MS = 1_000;
+	const LEADERBOARD_FLIP_DURATION_MS = 1_000;
+
+	// Rebuilds the leaderboard list and, when ranks moved, plays a FLIP transition so every row
+	// glides from its old spot to its new one at the same time and speed. Rows that stay on the
+	// board are reused (not recreated), so their entrance animation only ever plays once and the
+	// slide distance always matches how far a player actually moved, instead of a fixed nudge.
+	function updateLeaderboardRows(standings) {
+		const list = document.querySelector("#leaderboard-list");
+		const isFirstRender = previousRanks.size === 0;
+
+		if (isFirstRender) {
+			// A fresh leaderboard (new game, or first question) always builds fresh rows so every
+			// row's entrance animation plays, and there is no previous layout to glide from yet.
+			list.replaceChildren(...standings.map(standing => createLeaderboardRow(standing)));
+			return;
+		}
+
+		const existingRows = new Map([...list.children].map(row => [row.dataset.playerId, row]));
+		const oldTops = new Map();
+		for (const [playerId, row] of existingRows) {
+			oldTops.set(playerId, row.getBoundingClientRect().top);
+		}
+
+		const consumed = new Set();
+		const orderedRows = standings.map(standing => {
+			const key = String(standing.playerId);
+			const existing = existingRows.get(key);
+			if (existing) consumed.add(key);
+			return createLeaderboardRow(standing, existing);
+		});
+		for (const [playerId, row] of existingRows) {
+			if (!consumed.has(playerId)) row.remove();
+		}
+		// append() moves rows that are already attached instead of recreating them, so a
+		// continuing player's row keeps its identity (and never replays its entrance animation).
+		for (const row of orderedRows) list.append(row);
+
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+		const flipRows = [];
+		for (const row of orderedRows) {
+			const oldTop = oldTops.get(row.dataset.playerId);
+			if (oldTop === undefined) continue; // brand-new row: let its entrance animation play instead.
+			const delta = oldTop - row.getBoundingClientRect().top;
+			if (Math.round(delta) === 0) continue;
+			row.style.transition = "none";
+			row.style.transform = `translateY(${delta}px)`;
+			flipRows.push(row);
+		}
+		if (flipRows.length === 0) return;
+
+		// Commit the starting offset before animating to the resting position.
+		void list.offsetHeight;
+		// Give viewers a beat to read the new medals, then glide every moved row to its final
+		// spot at the same time and speed so the whole reorder stays easy to follow.
+		window.setTimeout(() => {
+			for (const row of flipRows) {
+				row.style.transition = `transform ${LEADERBOARD_FLIP_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+				row.style.transform = "";
+			}
+		}, LEADERBOARD_FLIP_DELAY_MS);
+	}
+
 	const MEDALS = { 1: ["gold", "🥇"], 2: ["silver", "🥈"], 3: ["bronze", "🥉"] };
 
-	// Mid-quiz leaderboard row: medal for the top three, plus a move arrow versus the previous question.
-	function createLeaderboardRow(standing) {
-		const row = createStandingRow(standing);
+	// Mid-quiz leaderboard row: medal for the top three, plus a move arrow versus the previous
+	// question. Pass an existing row to update it in place instead of creating a new element.
+	function createLeaderboardRow(standing, row) {
+		row = createStandingRow(standing, row);
+		row.classList.remove("rank-1", "rank-2", "rank-3");
 		if (standing.rank <= 3) row.classList.add(`rank-${standing.rank}`);
 
 		const rank = row.querySelector(".standing-rank");
@@ -489,12 +554,10 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			move.classList.add("up");
 			move.textContent = `▲${previousRank - standing.rank}`;
 			move.setAttribute("aria-label", `Up ${previousRank - standing.rank}`);
-			row.classList.add("moved-up");
 		} else if (previousRank < standing.rank) {
 			move.classList.add("down");
 			move.textContent = `▼${standing.rank - previousRank}`;
 			move.setAttribute("aria-label", `Down ${standing.rank - previousRank}`);
-			row.classList.add("moved-down");
 		} else {
 			move.classList.add("same");
 			move.textContent = "–";
@@ -511,7 +574,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		document.querySelector("#final-wait").hidden = revealed;
 		document.querySelector("#winner-card").hidden = !revealed;
 		const list = document.querySelector("#standings-list");
-		list.replaceChildren(...standings.map(createStandingRow));
+		list.replaceChildren(...standings.map(standing => createStandingRow(standing)));
 		if (!revealed) return;
 
 		const winner = standings[0];
@@ -534,9 +597,12 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		return (currentSession.participants || []).find(entry => entry.playerId === playerId) || null;
 	}
 
-	function createStandingRow(standing) {
-		const row = document.createElement("article");
+	// Creates a standing row, or refreshes an existing one in place (passed as `row`) so a
+	// continuing player keeps the same DOM element across re-renders.
+	function createStandingRow(standing, row = document.createElement("article")) {
 		row.className = "standing-row";
+		row.dataset.playerId = String(standing.playerId);
+		row.replaceChildren();
 		if (standing.playerId === currentParticipant.playerId) row.classList.add("me");
 		const rank = document.createElement("span");
 		rank.className = "standing-rank";

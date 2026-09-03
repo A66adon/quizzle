@@ -1,6 +1,6 @@
 title: "Safety Quest: Bürohelden im Einsatz"
 description: "Ein kurzes und humorvolles Quiz über sicheres Verhalten im Büro und in technischen Arbeitsbereichen."
-author: "G+D Safety Team"
+author: "Safety Team"
 
 questions:
   - id: "alarm-action"
