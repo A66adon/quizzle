@@ -72,8 +72,9 @@ QUIZ_DATABASE_PATH='../data/quiz-snapshots.db' \
 ./gradlew bootRun
 ```
 
-You can persist the same entries in an ignored `quizzle/.env` file. Process environment variables
-take precedence over `.env`; `.env` takes precedence over built-in defaults.
+You can persist the same entries in an ignored `quizzle/.env` file; copy
+[`quizzle/.env.example`](quizzle/.env.example) to get started. Process environment variables take
+precedence over `.env`; `.env` takes precedence over built-in defaults.
 
 ## Application pages
 
@@ -89,6 +90,11 @@ browser and Quizzle run on the same machine.
 
 ## Configuration
 
+Configuration comes from environment variables or from a `.env` file next to the working directory.
+Process environment variables win over `.env`, and `.env` wins over the built-in defaults. Copy
+[`quizzle/.env.example`](quizzle/.env.example) to `quizzle/.env` as a starting point; the file is
+ignored by Git.
+
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `ADMIN_PASSWORD` | — | **Required.** Shared password for the admin area. |
@@ -102,11 +108,14 @@ browser and Quizzle run on the same machine.
 | `SNAPSHOT_INTERVAL_MS` | `30000` | Periodic snapshot interval. |
 | `SQLITE_BUSY_TIMEOUT_MS` | `5000` | SQLite lock wait timeout. |
 | `SESSION_CODEHASH_LENGTH` | `10` | Length of generated session join codes. |
+| `WEBSOCKET_HEARTBEAT_INTERVAL_MS` | `15000` | Server ping interval. |
+| `WEBSOCKET_HEARTBEAT_TIMEOUT_MS` | `40000` | Time without a pong before the socket is closed. |
 | `WEBSOCKET_DISCONNECT_GRACE_MS` | `120000` | Reconnect window for disconnected participants. |
 | `PLAYER_NAME_MAX_LENGTH` | `32` | Maximum participant name length. |
 
-Heartbeat, message-size, and quiz-validation limits are also configurable. Their names and defaults
-are listed in [`application.properties`](quizzle/src/main/resources/application.properties).
+Quiz-validation limits (`QUIZ_MAX_QUESTIONS`, `QUIZ_MAX_POINTS`, `QUIZ_MAX_TIME_SECONDS`, …) and the
+WebSocket message-size limits can be overridden the same way. Their names and defaults are listed in
+[`application.properties`](quizzle/src/main/resources/application.properties).
 
 ## Create a quiz
 
@@ -242,21 +251,71 @@ test for a preconfigured `quizzle-test` container listening on port `18080`.
 
 ## Deploy
 
-Build a production image from the repository root:
+### Container image
+
+Build a production image from the repository root. The multi-stage [`Dockerfile`](Dockerfile) builds
+the JAR with `gradle:9.5.1-jdk21` and runs it on `eclipse-temurin:21-jre` as the unprivileged user
+`quizzle` (UID 10001):
 
 ```bash
 docker build -t quizzle:local .
 ```
 
-For a standalone JAR deployment, set `ADMIN_PASSWORD`, `PUBLIC_BASE_URL`, and
-`SESSION_COOKIE_SECURE=true` when using HTTPS, then run the built JAR from the repository root:
+The image expects three paths under `/data`, all owned by UID 10001:
+
+| Path | Contents | Mount |
+| --- | --- | --- |
+| `/data/quizzes` | Quiz YAML files | read-only |
+| `/data/branding` | `branding.yaml` and `images/` | read-only |
+| `/data/db` | SQLite snapshot database | read-write, **must be persistent** |
+
+[`docker-compose.yml`](docker-compose.yml) wires exactly that up and publishes port `8080`. Set
+`ADMIN_PASSWORD` in the environment (or an ignored `.env` next to the compose file) before starting:
 
 ```bash
+ADMIN_PASSWORD='a-long-password' docker compose up -d --build
+```
+
+### Standalone JAR
+
+Set `ADMIN_PASSWORD`, point `PUBLIC_BASE_URL` at the address participants actually reach, and enable
+`SESSION_COOKIE_SECURE` when serving over HTTPS. Run the JAR from the repository root so the default
+relative paths resolve:
+
+```bash
+export ADMIN_PASSWORD='a-long-password'
+export PUBLIC_BASE_URL='https://quiz.example.org'
+export SESSION_COOKIE_SECURE=true
+export QUIZ_FOLDER=./quizzes
+export BRANDING_FOLDER=./branding
+export QUIZ_DATABASE_PATH=./data/quiz-snapshots.db
 java -jar quizzle/build/libs/quizzle-0.0.1-SNAPSHOT.jar
 ```
 
-A reverse proxy must forward WebSocket upgrades and avoid buffering `text/event-stream` responses.
-The presenter automatically falls back to polling if Server-Sent Events are blocked or buffered.
+### Reverse proxy
+
+A reverse proxy in front of Quizzle must:
+
+- forward WebSocket upgrades — pass through the `Upgrade` and `Connection` headers, otherwise
+  participants cannot join or answer;
+- **not** buffer `text/event-stream` responses, otherwise the presenter view receives no live
+  updates. Quizzle sends `X-Accel-Buffering: no` on the event stream, which nginx honours on its own;
+- allow idle connections to live longer than `WEBSOCKET_HEARTBEAT_TIMEOUT_MS` (default 40 s);
+- forward the original host/scheme if `PUBLIC_BASE_URL` is not set explicitly.
+
+If the event stream delivers nothing within six seconds, the presenter falls back to polling
+`/admin/api/sessions/{codehash}/state` every two seconds and shows `Live (polling)`.
+
+### Data and updates
+
+Sessions are written to SQLite on every state change and flushed again on a timer. After a restart
+the registry rehydrates open sessions: previously connected players become
+`TEMPORARILY_DISCONNECTED` so their cookies keep working, and a question that was open when the
+server stopped gets a fresh timer instead of an already-expired one. Closed sessions are deleted
+instead of restored. Back up and persist `QUIZ_DATABASE_PATH`; everything else is rebuilt from the
+quiz and branding files.
+
+Quiz and branding files are read once at startup, so restart Quizzle after editing them.
 
 For a complete TrueNAS SCALE setup, including persistent datasets, reverse proxy configuration,
 updates, backups, and troubleshooting, see
