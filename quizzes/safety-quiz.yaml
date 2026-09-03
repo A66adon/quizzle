@@ -46,10 +46,10 @@ questions:
     answers:
       - id: "3333"
         text: "3333"
-        correct: false
+        correct: true
       - id: "7777"
         text: "7777"
-        correct: true
+        correct: false
       - id: "112"
         text: "112"
         correct: false
