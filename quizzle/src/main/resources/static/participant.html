@@ -15,6 +15,7 @@
 			document.documentElement.dataset.theme = t;
 		})();
 	</script>
+	<link rel="icon" href="/assets/branding-mark">
 	<link rel="stylesheet" href="/assets/branding.css">
 	<link rel="stylesheet" href="/assets/theme.css">
 	<link rel="stylesheet" href="/assets/participant.css">
@@ -97,7 +98,7 @@
 		<section id="results-view" class="view" aria-labelledby="results-title" hidden>
 			<div class="section-heading">
 				<div><p class="eyebrow">Results</p><h1 id="results-title"></h1></div>
-
+				<span id="results-answer-count" class="count-chip"></span>
 			</div>
 			<div id="results-verdict" class="results-verdict" role="status" hidden>
 				<strong id="verdict-title"></strong>
@@ -141,4 +142,3 @@
 	</main>
 </body>
 </html>
-

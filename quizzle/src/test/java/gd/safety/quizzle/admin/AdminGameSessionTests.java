@@ -67,6 +67,7 @@ class AdminGameSessionTests {
 						.value("https://quiz.example.test/events/" + firstCodehash + "/"))
 				.andExpect(jsonPath("$.qrUrl")
 						.value("/admin/api/sessions/" + firstCodehash + "/qr.svg"))
+				.andExpect(jsonPath("$.autoAdvanceDelayMs").value(5000))
 				.andExpect(jsonPath("$.quiz").doesNotExist())
 				.andExpect(jsonPath("$.players").doesNotExist())
 				.andExpect(content().string(not(containsString("correct"))))

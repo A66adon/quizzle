@@ -16,11 +16,13 @@ public record AdminGameSessionResponse(
 		long createdAtEpochMs,
 		long updatedAtEpochMs,
 		String joinUrl,
-		String qrUrl) {
+		String qrUrl,
+		long autoAdvanceDelayMs) {
 
 	public static AdminGameSessionResponse from(
 			GameSessionSnapshot snapshot,
-			SessionAddressService addressService) {
+			SessionAddressService addressService,
+			long autoAdvanceDelayMs) {
 		long durationMs = snapshot.currentQuestionIndex() < 0
 				? 0
 				: snapshot.quiz().questions().get(snapshot.currentQuestionIndex()).timeSeconds() * 1_000L;
@@ -37,6 +39,7 @@ public record AdminGameSessionResponse(
 				snapshot.createdAtEpochMs(),
 				snapshot.updatedAtEpochMs(),
 				addressService.joinUrl(snapshot.codehash()),
-				"/admin/api/sessions/" + snapshot.codehash() + "/qr.svg");
+				"/admin/api/sessions/" + snapshot.codehash() + "/qr.svg",
+				autoAdvanceDelayMs);
 	}
 }

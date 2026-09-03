@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
-import gd.safety.quizzle.session.GameState;
 import gd.safety.quizzle.session.GameSessionRegistry;
 
 @Controller
@@ -45,11 +44,10 @@ public final class ParticipantEntryController {
 		return sessionRegistry.find(codehash)
 				.map(snapshot -> ResponseEntity.ok()
 						.cacheControl(CacheControl.noStore())
-						.body(new StatusResponse(snapshot.state() == GameState.LOBBY)))
+						.body(new StatusResponse(sessionRegistry.isJoinOpen(snapshot.state()))))
 				.orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
 	}
 
 	public record StatusResponse(boolean joinable) {
 	}
 }
-

@@ -42,6 +42,7 @@ public final class GameSessionRegistry {
 	private final Map<String, GameSessionAggregate> sessions = new ConcurrentHashMap<>();
 	private final SecureRandom secureRandom = new SecureRandom();
 	private final int codehashLength;
+	private final boolean allowJoinAfterStart;
 	private final QuizCatalog quizCatalog;
 	private final GameStateMachine stateMachine;
 	private final AnswerGradingService gradingService;
@@ -53,6 +54,7 @@ public final class GameSessionRegistry {
 			GameStateMachine stateMachine,
 			SqliteSnapshotRepository snapshotRepository) {
 		this.codehashLength = properties.codehashLength();
+		this.allowJoinAfterStart = properties.allowJoinAfterStart();
 		this.quizCatalog = quizCatalog;
 		this.stateMachine = stateMachine;
 		this.gradingService = new AnswerGradingService();
@@ -252,7 +254,7 @@ public final class GameSessionRegistry {
 		UUID playerId = UUID.randomUUID();
 		UUID reconnectToken = UUID.randomUUID();
 		GameSessionSnapshot updated = aggregate.update(current -> {
-			if (current.state() != GameState.LOBBY) {
+			if (!isJoinOpen(current.state())) {
 				throw new JoinNotAllowedException(current.state());
 			}
 			List<PlayerSnapshot> players = new ArrayList<>(current.players());
@@ -269,6 +271,10 @@ public final class GameSessionRegistry {
 			return current.withPlayers(players, nowEpochMs);
 		}, snapshotRepository::save);
 		return new PlayerConnection(updated, findPlayerByToken(updated, reconnectToken));
+	}
+
+	public boolean isJoinOpen(GameState state) {
+		return state != GameState.CLOSED && (state == GameState.LOBBY || allowJoinAfterStart);
 	}
 
 	public PlayerConnection reconnectPlayer(String codehash, UUID reconnectToken) {
@@ -553,7 +559,4 @@ public final class GameSessionRegistry {
 		}
 	}
 }
-
-
-
 

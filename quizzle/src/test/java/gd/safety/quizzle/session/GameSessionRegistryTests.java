@@ -111,6 +111,35 @@ class GameSessionRegistryTests {
 	}
 
 	@Test
+	void rejectsJoinAfterTheLobbyByDefault() throws Exception {
+		GameSessionRegistry registry = createRegistry(createCatalog(prepareQuizDirectory()), createRepository());
+		registry.rehydrate();
+		GameSessionSnapshot created = registry.create("safety.yaml");
+		registry.transition(created.codehash(), GameCommand.START);
+
+		assertThrows(GameSessionRegistry.JoinNotAllowedException.class,
+				() -> registry.joinPlayer(created.codehash(), "Late"));
+		assertTrue(registry.isJoinOpen(GameState.LOBBY));
+		assertTrue(!registry.isJoinOpen(GameState.QUESTION_OPEN));
+	}
+
+	@Test
+	void allowsJoinAfterStartWhenConfigured() throws Exception {
+		GameSessionRegistry registry = createRegistry(
+				createCatalog(prepareQuizDirectory()), createRepository(), true);
+		registry.rehydrate();
+		GameSessionSnapshot created = registry.create("safety.yaml");
+		registry.transition(created.codehash(), GameCommand.START);
+
+		PlayerConnection joined = registry.joinPlayer(created.codehash(), "Late");
+
+		assertEquals("Late", joined.player().name());
+		assertEquals(GameState.QUESTION_OPEN, joined.session().state());
+		assertTrue(registry.isJoinOpen(GameState.QUESTION_OPEN));
+		assertTrue(!registry.isJoinOpen(GameState.CLOSED));
+	}
+
+	@Test
 	void closingASessionRemovesItFromMemoryAndFromTheSnapshotStore() throws Exception {
 		SqliteSnapshotRepository repository = createRepository();
 		GameSessionRegistry registry = createRegistry(createCatalog(prepareQuizDirectory()), repository);
@@ -238,11 +267,18 @@ class GameSessionRegistryTests {
 	private GameSessionRegistry createRegistry(
 			QuizCatalog catalog,
 			SqliteSnapshotRepository repository) {
+		return createRegistry(catalog, repository, false);
+	}
+
+	private GameSessionRegistry createRegistry(
+			QuizCatalog catalog,
+			SqliteSnapshotRepository repository,
+			boolean allowJoinAfterStart) {
 		return new GameSessionRegistry(
-				new GameSessionProperties(URI.create("https://quiz.example.test"), 10),
+				new GameSessionProperties(
+						URI.create("https://quiz.example.test"), 10, 5_000L, allowJoinAfterStart),
 				catalog,
 				new GameStateMachine(),
 				repository);
 	}
 }
-

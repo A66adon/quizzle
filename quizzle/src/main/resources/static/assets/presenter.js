@@ -18,7 +18,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	const musicToggle = document.querySelector("#music-toggle");
 	const autoAdvanceToggle = document.querySelector("#auto-advance-toggle");
 	const MUSIC_MUTED_KEY = "quizzle-presenter-music-muted";
-	const AUTO_ADVANCE_DELAY_MS = 5_000;
+	let autoAdvanceDelayMs = 5_000;
 	const COLUMN_STAGGER_MS = 320;
 	const COLUMN_GROW_MS = 1_100;
 	const SSE_GRACE_MS = 6_000;
@@ -264,7 +264,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			autoAdvanceTimer = null;
 			if (!autoAdvanceEnabled || session?.state !== expectedState) return;
 			sendCommand("NEXT");
-		}, AUTO_ADVANCE_DELAY_MS);
+		}, autoAdvanceDelayMs);
 	}
 
 	function clearAutoAdvance() {
@@ -620,6 +620,11 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			const link = document.querySelector("#join-link");
 			link.href = details.joinUrl;
 			link.textContent = details.joinUrl;
+			const delay = Number(details.autoAdvanceDelayMs);
+			if (Number.isFinite(delay) && delay >= 0) {
+				autoAdvanceDelayMs = delay;
+				syncAutoAdvance();
+			}
 		} catch {
 			showMessage("The join link could not be loaded.", true);
 		}

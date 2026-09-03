@@ -108,6 +108,8 @@ ignored by Git.
 | `SNAPSHOT_INTERVAL_MS` | `30000` | Periodic snapshot interval. |
 | `SQLITE_BUSY_TIMEOUT_MS` | `5000` | SQLite lock wait timeout. |
 | `SESSION_CODEHASH_LENGTH` | `10` | Length of generated session join codes. |
+| `AUTO_ADVANCE_DELAY_MS` | `5000` | Presenter automatic-advance delay after results or the leaderboard. |
+| `ALLOW_JOIN_AFTER_START` | `false` | When `true`, new players may join after the lobby, until the session is closed. |
 | `WEBSOCKET_HEARTBEAT_INTERVAL_MS` | `15000` | Server ping interval. |
 | `WEBSOCKET_HEARTBEAT_TIMEOUT_MS` | `40000` | Time without a pong before the socket is closed. |
 | `WEBSOCKET_DISCONNECT_GRACE_MS` | `120000` | Reconnect window for disconnected participants. |
@@ -331,3 +333,5 @@ updates, backups, and troubleshooting, see
 | Participants repeatedly disconnect | The reverse proxy is not forwarding WebSocket upgrades. |
 | Presenter shows `Live (polling)` | The proxy is buffering or blocking Server-Sent Events. |
 | Sessions disappear after restart | `QUIZ_DATABASE_PATH` is not on persistent storage. |
+
+- Participants join in `LOBBY`. Set `ALLOW_JOIN_AFTER_START=true` to also accept joins after the quiz starts, until the session is closed. Answers are accepted only during `QUESTION_OPEN`.

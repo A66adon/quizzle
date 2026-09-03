@@ -89,7 +89,11 @@ public final class BrandingAssetsController {
 		Branding branding = catalog.branding();
 		boolean markIsImage = markImageUrl(branding).isPresent();
 		String json = objectMapper.writeValueAsString(
-				new BrandingView(branding.name(), branding.mark(), markIsImage));
+				new BrandingView(
+						branding.name(),
+						branding.mark(),
+						markIsImage,
+						markImageUrl(branding).orElse(null)));
 		String module = """
 				export const branding = %s;
 
@@ -105,6 +109,15 @@ public final class BrandingAssetsController {
 				}
 				const pageTitle = document.querySelector("title")?.dataset.pageTitle;
 				document.title = pageTitle ? `${pageTitle} \u00b7 ${branding.name}` : branding.name;
+				if (branding.markUrl) {
+					let icon = document.querySelector("link[rel='icon']");
+					if (!icon) {
+						icon = document.createElement("link");
+						icon.rel = "icon";
+						document.head.append(icon);
+					}
+					icon.href = branding.markUrl;
+				}
 				""".formatted(json);
 		return respond(module, JAVASCRIPT);
 	}
@@ -165,6 +178,6 @@ public final class BrandingAssetsController {
 				.body(body);
 	}
 
-	private record BrandingView(String name, String mark, boolean markIsImage) {
+	private record BrandingView(String name, String mark, boolean markIsImage, String markUrl) {
 	}
 }

@@ -149,7 +149,7 @@
 	color: var(--on-danger);
 	background: var(--danger);
 }
-:root[data-theme="dark"] :where(.theme-toggle, .music-toggle, .auto-advance-toggle, .ghost-button, input) {
+:root[data-theme="dark"] :where(.theme-toggle, .music-toggle, .auto-advance-toggle, .ghost-button, input, .header-sign-out) {
 	border-color: var(--control-border);
 }
 :root[data-theme="dark"] :where(.primary-button, .secondary-button, .danger-button):disabled {
@@ -174,4 +174,3 @@
 		display: none !important;
 	}
 }
-

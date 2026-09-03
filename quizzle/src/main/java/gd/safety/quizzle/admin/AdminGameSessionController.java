@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import gd.safety.quizzle.config.GameSessionProperties;
 import gd.safety.quizzle.session.GameSessionRegistry;
 import gd.safety.quizzle.session.GameSessionRegistry.PlayerNotFoundException;
 import gd.safety.quizzle.session.GameSessionRegistry.QuizNotFoundException;
@@ -38,22 +39,25 @@ public final class AdminGameSessionController {
 	private final SessionAddressService addressService;
 	private final QrCodeService qrCodeService;
 	private final SessionRealtimePublisher realtimePublisher;
+	private final GameSessionProperties sessionProperties;
 
 	public AdminGameSessionController(
 			GameSessionRegistry sessionRegistry,
 			SessionAddressService addressService,
 			QrCodeService qrCodeService,
-			SessionRealtimePublisher realtimePublisher) {
+			SessionRealtimePublisher realtimePublisher,
+			GameSessionProperties sessionProperties) {
 		this.sessionRegistry = sessionRegistry;
 		this.addressService = addressService;
 		this.qrCodeService = qrCodeService;
 		this.realtimePublisher = realtimePublisher;
+		this.sessionProperties = sessionProperties;
 	}
 
 	@GetMapping
 	public List<AdminGameSessionResponse> sessions() {
 		return sessionRegistry.list().stream()
-				.map(snapshot -> AdminGameSessionResponse.from(snapshot, addressService))
+				.map(this::toResponse)
 				.toList();
 	}
 
@@ -64,7 +68,7 @@ public final class AdminGameSessionController {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
 		}
 		try {
-			return AdminGameSessionResponse.from(sessionRegistry.create(request.quizFileName()), addressService);
+			return toResponse(sessionRegistry.create(request.quizFileName()));
 		} catch (QuizNotFoundException exception) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 		}
@@ -72,7 +76,7 @@ public final class AdminGameSessionController {
 
 	@GetMapping("/{codehash}")
 	public AdminGameSessionResponse session(@PathVariable String codehash) {
-		return AdminGameSessionResponse.from(requireSession(codehash), addressService);
+		return toResponse(requireSession(codehash));
 	}
 
 	@GetMapping(value = "/{codehash}/qr.svg", produces = "image/svg+xml")
@@ -101,7 +105,7 @@ public final class AdminGameSessionController {
 		try {
 			GameSessionSnapshot updated = sessionRegistry.transition(codehash, command);
 			realtimePublisher.publish(updated);
-			return AdminGameSessionResponse.from(updated, addressService);
+			return toResponse(updated);
 		} catch (SessionNotFoundException exception) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 		} catch (InvalidGameTransitionException exception) {
@@ -151,12 +155,17 @@ public final class AdminGameSessionController {
 		try {
 			GameSessionSnapshot updated = sessionRegistry.setLeaderboardEnabled(codehash, request.enabled());
 			realtimePublisher.publish(updated);
-			return AdminGameSessionResponse.from(updated, addressService);
+			return toResponse(updated);
 		} catch (SessionNotFoundException exception) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 		} catch (GameSessionRegistry.LeaderboardSettingLockedException exception) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT);
 		}
+	}
+
+	private AdminGameSessionResponse toResponse(GameSessionSnapshot snapshot) {
+		return AdminGameSessionResponse.from(
+				snapshot, addressService, sessionProperties.autoAdvanceDelayMs());
 	}
 
 	private GameSessionSnapshot requireSession(String codehash) {
@@ -173,4 +182,3 @@ public final class AdminGameSessionController {
 	public record LeaderboardSettingRequest(Boolean enabled) {
 	}
 }
-
