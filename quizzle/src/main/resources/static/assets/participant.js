@@ -541,12 +541,16 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		const rank = document.createElement("span");
 		rank.className = "standing-rank";
 		rank.textContent = `#${standing.rank}`;
+		const avatar = document.createElement("img");
+		avatar.className = "standing-avatar";
+		avatar.alt = "";
+		setAvatar(avatar, participantFor(standing.playerId));
 		const name = document.createElement("strong");
 		name.textContent = standing.name;
 		const points = document.createElement("span");
 		points.className = "standing-points";
 		points.textContent = `${Math.round(Number(standing.totalPoints) || 0)} pts`;
-		row.append(rank, name, points);
+		row.append(rank, avatar, name, points);
 		return row;
 	}
 
