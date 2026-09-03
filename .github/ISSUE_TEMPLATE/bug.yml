@@ -1,0 +1,29 @@
+name: Bug report
+description: Report something that is not working as expected
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can it be reproduced?
+      placeholder: List the smallest set of steps needed to reproduce the problem.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Browser, operating system, deployment method, and Quizzle version
+  - type: textarea
+    id: details
+    attributes:
+      label: Additional details
+      description: Add relevant logs or screenshots. Remove passwords and other secrets first.
