@@ -309,13 +309,14 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		}
 		showView("question-view");
 		if (renderedQuestionId !== question.id) buildAnswerControls(question);
-		// Always re-sync the confirm button to the current question, even when the grid itself
-		// was not rebuilt, so a leftover "Submit selection" state from a previous multiple-choice
-		// question can never linger on a single-choice question.
+		// Always re-sync the confirm button and the "N selected" status banner to the current
+		// question, even when the grid itself was not rebuilt, so a leftover selection-count state
+		// from a previous multiple-choice question can never linger on a single-choice question.
 		confirmMultipleButton.hidden = !question.multiple;
 		if (!question.multiple) {
 			confirmMultipleButton.disabled = true;
 			confirmMultipleButton.classList.remove("just-activated");
+			document.querySelector("#selection-status").hidden = true;
 		}
 		setText("#question-text", question.text);
 		setText("#question-mode", question.multiple ? "Multiple choice" : "Single choice");

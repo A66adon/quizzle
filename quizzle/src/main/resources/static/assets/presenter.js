@@ -630,10 +630,23 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	// Creates a standing row, or refreshes an existing one in place (passed as `row`) so a
 	// continuing player keeps the same DOM element across re-renders.
 	function createStandingRow(standing, index, row = document.createElement("article")) {
+		const isNewRow = !row.dataset.playerId;
 		row.className = "standing-row";
 		row.dataset.playerId = String(standing.playerId);
 		row.style.setProperty("--row-index", String(index));
 		row.replaceChildren();
+		if (isNewRow) {
+			// The entrance "pop-in" animation has fill-mode "both", which keeps controlling the
+			// row's transform forever (even after it finishes) unless the animation is released -
+			// otherwise it silently overrides the FLIP reorder transition later and every rank
+			// change appears to jump instantly instead of gliding. Free `transform` for our own
+			// control as soon as the one-time entrance has played.
+			row.addEventListener("animationend", function releaseEntranceAnimation(event) {
+				if (event.target !== row || event.animationName !== "pop-in") return;
+				row.style.animation = "none";
+				row.removeEventListener("animationend", releaseEntranceAnimation);
+			});
+		}
 		const rank = document.createElement("span");
 		rank.className = "standing-rank";
 		rank.textContent = `#${standing.rank}`;
