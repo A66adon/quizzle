@@ -524,6 +524,10 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		// continuing player's row keeps its identity (and never replays its entrance animation).
 		for (const row of orderedRows) list.append(row);
 
+		// Settle the compact/spacious stage sizing now, with the final row content already in
+		// place, so the positions we measure next are the ones the browser will actually keep.
+		scheduleStageFit();
+
 		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
 		const flipRows = [];
@@ -820,15 +824,17 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		if (!fittedStage) document.body.classList.remove("presenter-stage-compact");
 	}
 
+	// Resolves the compact/spacious stage class synchronously (no requestAnimationFrame hop).
+	// This must never straddle a frame boundary: the leaderboard's FLIP animation measures row
+	// positions right after this runs, and a delayed class toggle would resize rows mid-flight
+	// and make the reorder look like it is racing instead of gliding smoothly.
 	function scheduleStageFit() {
 		window.cancelAnimationFrame(stageFitFrame);
 		document.body.classList.remove("presenter-stage-compact");
-		stageFitFrame = window.requestAnimationFrame(() => {
-			const activeView = views.find(view => !view.hidden);
-			if (!activeView || !FITTED_STAGE_IDS.has(activeView.id)) return;
-			const overflows = activeView.scrollHeight > activeView.clientHeight + 1;
-			document.body.classList.toggle("presenter-stage-compact", overflows);
-		});
+		const activeView = views.find(view => !view.hidden);
+		if (!activeView || !FITTED_STAGE_IDS.has(activeView.id)) return;
+		const overflows = activeView.scrollHeight > activeView.clientHeight + 1;
+		document.body.classList.toggle("presenter-stage-compact", overflows);
 	}
 
 	function showMessage(message, isError) {
