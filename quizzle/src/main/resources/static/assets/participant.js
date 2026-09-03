@@ -594,6 +594,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	function showView(viewId) {
 		for (const view of views) view.hidden = view.id !== viewId;
 		document.body.classList.toggle("question-active", viewId === "question-view");
+		document.body.classList.toggle("results-active", viewId === "results-view");
 	}
 
 	function showTerminal(message, deleteToken) {

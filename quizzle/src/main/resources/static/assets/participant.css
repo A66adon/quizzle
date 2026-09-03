@@ -49,6 +49,22 @@ body.question-active .question-card { display: flex; flex-direction: column; min
 body.question-active .question-card h1 { flex: none; }
 body.question-active .answer-grid { flex: 1 1 auto; min-height: 0; grid-auto-rows: 1fr; }
 body.question-active #confirm-multiple-button { flex: none; }
+
+/* Correct-answer screen: same "fit one non-scrolling viewport" treatment as the question screen -
+   header hidden, shell pinned to the viewport height, and the answer list grows/shrinks to fill
+   whatever room the heading, verdict banner, and footer copy leave behind instead of overflowing. */
+body.results-active { overflow: hidden; }
+body.results-active .participant-shell { height: 100dvh; min-height: 0; padding-bottom: .75rem; }
+body.results-active .participant-header { display: none; }
+body.results-active #results-view { display: flex; flex-direction: column; min-height: 0; gap: .6rem; }
+body.results-active .section-heading { flex: none; margin-bottom: 0; }
+body.results-active #results-title { font-size: clamp(1.1rem, 3.4vw, 1.6rem); }
+body.results-active #results-verdict { flex: none; margin-bottom: 0; padding: .7rem .9rem; }
+body.results-active #results-verdict strong { font-size: 1.05rem; }
+body.results-active #results-list { flex: 1 1 auto; min-height: 0; grid-auto-rows: 1fr; overflow: hidden; }
+body.results-active .result-card { display: flex; flex-direction: column; justify-content: center; min-height: 0; padding: clamp(.4rem, 2vh, 1rem) .9rem; }
+body.results-active .result-title { margin-bottom: .35rem; }
+body.results-active .waiting-copy { flex: none; margin: 0; }
 .join-card, .centered-card, .question-card, .hero-card { padding: clamp(1.2rem, 5vw, 2.2rem); border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface-raised); box-shadow: var(--shadow-card); }
 .join-card { width: min(100%, 34rem); margin: 4vh auto 0; border-top: 3px solid var(--primary); }
 .join-form { display: grid; gap: .65rem; margin-top: 2rem; }
@@ -211,6 +227,18 @@ body.question-active #confirm-multiple-button { flex: none; }
 	body.question-active .answer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-top: .3rem; }
 	body.question-active .answer-tile { min-height: 3.4rem; padding: .6rem .75rem; gap: .5rem; font-size: clamp(.85rem, 3.6vw, 1.2rem); line-height: 1.22; }
 	body.question-active #confirm-multiple-button { min-height: 2.9rem; margin-top: .5rem; padding-block: .5rem; }
+	/* Same one-viewport treatment for the results screen: trim the verdict banner and card padding
+	   so the whole answer breakdown fits without scrolling on a phone. */
+	body.results-active .participant-shell { padding-top: .7rem; }
+	body.results-active .section-heading { margin-bottom: 0; }
+	body.results-active #results-verdict { padding: .55rem .7rem; }
+	body.results-active #results-verdict strong { font-size: .95rem; }
+	body.results-active #results-verdict .muted { font-size: .78rem; }
+	body.results-active .results-list { gap: .4rem; }
+	body.results-active .result-card { padding: clamp(.3rem, 1.6vh, .7rem) .7rem; }
+	body.results-active .result-title { margin-bottom: .25rem; font-size: .88rem; }
+	body.results-active .result-bar { height: .5rem; }
+	body.results-active .waiting-copy { font-size: .82rem; }
 }
 
 /* Very short viewports (small phones in landscape or with large browser chrome). */
@@ -228,6 +256,15 @@ body.question-active #confirm-multiple-button { flex: none; }
 	body.question-active .answer-grid { gap: .35rem; margin-top: .25rem; }
 	body.question-active .answer-tile { min-height: 2.4rem; padding: .35rem .45rem; font-size: clamp(.72rem, 2.8vw, .95rem); line-height: 1.14; }
 	body.question-active #confirm-multiple-button { min-height: 2.4rem; margin-top: .35rem; padding-block: .35rem; }
+	body.results-active .participant-shell { padding-top: .5rem; padding-bottom: .35rem; }
+	body.results-active #results-view { gap: .4rem; }
+	body.results-active #results-title { font-size: 1.05rem; }
+	body.results-active #results-verdict { padding: .4rem .6rem; }
+	body.results-active #results-verdict strong { font-size: .88rem; }
+	body.results-active .results-list { gap: .3rem; }
+	body.results-active .result-card { padding: clamp(.2rem, 1.2vh, .5rem) .6rem; }
+	body.results-active .result-bar { height: .4rem; }
+	body.results-active .waiting-copy { margin-top: .3rem; font-size: .76rem; }
 }
 
 /* Role polish mirrors the presenter while preserving participant-specific voting states. */
