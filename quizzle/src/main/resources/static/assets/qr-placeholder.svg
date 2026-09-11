@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-hidden="true">
+	<!--
+		Placeholder for a join QR that has not arrived yet. It draws the three finder squares a real
+		QR code has, so the slot reads as "a code belongs here" rather than as a broken image box.
+	-->
+	<rect width="64" height="64" fill="#ffffff"/>
+	<g fill="none" stroke="#c8ccd4" stroke-width="4">
+		<rect x="8" y="8" width="14" height="14"/>
+		<rect x="42" y="8" width="14" height="14"/>
+		<rect x="8" y="42" width="14" height="14"/>
+	</g>
+	<g fill="#e2e5ea">
+		<rect x="30" y="30" width="5" height="5"/>
+		<rect x="38" y="30" width="5" height="5"/>
+		<rect x="30" y="38" width="5" height="5"/>
+		<rect x="46" y="38" width="5" height="5"/>
+		<rect x="38" y="46" width="5" height="5"/>
+	</g>
+</svg>

@@ -165,6 +165,7 @@ public final class WebSocketProtocol {
 			long serverStartEpochMs,
 			long durationMs,
 			long receivedAnswerCount,
+			List<String> answeredPlayerIds,
 			QuestionView question,
 			ResultsView results,
 			List<ParticipantView> participants,
@@ -184,6 +185,14 @@ public final class WebSocketProtocol {
 			long receivedAnswerCount = currentQuestion == null ? 0 : snapshot.answers().stream()
 					.filter(answer -> answer.questionId().equals(currentQuestion.id()))
 					.count();
+			// The board shows *that* a participant has voted, never what they chose. Only the
+			// identities are published while the question is open; the submitted options stay in
+			// ResultsView, which is withheld until the question closes.
+			List<String> answeredPlayerIds = currentQuestion == null ? List.of() : snapshot.answers().stream()
+					.filter(answer -> answer.questionId().equals(currentQuestion.id()))
+					.map(answer -> answer.playerId().toString())
+					.distinct()
+					.toList();
 			return new SessionView(
 					snapshot.codehash(),
 					snapshot.state().name(),
@@ -197,6 +206,7 @@ public final class WebSocketProtocol {
 					snapshot.serverStartEpochMs(),
 					durationMs,
 					receivedAnswerCount,
+					answeredPlayerIds,
 					currentQuestion == null ? null : QuestionView.from(currentQuestion),
 					snapshot.state() == GameState.RESULTS
 							? ResultsView.from(snapshot, currentQuestion) : null,

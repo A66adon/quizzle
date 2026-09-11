@@ -367,6 +367,75 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		return chip;
 	}
 
+	/*
+	 * The seat grid is the board's core claim: it shows THAT a participant has voted, never what
+	 * they chose. The submitted options are withheld by the server until the question closes, so
+	 * this grid is safe to project in front of the whole room while voting is still open.
+	 *
+	 * Plates are keyed by player id and reused, so a lamp latching on never rebuilds its neighbours.
+	 * Above SEAT_GRID_LIMIT a projected grid of name plates stops being legible from the back of a
+	 * room, so the board falls back to the honest thing it can still render at that size: a tally.
+	 */
+	const SEAT_GRID_LIMIT = 40;
+
+	function renderSeatGrid() {
+		const grid = document.querySelector("#seat-grid");
+		const tally = document.querySelector("#seat-tally");
+		if (!grid || !tally) return;
+
+		const connected = (session.participants || [])
+			.filter(participant => participant.connectionStatus === "CONNECTED");
+		const voted = new Set(session.answeredPlayerIds || []);
+
+		if (connected.length > SEAT_GRID_LIMIT) {
+			grid.replaceChildren();
+			grid.hidden = true;
+			tally.hidden = false;
+			tally.textContent = `${voted.size} of ${connected.length} voted`;
+			return;
+		}
+
+		grid.hidden = false;
+		tally.hidden = true;
+
+		const existing = new Map();
+		for (const plate of grid.children) existing.set(plate.dataset.playerId, plate);
+		grid.replaceChildren(...connected.map(participant =>
+			createSeatPlate(participant, voted.has(String(participant.playerId)),
+				existing.get(String(participant.playerId)))));
+	}
+
+	function createSeatPlate(participant, hasVoted, plate) {
+		const isNewPlate = plate === undefined;
+		plate = plate || document.createElement("article");
+		plate.dataset.playerId = String(participant.playerId);
+
+		if (isNewPlate) {
+			plate.className = "seat-plate";
+			const lamp = document.createElement("span");
+			lamp.className = "lamp seat-lamp";
+			lamp.setAttribute("aria-hidden", "true");
+			const name = document.createElement("strong");
+			name.className = "seat-name";
+			plate.append(lamp, name);
+		}
+
+		const name = plate.querySelector(".seat-name");
+		if (name.textContent !== participant.name) {
+			name.textContent = participant.name;
+			name.title = participant.name;
+		}
+
+		// Only flip the class when the state actually changes, so the lamp's latch animation plays
+		// once at the moment of the vote instead of restarting on every state broadcast.
+		const lamp = plate.querySelector(".seat-lamp");
+		if (lamp.classList.contains("is-lit") !== hasVoted) {
+			lamp.classList.toggle("is-lit", hasVoted);
+			plate.classList.toggle("has-voted", hasVoted);
+		}
+		return plate;
+	}
+
 	function createOfflineRow(participant) {
 		const row = document.createElement("article");
 		row.className = "offline-row";
@@ -397,6 +466,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		showView("question-view");
 		const question = session.question;
 		if (!question) return;
+		renderSeatGrid();
 		setText("#question-progress", `Question ${session.currentQuestionIndex + 1} of ${session.questionCount}`);
 		setText("#question-title", question.text);
 		setText("#question-mode", question.multiple
@@ -577,10 +647,12 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		}, LEADERBOARD_FLIP_DELAY_MS);
 	}
 
-	const MEDALS = { 1: ["gold", "🥇"], 2: ["silver", "🥈"], 3: ["bronze", "🥉"] };
+	const MEDALS = { 1: "gold", 2: "silver", 3: "bronze" };
 
-	// The mid-quiz leaderboard row: medal for the top three, plus a move arrow versus the previous
-	// question. Pass an existing row to update it in place instead of creating a new element.
+	// The mid-quiz leaderboard row: a rank state for the top three, plus a move indicator versus the
+	// previous question. Every mark here is drawn in CSS - no glyph is ever written as an icon,
+	// because a screen reader would read it out as "black up-pointing triangle".
+	// Pass an existing row to update it in place instead of creating a new element.
 	function createLeaderboardRow(standing, index, row) {
 		row = createStandingRow(standing, index, row);
 		row.classList.remove("rank-1", "rank-2", "rank-3");
@@ -591,8 +663,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		if (medal) {
 			rank.textContent = "";
 			const badge = document.createElement("span");
-			badge.className = `rank-medal ${medal[0]}`;
-			badge.textContent = medal[1];
+			badge.className = `rank-medal ${medal}`;
 			rank.append(badge);
 		}
 
@@ -600,20 +671,18 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		const move = document.createElement("span");
 		move.className = "rank-move";
 		if (previousRank === undefined) {
-			move.classList.add("same");
-			move.textContent = "•";
+			move.classList.add("new");
 			move.setAttribute("aria-label", "New on the leaderboard");
 		} else if (previousRank > standing.rank) {
 			move.classList.add("up");
-			move.textContent = `▲${previousRank - standing.rank}`;
+			move.textContent = String(previousRank - standing.rank);
 			move.setAttribute("aria-label", `Up ${previousRank - standing.rank}`);
 		} else if (previousRank < standing.rank) {
 			move.classList.add("down");
-			move.textContent = `▼${standing.rank - previousRank}`;
+			move.textContent = String(standing.rank - previousRank);
 			move.setAttribute("aria-label", `Down ${standing.rank - previousRank}`);
 		} else {
 			move.classList.add("same");
-			move.textContent = "–";
 			move.setAttribute("aria-label", "No change");
 		}
 		row.append(move);
@@ -660,14 +729,14 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		row.replaceChildren();
 		if (isNewRow) {
 			// Releasing the entrance animation serves two ends. A running or re-triggered
-			// `sweep-in` controls the row's transform, which silently overrides the FLIP reorder
+			// `seat-in` controls the row's transform, which silently overrides the FLIP reorder
 			// transition and makes rank changes jump instead of glide. And because re-appending an
 			// already-attached element restarts its CSS animations, a row that stays on the board
 			// would replay its entrance on every reorder. Pinning `animation: none` inline once the
 			// one-time entrance has played frees `transform` and keeps the entrance a one-time
 			// event for the rest of the row's life.
 			row.addEventListener("animationend", function releaseEntranceAnimation(event) {
-				if (event.target !== row || event.animationName !== "sweep-in") return;
+				if (event.target !== row || event.animationName !== "seat-in") return;
 				row.style.animation = "none";
 				row.removeEventListener("animationend", releaseEntranceAnimation);
 			});
@@ -848,7 +917,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		backgroundMusic.muted = muted;
 		musicToggle.setAttribute("aria-pressed", String(muted));
 		musicToggle.setAttribute("aria-label", muted ? "Unmute background music" : "Mute background music");
-		musicToggle.querySelector("span").textContent = muted ? "🔇" : "🔊";
+		// The speaker is drawn in CSS off the button's aria-pressed state, so nothing is written here.
 		window.localStorage.setItem(MUSIC_MUTED_KEY, String(muted));
 	}
 
@@ -859,8 +928,24 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		}, { once: true });
 	}
 
+	// The state rail replaces the kickers that used to sit above each view's heading. One persistent
+	// readout naming where the chamber is right now beats six labels that each introduce a title.
+	const BOARD_STATES = {
+		"lobby-view": "Lobby",
+		"question-view": "Division open",
+		"results-view": "Division closed",
+		"leaderboard-view": "Standings",
+		"final-view": "Final",
+		"closed-view": "Closed"
+	};
+
 	function showView(viewId) {
 		for (const view of views) view.hidden = view.id !== viewId;
+		const boardState = document.querySelector("#board-state");
+		if (boardState) {
+			boardState.textContent = BOARD_STATES[viewId] || "";
+			boardState.dataset.state = viewId;
+		}
 		const fittedStage = FITTED_STAGE_IDS.has(viewId);
 		document.body.classList.toggle("presenter-stage-active", fittedStage);
 		if (!fittedStage) document.body.classList.remove("presenter-stage-compact");

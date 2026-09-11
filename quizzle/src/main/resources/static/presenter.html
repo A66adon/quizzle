@@ -16,7 +16,7 @@
 		})();
 	</script>
 	<link rel="icon" href="/assets/branding-mark">
-	<link rel="preload" href="/assets/vendor/inter/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+	<link rel="preload" href="/assets/vendor/archivo/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 	<link rel="stylesheet" href="/assets/branding.css">
 	<link rel="stylesheet" href="/assets/theme.css">
 	<link rel="stylesheet" href="/assets/admin.css">
@@ -29,17 +29,18 @@
 	<audio id="background-music" loop preload="auto" muted>
 		<source src="/assets/audio/presenter-background-music.mp3" type="audio/mpeg">
 	</audio>
-	<header class="site-header">
+	<header class="site-header board-rail">
 		<a class="brand" href="/admin" aria-label="Back to quiz sessions">
 			<span class="brand-mark" data-brand-mark aria-hidden="true"></span>
 			<span data-brand-name></span>
 		</a>
+		<p id="board-state" class="board-state">Lobby</p>
 		<div class="header-status">
 			<button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
-				<span class="theme-toggle-icon" aria-hidden="true">🌙</span>
+				<span class="theme-toggle-icon" aria-hidden="true"></span>
 			</button>
 			<button id="music-toggle" class="music-toggle" type="button" aria-pressed="true" aria-label="Unmute background music">
-				<span aria-hidden="true">🔇</span>
+				<span class="music-toggle-icon" aria-hidden="true"></span>
 			</button>
 			<button id="auto-advance-toggle" class="auto-advance-toggle" type="button" aria-pressed="false" aria-label="Enable automatic progression" title="Automatic progression">
 				<span aria-hidden="true"></span>
@@ -54,15 +55,14 @@
 		<section id="lobby-view" class="view" aria-labelledby="lobby-title" hidden>
 			<div class="lobby-layout">
 				<article class="join-card">
-					<p class="eyebrow">Scan to join</p>
-					<img id="join-qr" class="join-qr" width="260" height="260" alt="QR code with the join link">
-					<p class="session-code-label">Join code</p>
+					<p class="legend">Scan to join</p>
+					<img id="join-qr" class="join-qr" width="260" height="260" src="/assets/qr-placeholder.svg" alt="QR code with the join link">
+					<p class="legend session-code-label">Join code</p>
 					<code id="join-code" class="session-code"></code>
 					<a id="join-link" class="session-link" target="_blank" rel="noopener noreferrer"></a>
 				</article>
 
 				<div class="lobby-main">
-					<p class="eyebrow">Lobby</p>
 					<h1 id="lobby-title"></h1>
 					<p id="lobby-description" class="muted"></p>
 
@@ -95,7 +95,7 @@
 
 		<section id="question-view" class="view" aria-labelledby="question-title" hidden>
 			<div class="question-topline">
-				<span id="question-progress" class="eyebrow"></span>
+				<span id="question-progress" class="legend"></span>
 				<div class="live-metrics">
 					<div class="summary-pill"><strong id="answers-received">0</strong><span>answers in</span></div>
 					<div class="summary-pill countdown-pill"><strong id="countdown">0.0</strong><span>seconds left</span></div>
@@ -105,6 +105,11 @@
 			<h1 id="question-title" class="stage-title"></h1>
 			<p id="question-mode" class="muted stage-subtitle"></p>
 			<div id="question-options" class="option-grid"></div>
+			<section class="division-floor" aria-labelledby="division-legend">
+				<p id="division-legend" class="legend">Votes recorded</p>
+				<div id="seat-grid" class="seat-grid"></div>
+				<p id="seat-tally" class="seat-tally readout" hidden></p>
+			</section>
 			<div class="control-bar">
 				<button class="ghost-button abort-button" type="button" data-abort>Abort quiz</button>
 				<button id="end-early-button" class="primary-button push-right" type="button">End question early</button>
@@ -115,7 +120,7 @@
 			<div class="stage-heading">
 				<span class="stage-heading-side"></span>
 				<div class="stage-heading-main">
-					<p id="results-progress" class="eyebrow"></p>
+					<p id="results-progress" class="legend"></p>
 					<h1 id="results-title" class="stage-title"></h1>
 				</div>
 				<div class="stage-heading-side end">
@@ -133,7 +138,7 @@
 			<div class="stage-heading">
 				<span class="stage-heading-side"></span>
 				<div class="stage-heading-main">
-					<p id="leaderboard-progress" class="eyebrow"></p>
+					<p id="leaderboard-progress" class="legend"></p>
 					<h1 id="leaderboard-title" class="stage-title">Leaderboard</h1>
 				</div>
 				<span class="stage-heading-side end"></span>
@@ -149,7 +154,6 @@
 		</section>
 
 		<section id="final-view" class="view" aria-labelledby="final-title" hidden>
-			<p class="eyebrow center-text">Final results</p>
 			<h1 id="final-title" class="stage-title">Congratulations</h1>
 			<p id="final-subtitle" class="muted stage-subtitle"></p>
 
@@ -164,10 +168,7 @@
 				</div>
 				<div class="podium-place first" data-place="1">
 					<div class="podium-player">
-						<svg class="podium-crown" viewBox="0 0 64 44" aria-hidden="true" focusable="false">
-							<path d="M4 40h56l4-32-16 12L32 2 16 20 0 8z" fill="#ffc53d" stroke="#e0a300" stroke-width="2" stroke-linejoin="round"/>
-							<circle cx="32" cy="30" r="3.5" fill="#fff6da"/>
-						</svg>
+						<span class="lamp podium-lamp is-lit" aria-hidden="true"></span>
 						<img class="podium-avatar" src="/assets/avatar-fallback.svg" alt="">
 						<strong class="podium-name"></strong>
 						<span class="podium-points"></span>
@@ -197,7 +198,6 @@
 		</section>
 
 		<section id="closed-view" class="view centered-card" aria-labelledby="closed-title" hidden>
-			<p class="eyebrow">Session closed</p>
 			<h1 id="closed-title">This quiz session has ended</h1>
 			<a class="primary-button link-button" href="/admin">Back to sessions</a>
 		</section>
@@ -205,7 +205,6 @@
 
 	<dialog id="abort-dialog" class="confirm-dialog">
 		<form method="dialog">
-			<p class="eyebrow">Please confirm</p>
 			<h2>Abort this quiz?</h2>
 			<p class="muted">
 				All participants are disconnected immediately and the session cannot be resumed.
@@ -219,7 +218,6 @@
 
 	<dialog id="kick-dialog" class="confirm-dialog">
 		<form method="dialog">
-			<p class="eyebrow">Please confirm</p>
 			<h2>Remove participant?</h2>
 			<p class="muted"><strong id="kick-name"></strong> is removed and cannot rejoin this session.</p>
 			<div class="dialog-actions">

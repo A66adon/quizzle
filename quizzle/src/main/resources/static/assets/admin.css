@@ -1,768 +1,997 @@
-/* The color palette lives in /assets/branding.css, which is generated from the branding folder. */
-:root {
-	color-scheme: light;
-	font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	color: var(--text);
-	background: var(--background);
-	font-synthesis: none;
-	--shadow: 0 18px 45px rgba(4, 0, 102, 0.09);
-}
+/*
+ * Quizzle app shell + the clerk's register - "Assembly Board".
+ *
+ * This file is loaded by BOTH admin.html and presenter.html, so it owns the shared shell of the
+ * chamber: the board rail across the top, the panel ground, the type scale, and the whole control
+ * family. presenter.css layers the projected board on top of it and overrides nothing structural.
+ * (participant.html deliberately does not load this file - the seat unit is self-contained.)
+ *
+ * The admin surface is the clerk's register: a numbered, ruled ledger of what exists, read at desk
+ * distance by one person. It is not a gallery of cards. Rows are ruled, aligned on a single reading
+ * column, and each carries a status lamp. Nothing here floats.
+ */
 
-* {
+/* ========================================================================== */
+/* Base                                                                       */
+/* ========================================================================== */
+
+*,
+*::before,
+*::after {
 	box-sizing: border-box;
 }
 
-[hidden] {
-	display: none !important;
+html {
+	-webkit-text-size-adjust: 100%;
 }
 
 body {
 	margin: 0;
-	min-width: 320px;
 	min-height: 100vh;
-	background: var(--background);
+	background-color: var(--panel);
+	color: var(--text);
+	font-family: var(--font-board);
+	font-size: 1rem;
+	font-weight: 400;
+	line-height: 1.55;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
 }
 
-button,
-input {
-	font: inherit;
+/*
+ * The panel ground is not flat paint. A single hairline grid, almost at the threshold of vision,
+ * tells the eye this is a machined surface rather than a web page background. It is drawn on the
+ * body's own background layer so it costs nothing and never intercepts a pointer.
+ */
+body::before {
+	content: "";
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	background-image:
+		linear-gradient(to right, var(--edge-dark) var(--hairline), transparent var(--hairline)),
+		linear-gradient(to bottom, var(--edge-dark) var(--hairline), transparent var(--hairline));
+	background-size: 4rem 4rem;
+	opacity: 0.32;
 }
 
-button {
-	cursor: pointer;
+img {
+	max-width: 100%;
 }
 
-button:focus-visible,
-input:focus-visible,
-a:focus-visible {
-	outline: 3px solid color-mix(in srgb, var(--accent) 70%, transparent);
-	outline-offset: 3px;
+code {
+	font-family: ui-monospace, "Cascadia Mono", "Consolas", monospace;
 }
 
+/* ========================================================================== */
+/* Typography                                                                 */
+/* ========================================================================== */
+
+/*
+ * Headings are engraved, not printed: tight tracking, high weight, slightly narrowed so a long
+ * quiz title keeps its shape inside a fixed plate instead of wrapping into a third line.
+ */
 h1,
 h2,
-h3,
-p {
-	margin-top: 0;
+h3 {
+	margin: 0;
+	color: var(--heading);
+	font-stretch: 92%;
+	font-weight: 700;
+	letter-spacing: -0.015em;
+	line-height: 1.1;
+	text-wrap: balance;
 }
 
 h1 {
-	margin-bottom: 0.65rem;
-	color: var(--heading);
-	font-size: clamp(1.9rem, 3vw, 2.75rem);
-	line-height: 1.1;
-	letter-spacing: -0.035em;
+	font-size: clamp(1.75rem, 1.2rem + 1.8vw, 2.5rem);
 }
 
 h2 {
-	margin-bottom: 0;
-	color: var(--heading);
-	font-size: 1.3rem;
+	font-size: clamp(1.15rem, 1rem + 0.5vw, 1.4rem);
+}
+
+h3 {
+	font-size: 1.0625rem;
+}
+
+p {
+	margin: 0;
 }
 
 .muted {
 	color: var(--muted);
+	/* The reading column is capped in ch so prose never runs the full width of a wide desk display. */
+	max-width: 68ch;
 }
 
 .small {
-	font-size: 0.875rem;
+	font-size: 0.8125rem;
+	line-height: 1.5;
 }
 
-.eyebrow {
-	margin-bottom: 0.65rem;
-	color: var(--primary);
-	font-size: 0.75rem;
-	font-weight: 800;
-	letter-spacing: 0.14em;
-	text-transform: uppercase;
-}
+/* ========================================================================== */
+/* The board rail                                                             */
+/* ========================================================================== */
 
-.brand-mark {
-	content:  var(--mark);
-	display: inline-block;
-	vertical-align: middle;
-	margin-right: 8px;
-	max-height: 3rem;
-	max-width: 5rem;
-
-}
-
-.brand-mark.brand-mark--image {
-	display: inline-block;
-	min-width: 0;
-	height: auto;
-	max-height: 3rem;
-	max-width: 8rem;
-	padding: 0;
-	border-radius: 0;
-	background: none;
-	content: var(--mark);
-}
-
+/*
+ * The rail is the chamber's masthead: a plate seated on the panel, bounded by a rule rather than
+ * separated by a shadow. It is the one element common to every authenticated surface.
+ */
 .site-header {
 	position: sticky;
 	top: 0;
-	z-index: 40;
+	z-index: 20;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	height: 4.25rem;
-	padding: 0 clamp(1.25rem, 5vw, 4rem);
-	border-bottom: 1px solid var(--border);
-	background: var(--surface-raised);
-	box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 60%, transparent);
+	gap: 1.25rem;
+	padding: 0.75rem clamp(1rem, 3vw, 2.5rem);
+	border-bottom: var(--rule-strong);
+	background-color: var(--surface);
+	box-shadow: var(--emboss);
 }
 
 .brand {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
-	gap: 0.8rem;
+	gap: 0.75rem;
 	color: var(--heading);
-	font-weight: 800;
+	font-stretch: 88%;
+	font-size: 1.0625rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
 	text-decoration: none;
 }
 
-.brand [data-brand-name] {
-	font-size: 1.35rem;
-	line-height: 1;
+.brand:hover {
+	color: var(--primary-hover);
 }
 
-.header-actions {
+/*
+ * Fallback mark when the operator ships no logo: a square plate carrying the initial. Square,
+ * because a rounded badge would be the one soft corner in a world built from right angles.
+ */
+.brand-mark {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	flex: none;
+	background-color: var(--primary);
+	color: var(--on-primary);
+	font-size: 1rem;
+	font-stretch: 75%;
+	font-weight: 800;
+	letter-spacing: 0;
+	box-shadow: var(--emboss);
+}
+
+.header-actions,
+.header-status {
 	display: flex;
 	align-items: center;
-	gap: 0.75rem;
+	gap: 0.5rem;
+	margin-left: auto;
 }
 
 .header-actions form {
-	display: flex;
-	align-items: center;
-	margin: 0;
+	display: contents;
 }
 
-.header-actions .header-sign-out,
-.header-actions .header-sign-out:hover {
-	min-height: 2.5rem;
-	height: 2.5rem;
-	padding: 0 0.9rem;
-	border: 1px solid var(--control-border);
-	border-radius: var(--radius-control);
-	color: var(--primary);
-	background: var(--surface-raised);
-	box-shadow: var(--shadow-control);
-}
-
-.header-actions .header-sign-out:hover {
-	background: var(--primary-soft);
-	border-color: color-mix(in srgb, var(--primary) 55%, var(--control-border));
-}
-
-.text-button {
-	padding: 0.6rem 0.9rem;
-	border: 1px solid transparent;
-	border-radius: var(--radius-control);
-	color: var(--primary);
-	background: transparent;
-	font-weight: 750;
-	transition: background-color 160ms ease;
-}
-
-.text-button:hover {
-	border-color: color-mix(in srgb, var(--primary) 20%, var(--border));
-	background: var(--primary-soft);
-}
+/* ========================================================================== */
+/* Page shell                                                                 */
+/* ========================================================================== */
 
 .page-shell {
-	width: min(1180px, calc(100% - 2.5rem));
+	width: min(72rem, 100%);
 	margin: 0 auto;
-	padding: clamp(2.25rem, 5vw, 3.75rem) 0 4.5rem;
-}
-
-.page-heading,
-.section-heading {
+	padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 2.5rem) 4rem;
 	display: flex;
-	align-items: flex-end;
-	justify-content: space-between;
-	gap: 1.5rem;
+	flex-direction: column;
+	gap: 2.5rem;
 }
 
 .page-heading {
-	margin-bottom: 1.75rem;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 1rem;
+	padding-bottom: 1.25rem;
+	border-bottom: var(--rule-strong);
 }
 
-.page-heading .muted {
-	margin-bottom: 0;
-	font-size: 1.05rem;
+/*
+ * The section rule is the register's own arrival gesture: it draws across rather than fading in,
+ * which is the board asserting its structure before any content appears inside it.
+ */
+.section-heading {
+	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1.25rem;
+	padding-bottom: 0.75rem;
 }
 
+.section-heading::after {
+	content: "";
+	position: absolute;
+	inset: auto 0 0 0;
+	height: var(--hairline);
+	background-color: var(--control-border);
+	transform-origin: left center;
+	animation: rule-draw var(--dur-board) var(--ease-latch);
+}
+
+.section-heading h2 {
+	margin: 0;
+}
+
+/* ========================================================================== */
+/* Readouts and status plates                                                 */
+/* ========================================================================== */
+
+/*
+ * A tally plate. The figure is the object; the caption is a legend beneath it. Numbers are tabular
+ * so a count stepping 9 -> 10 does not shift the plate's own width.
+ */
 .summary-pill {
 	display: inline-flex;
-	align-items: baseline;
-	justify-content: center;
-	gap: 0.45rem;
-	min-width: 0;
-	padding: 0.65rem 0.85rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-control);
-	background: var(--surface-raised);
-	box-shadow: var(--shadow-control);
-	text-align: center;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.1rem;
+	min-width: 5.5rem;
+	padding: 0.4rem 0.75rem;
+	border: var(--rule);
+	background-color: var(--surface);
+	box-shadow: var(--emboss);
 }
 
 .summary-pill strong {
-	color: var(--primary);
-	font-size: 1.25rem;
-	line-height: 1;
-	font-variant-numeric: tabular-nums;
+	color: var(--heading);
+	font-size: 1.375rem;
+	font-stretch: 88%;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: "tnum" 1, "lnum" 1;
+	line-height: 1.1;
 }
 
 .summary-pill span {
 	color: var(--muted);
-	font-size: 0.72rem;
-	font-weight: 800;
-	letter-spacing: 0.09em;
+	font-size: 0.6875rem;
+	font-stretch: 82%;
+	font-weight: 620;
+	letter-spacing: 0.12em;
 	text-transform: uppercase;
 }
 
+/*
+ * Status and empty plates are recessed into the panel rather than raised off it: they report a
+ * condition of the board, they are not objects sitting on it.
+ */
 .status-card,
 .empty-card {
-	padding: 1.2rem 1.35rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-card);
+	margin: 0;
+	padding: 0.875rem 1.125rem;
+	border: var(--rule);
+	background-color: var(--panel-deep);
+	box-shadow: var(--recess);
 	color: var(--muted);
-	background: var(--surface-raised);
+	font-size: 0.9375rem;
+}
+
+.status-card {
+	display: flex;
+	align-items: center;
+	gap: 0.625rem;
+	animation: latch-in var(--dur-state) var(--ease-latch);
+}
+
+/* A live status plate carries a lamp, so "working" and "done" are distinguishable without reading. */
+.status-card::before {
+	content: "";
+	width: 0.6rem;
+	height: 0.6rem;
+	flex: none;
+	border-radius: 50%;
+	background-color: var(--lamp-on);
+	box-shadow: 0 0 0 0.2rem var(--lamp-glow);
+}
+
+.status-card.is-error {
+	border-color: var(--danger);
+	color: var(--danger);
+}
+
+.status-card.is-error::before {
+	background-color: var(--danger);
+	box-shadow: none;
 }
 
 .empty-card {
-	border-style: dashed;
-	background: transparent;
+	text-align: left;
 }
 
-.status-card[data-error="true"] {
-	border-color: color-mix(in srgb, var(--danger) 35%, var(--surface));
+.form-error {
+	margin: 0;
+	padding: 0.75rem 1rem;
+	border: var(--hairline) solid var(--danger);
+	background-color: color-mix(in srgb, var(--danger) 10%, var(--surface));
 	color: var(--danger);
-	background: var(--danger-soft);
+	font-size: 0.9375rem;
+	font-weight: 500;
 }
 
-.section-heading {
-	margin-bottom: 1.2rem;
+.error-count {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.2rem 0.6rem;
+	border: var(--hairline) solid var(--danger);
+	background-color: color-mix(in srgb, var(--danger) 12%, var(--surface));
+	color: var(--danger);
+	font-size: 0.75rem;
+	font-stretch: 82%;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
 }
 
-.section-heading p {
-	margin-bottom: 0;
+/* ========================================================================== */
+/* Controls                                                                   */
+/* ========================================================================== */
+
+/*
+ * Every control in this product is a key in a panel. It has a real bevel (a lit top edge, a shaded
+ * bottom edge) and real travel: pressing it moves it down by the chassis --travel and swaps the
+ * emboss for a recess, so the key is genuinely depressed rather than tinted. That single gesture is
+ * the motion grammar of the whole product, declared once, here.
+ */
+.primary-button,
+.ghost-button,
+.danger-button,
+.link-button,
+.dialog-delete-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	padding: 0.6rem 1.25rem;
+	border: var(--hairline) solid transparent;
+	border-radius: 0;
+	font-family: inherit;
+	font-size: 0.9375rem;
+	font-stretch: 88%;
+	font-weight: 650;
+	letter-spacing: 0.01em;
+	line-height: 1.25;
+	text-decoration: none;
+	cursor: pointer;
+	box-shadow: var(--emboss);
+	transition:
+		background-color var(--dur-latch) var(--ease-latch),
+		color var(--dur-latch) var(--ease-latch),
+		border-color var(--dur-latch) var(--ease-latch),
+		transform var(--dur-latch) var(--ease-latch),
+		box-shadow var(--dur-latch) var(--ease-latch);
 }
 
-.catalog-section,
-.issue-section {
-	margin-top: 3.5rem;
-	padding-top: 2.5rem;
-	border-top: 1px solid var(--border);
+.primary-button {
+	background-color: var(--primary);
+	border-color: var(--primary);
+	color: var(--on-primary);
 }
 
+.primary-button:hover:not(:disabled) {
+	background-color: var(--primary-hover);
+	border-color: var(--primary-hover);
+}
+
+.ghost-button {
+	background-color: var(--surface);
+	border-color: var(--control-border);
+	color: var(--text);
+}
+
+.ghost-button:hover:not(:disabled) {
+	background-color: var(--panel-deep);
+	border-color: var(--primary);
+	color: var(--heading);
+}
+
+.danger-button,
+.dialog-delete-button {
+	background-color: var(--danger);
+	border-color: var(--danger);
+	color: var(--on-danger);
+}
+
+.danger-button:hover:not(:disabled),
+.dialog-delete-button:hover:not(:disabled) {
+	background-color: color-mix(in srgb, var(--danger) 86%, #000000);
+}
+
+.link-button {
+	background-color: var(--primary);
+	border-color: var(--primary);
+	color: var(--on-primary);
+}
+
+/* The press. Travel down, hard stop, bevel inverts. */
+.primary-button:active:not(:disabled),
+.ghost-button:active:not(:disabled),
+.danger-button:active:not(:disabled),
+.link-button:active,
+.dialog-delete-button:active:not(:disabled) {
+	transform: translateY(var(--travel));
+	box-shadow: var(--recess);
+}
+
+.primary-button:disabled,
+.ghost-button:disabled,
+.danger-button:disabled,
+.dialog-delete-button:disabled {
+	background-color: var(--disabled-surface);
+	border-color: transparent;
+	color: var(--disabled-text);
+	box-shadow: none;
+	cursor: not-allowed;
+}
+
+/* A button awaiting the server keeps its label and dims, so nothing reflows. */
+.primary-button.is-busy,
+.ghost-button.is-busy {
+	cursor: progress;
+	opacity: 0.7;
+}
+
+/* A working lamp steps between two states. It does not breathe: this is a relay, not a heartbeat. */
+@keyframes lamp-pulse {
+	from {
+		opacity: 0.25;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+.text-button {
+	padding: 0.35rem 0;
+	border: 0;
+	border-bottom: var(--hairline) solid var(--control-border);
+	background: none;
+	color: var(--text);
+	font-family: inherit;
+	font-size: 0.9375rem;
+	font-stretch: 88%;
+	font-weight: 620;
+	cursor: pointer;
+	transition:
+		color var(--dur-latch) var(--ease-latch),
+		border-color var(--dur-latch) var(--ease-latch);
+}
+
+.text-button:hover {
+	border-bottom-color: var(--primary);
+	color: var(--heading);
+}
+
+.header-sign-out {
+	font-size: 0.875rem;
+}
+
+/* ========================================================================== */
+/* Join code and session link                                                 */
+/* ========================================================================== */
+
+/*
+ * The join code is the single string a participant must copy by eye from across a room, so it gets
+ * the most deliberate treatment in the product: recessed into its plate like a stamped serial,
+ * widely tracked, and always tabular so no two digits share an ambiguous width.
+ */
+.session-code {
+	display: inline-block;
+	padding: 0.35rem 0.7rem;
+	border: var(--rule);
+	background-color: var(--panel-deep);
+	box-shadow: var(--recess);
+	color: var(--heading);
+	font-family: inherit;
+	font-size: 1.125rem;
+	font-stretch: 75%;
+	font-weight: 700;
+	letter-spacing: 0.22em;
+	/* The tracking is applied on the right of every glyph, so pull the trailing gap back. */
+	text-indent: 0.22em;
+	text-transform: uppercase;
+}
+
+.session-code-label {
+	color: var(--muted);
+	font-size: 0.6875rem;
+	font-stretch: 82%;
+	font-weight: 620;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.session-link {
+	color: var(--muted);
+	font-size: 0.8125rem;
+	text-decoration: none;
+	overflow-wrap: anywhere;
+	border-bottom: var(--hairline) solid transparent;
+	transition:
+		color var(--dur-latch) var(--ease-latch),
+		border-color var(--dur-latch) var(--ease-latch);
+}
+
+.session-link:hover {
+	border-bottom-color: var(--primary);
+	color: var(--primary);
+}
+
+/* ========================================================================== */
+/* The register                                                               */
+/* ========================================================================== */
+
+/*
+ * Sessions and quizzes are register entries, not cards. They are ruled rows on one reading column:
+ * a clerk scans a ledger down a single left edge, and a masonry of tiles would destroy that. Each
+ * row is a plate seated in the panel with a hairline between it and the next.
+ */
 .session-grid,
-.quiz-grid {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 1rem;
+.quiz-grid,
+.issue-list {
+	display: flex;
+	flex-direction: column;
+	border-top: var(--rule-strong);
 }
 
 .session-card,
-.quiz-card {
+.quiz-card,
+.issue-card {
 	position: relative;
-	min-height: 22.25rem;
-	border: 1px solid var(--border);
-	border-top: 3px solid var(--primary);
-	border-radius: var(--radius-card);
-	background: var(--surface-raised);
-	box-shadow: var(--shadow-card);
+	display: grid;
+	align-items: center;
+	gap: 0.25rem 1.25rem;
+	padding: 1rem 1.125rem 1rem 2.5rem;
+	border-bottom: var(--rule);
+	background-color: var(--surface);
+	transition:
+		background-color var(--dur-state) var(--ease-latch),
+		box-shadow var(--dur-state) var(--ease-latch);
+	animation: seat-in var(--dur-seat) var(--ease-latch) backwards;
+}
+
+/* Rows seat themselves in order, top to bottom, rather than all arriving at once. */
+.session-card:nth-child(1),
+.quiz-card:nth-child(1) { animation-delay: 0ms; }
+.session-card:nth-child(2),
+.quiz-card:nth-child(2) { animation-delay: calc(var(--stagger) * 1); }
+.session-card:nth-child(3),
+.quiz-card:nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
+.session-card:nth-child(4),
+.quiz-card:nth-child(4) { animation-delay: calc(var(--stagger) * 3); }
+.session-card:nth-child(5),
+.quiz-card:nth-child(5) { animation-delay: calc(var(--stagger) * 4); }
+.session-card:nth-child(n + 6),
+.quiz-card:nth-child(n + 6) { animation-delay: calc(var(--stagger) * 5); }
+
+/*
+ * The whole row is the target. The action element is stretched over the plate so the hit area is
+ * the entire entry, while the accessible name stays on a real link/button rather than on the row.
+ */
+.session-card-action,
+.quiz-card-action {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	border: 0;
+	padding: 0;
+	background: none;
+	color: transparent;
+	font: inherit;
 	cursor: pointer;
-	transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+	/* No text is painted, but the label must remain readable to assistive technology. */
+	overflow: hidden;
+	text-indent: -200vw;
+	white-space: nowrap;
+}
+
+/* The row lamp. A register has a gutter, and each entry has an indicator in it: unlit at rest, lit
+ * when the row is aimed at. A lamp is this world's own "you are here" - not a coloured edge bar. */
+.session-card::before,
+.quiz-card::before {
+	content: "";
+	position: absolute;
+	top: 1.4rem;
+	left: 1.125rem;
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: 50%;
+	background-color: var(--lamp-off);
+	box-shadow: var(--recess);
+	transition:
+		background-color var(--dur-lamp) var(--ease-latch),
+		box-shadow var(--dur-lamp) var(--ease-latch);
 }
 
 .session-card:hover,
 .quiz-card:hover,
 .session-card:focus-within,
 .quiz-card:focus-within {
-	border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
-	border-top-color: var(--primary);
-	box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent),
-		0 16px 36px color-mix(in srgb, var(--primary) 14%, transparent);
-	transform: translateY(-2px);
+	background-color: var(--panel-deep);
+	box-shadow: var(--emboss);
 }
 
-.session-card-action,
-.quiz-card-action {
-	position: absolute;
-	inset: 0;
-	z-index: 1;
-	display: block;
-	width: 100%;
-	height: 100%;
-	padding: 0;
-	border: 0;
-	border-radius: inherit;
-	background: transparent;
-	cursor: pointer;
-	text-decoration: none;
+.session-card:hover::before,
+.quiz-card:hover::before,
+.session-card:focus-within::before,
+.quiz-card:focus-within::before {
+	background-color: var(--lamp-on);
+	box-shadow: 0 0 0 0.2rem var(--lamp-glow);
 }
 
-.session-card-action:focus-visible,
-.quiz-card-action:focus-visible {
-	outline: 3px solid var(--focus-ring);
-	outline-offset: 3px;
-}
-
-.session-card :where(.session-link, .delete-session-button) {
+/* Everything that is not the stretched action must sit above it to stay clickable. */
+.session-card > *:not(.session-card-action),
+.quiz-card > *:not(.quiz-card-action) {
 	position: relative;
 	z-index: 2;
+	pointer-events: none;
 }
 
-.quiz-card.is-loading {
-	cursor: wait;
-	opacity: 0.72;
-	transform: none;
+.session-card button,
+.session-card a:not(.session-card-action),
+.quiz-card button:not(.quiz-card-action) {
+	pointer-events: auto;
 }
 
-.quiz-card-action:disabled {
-	cursor: wait;
+.session-card .session-details,
+.session-card .session-join,
+.session-card .session-footer,
+.quiz-card .quiz-card-topline,
+.quiz-card .quiz-meta {
+	pointer-events: none;
 }
 
-.quiz-card.is-loading::after {
-	content: "Creating session…";
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	z-index: 3;
-	padding: 0.5rem 0.75rem;
-	border: 1px solid var(--control-border);
-	border-radius: var(--radius-control);
-	color: var(--text);
-	background: var(--surface-raised);
-	box-shadow: var(--shadow-control);
-	font-size: 0.78rem;
-	font-weight: 800;
-	transform: translate(-50%, -50%);
-	white-space: nowrap;
-}
-
-.session-card {
-	display: grid;
-	grid-template-columns: 7rem minmax(0, 1fr);
-	grid-template-rows: 10.75rem auto 1fr;
-	align-items: start;
-	gap: 1rem;
-	padding: 1.2rem;
-}
-
-.session-qr-panel {
-	display: grid;
-	justify-items: center;
-	gap: 0.45rem;
-	width: 7rem;
-	padding: 0.5rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-card);
-	background: var(--surface);
-}
-
-.session-qr-caption {
-	color: var(--muted);
-	font-size: 0.72rem;
-	font-weight: 800;
-	letter-spacing: 0.08em;
-	line-height: 1.2;
-	text-align: center;
-	text-transform: uppercase;
-}
-
-.session-qr {
-	width: 100%;
-	height: auto;
-	aspect-ratio: 1;
-	border: 0;
-	border-radius: var(--radius-control);
-	background: #fff;
-}
-
-.session-details {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	min-width: 0;
-}
-
-.session-details .quiz-card-topline {
-	margin-bottom: 0.5rem;
-}
-
-.session-title {
-	height: 6.25rem;
-	margin: 0;
-	overflow: hidden;
-	color: var(--heading);
-	font-size: var(--session-title-font-size, 1.3rem);
-	line-height: 1.25;
-	overflow-wrap: anywhere;
-}
-
-.session-created {
-	margin: 0;
-	text-align: right;
-	line-height: 1.25;
-}
-
-.session-join-meta {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: 0.5rem;
-	margin-bottom: 0.35rem;
-}
-
-.session-code-label {
-	margin: 0;
-	color: var(--muted);
-	font-size: 0.72rem;
-	font-weight: 800;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-}
-
-.session-code {
-	display: grid;
-	place-items: center;
-	width: 100%;
-	height: 3rem;
-	padding: 0.35rem 0.65rem;
-	border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
-	border-radius: var(--radius-control);
-	color: var(--primary);
-	background: var(--primary-soft);
-	box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 45%, transparent);
-	font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-	font-size: 1.35rem;
-	font-weight: 850;
-	letter-spacing: 0.08em;
-	text-align: center;
-}
-
-.session-join {
-	grid-column: 1 / -1;
-	align-self: start;
-	width: 100%;
-}
-
-.session-footer {
-	grid-column: 1 / -1;
-	align-self: end;
-	min-width: 0;
-	width: 100%;
-}
-
-.session-link {
-	display: block;
-	overflow: hidden;
-	color: var(--primary);
-	font-size: 0.82rem;
-	font-weight: 700;
-	text-decoration-color: var(--accent);
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.catalog-loaded-at {
-	margin: 0.35rem 0 0;
-}
+/* --- Quiz entries --- */
 
 .quiz-card {
-	display: flex;
-	flex-direction: column;
-	padding: 1.45rem;
+	grid-template-columns: 1fr auto;
+	grid-template-areas:
+		"topline topline"
+		"title   count"
+		"desc    desc"
+		"meta    meta";
 }
 
-.quiz-card-topline,
-.quiz-meta {
+.quiz-card-topline {
+	grid-area: topline;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 0.75rem;
 }
 
-.primary-button:disabled {
-	cursor: wait;
-	opacity: 0.62;
-	transform: none;
+.quiz-card .quiz-title {
+	grid-area: title;
+	font-size: 1.0625rem;
 }
 
-.quiz-card-topline {
-	margin-bottom: 1.5rem;
+.quiz-card .quiz-description {
+	grid-area: desc;
+	max-width: 70ch;
+	color: var(--muted);
+	font-size: 0.875rem;
 }
 
-.quiz-card > .quiz-card-topline {
-	justify-content: flex-end;
-}
-
-.ready-chip {
-	padding: 0.32rem 0.58rem;
-	border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent);
-	border-radius: var(--radius-control);
-	color: var(--primary);
-	background: color-mix(in srgb, var(--accent) 18%, transparent);
-	font-size: 0.7rem;
-	font-weight: 850;
-	letter-spacing: 0.08em;
+.quiz-card .quiz-meta {
+	grid-area: meta;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	margin-top: 0.25rem;
+	color: var(--muted);
+	font-size: 0.75rem;
+	font-stretch: 82%;
+	letter-spacing: 0.1em;
 	text-transform: uppercase;
 }
 
 .question-count {
-	padding: 0.32rem 0.58rem;
-	border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent);
-	border-radius: var(--radius-control);
-	color: var(--primary);
-	background: color-mix(in srgb, var(--accent) 18%, transparent);
-	font-size: 0.7rem;
-	font-weight: 850;
-	letter-spacing: 0.04em;
+	color: var(--muted);
+	font-size: 0.6875rem;
+	font-stretch: 82%;
+	font-weight: 620;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.12em;
 	text-transform: uppercase;
 }
 
-.quiz-title {
-	margin-bottom: 0.6rem;
-	color: var(--heading);
-	font-size: 1.25rem;
-	line-height: 1.25;
-}
-
-.quiz-description {
-	display: -webkit-box;
-	overflow: hidden;
-	margin-bottom: 1.5rem;
-	color: color-mix(in srgb, var(--text) 75%, var(--muted));
-	line-height: 1.55;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 3;
-}
-
-.quiz-meta {
-	align-items: flex-end;
-	margin-top: auto;
-	padding-top: 1rem;
-	border-top: 1px solid var(--border);
-}
-
-.quiz-author {
-	color: color-mix(in srgb, var(--text) 85%, var(--muted));
-	font-size: 0.85rem;
-	font-weight: 700;
-}
-
-.issue-file {
-	overflow-wrap: anywhere;
+/* A row waiting on the server dims and locks, and its lamp edge holds lit to show which one it is. */
+.quiz-card.is-loading,
+.session-card.is-loading {
 	color: var(--muted);
-	font-size: 0.75rem;
+	cursor: progress;
 }
 
-.error-count {
-	padding: 0.35rem 0.65rem;
-	border-radius: 999px;
+.quiz-card.is-loading::before,
+.session-card.is-loading::before {
+	background-color: var(--lamp-on);
+	box-shadow: 0 0 0 0.2rem var(--lamp-glow);
+	animation: lamp-pulse 900ms steps(2, jump-none) infinite;
+}
+
+.quiz-card.is-loading .quiz-card-action,
+.session-card.is-loading .session-card-action {
+	pointer-events: none;
+}
+
+/* --- Session entries --- */
+
+.session-card {
+	grid-template-columns: auto 1fr auto;
+	grid-template-areas:
+		"qr details join"
+		"qr footer  join";
+	gap: 0.5rem 1.5rem;
+}
+
+.session-qr-panel {
+	grid-area: qr;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.5rem;
+	border: var(--rule);
+	background-color: var(--qr-surface, #ffffff);
+	box-shadow: var(--recess);
+}
+
+.session-qr {
+	display: block;
+	width: 5.5rem;
+	height: 5.5rem;
+}
+
+.session-qr-caption {
+	color: var(--muted);
+	font-size: 0.6875rem;
+	font-stretch: 82%;
+	font-weight: 620;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.session-details {
+	grid-area: details;
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	min-width: 0;
+}
+
+.session-title {
+	font-size: 1.0625rem;
+	overflow-wrap: anywhere;
+}
+
+/*
+ * The session state is a lamp plus a word. The lamp is the fast read across a list; the word is the
+ * precise read. A live session's lamp is the operator's colour; a finished one is unlit.
+ */
+.session-state {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	color: var(--muted);
+	font-size: 0.6875rem;
+	font-stretch: 82%;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.session-state::before {
+	content: "";
+	width: 0.55rem;
+	height: 0.55rem;
+	flex: none;
+	border-radius: 50%;
+	background-color: var(--lamp-off);
+	box-shadow: var(--recess);
+}
+
+.session-state.ready-chip {
+	color: var(--heading);
+}
+
+.session-state.ready-chip::before {
+	background-color: var(--lamp-on);
+	box-shadow: 0 0 0 0.18rem var(--lamp-glow);
+}
+
+.session-join {
+	grid-area: join;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0.35rem;
+	text-align: right;
+}
+
+.session-join-meta {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0.1rem;
+}
+
+.session-created {
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.session-footer {
+	grid-area: footer;
+	display: flex;
+	align-items: center;
+	min-width: 0;
+}
+
+/* The delete key is destructive, so it is drawn, never coloured until it is aimed at. */
+.delete-session-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.85rem;
+	height: 1.85rem;
+	flex: none;
+	padding: 0;
+	border: var(--rule);
+	background-color: var(--surface);
+	color: var(--muted);
+	cursor: pointer;
+	box-shadow: var(--emboss);
+	transition:
+		background-color var(--dur-latch) var(--ease-latch),
+		border-color var(--dur-latch) var(--ease-latch),
+		color var(--dur-latch) var(--ease-latch),
+		transform var(--dur-latch) var(--ease-latch),
+		box-shadow var(--dur-latch) var(--ease-latch);
+}
+
+.delete-session-button:hover {
+	border-color: var(--danger);
+	background-color: color-mix(in srgb, var(--danger) 12%, var(--surface));
 	color: var(--danger);
-	background: var(--danger-soft);
-	font-size: 0.75rem;
-	font-weight: 800;
 }
 
-.issue-list {
-	display: grid;
-	gap: 0.7rem;
-	margin-top: 1.25rem;
+.delete-session-button:active {
+	transform: translateY(var(--travel));
+	box-shadow: var(--recess);
 }
 
+/*
+ * A drawn cross, not a Unicode multiplication sign and not an emoji. Two hairline strokes at right
+ * angles - the same geometry as everything else on the board.
+ */
+.delete-session-icon {
+	position: relative;
+	width: 0.75rem;
+	height: 0.75rem;
+}
+
+.delete-session-icon::before,
+.delete-session-icon::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 0;
+	width: 100%;
+	height: 1.5px;
+	background-color: currentColor;
+}
+
+.delete-session-icon::before {
+	transform: rotate(45deg);
+}
+
+.delete-session-icon::after {
+	transform: rotate(-45deg);
+}
+
+/* --- Issue entries --- */
+
+.issue-section .issue-list {
+	margin-top: 0.75rem;
+}
+
+/*
+ * A rejected file is a fault entry. It is marked by a danger lamp in the same gutter every other
+ * register row uses, so the register keeps one scanning edge rather than growing a coloured rail.
+ */
 .issue-card {
-	display: grid;
-	grid-template-columns: minmax(9rem, 0.28fr) 1fr;
-	gap: 1.25rem;
-	padding: 1rem 1.15rem;
-	border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--surface));
-	border-radius: var(--radius-card);
-	background: var(--danger-soft);
+	grid-template-columns: 1fr;
+	gap: 0.3rem;
+	background-color: color-mix(in srgb, var(--danger) 7%, var(--surface));
+}
+
+.issue-card::before {
+	content: "";
+	position: absolute;
+	top: 1.3rem;
+	left: 1.125rem;
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: 50%;
+	background-color: var(--danger);
+	box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--danger) 26%, transparent);
 }
 
 .issue-file {
-	color: var(--danger);
-	font-weight: 750;
+	color: var(--heading);
+	font-size: 0.875rem;
+	overflow-wrap: anywhere;
 }
 
 .issue-reason {
-	margin: 0;
-	overflow-wrap: anywhere;
-	color: color-mix(in srgb, var(--danger) 75%, var(--text));
-	font-size: 0.88rem;
-	line-height: 1.5;
+	color: var(--muted);
+	font-size: 0.875rem;
+	max-width: 70ch;
 }
 
-.login-page {
-	display: grid;
-	place-items: center;
-	padding: 1.25rem;
-	background: var(--background);
+.catalog-loaded-at {
+	margin-top: 0.2rem;
+	font-variant-numeric: tabular-nums;
 }
 
-.login-shell {
-	width: min(100%, 29rem);
-}
-
-.login-card {
-	padding: clamp(2rem, 7vw, 3.25rem);
-	border: 1px solid var(--border);
-	border-top: 3px solid var(--primary);
-	border-radius: var(--radius-panel);
-	background: var(--surface-raised);
-	box-shadow: var(--shadow-card);
-
-}
-
-.login-card .brand-mark {
-	margin-bottom: 1rem;
-	display: block;
-	width: fit-content;
-	margin-left: auto;
-	margin-right: auto;
-}
-
-.login-card h1 {
-	font-size: clamp(2.2rem, 10vw, 2.5rem);
-	margin-bottom: 2.5rem;
-	align-items: center;
-	display: flex;
-	flex-direction: column;
-}
-
-.form-error {
-	margin: 1.5rem 0;
-	padding: 0.85rem 1rem;
-	border: 1px solid color-mix(in srgb, var(--danger) 28%, var(--border));
-	border-radius: var(--radius-control);
-	color: var(--danger);
-	background: var(--danger-soft);
-	font-size: 0.9rem;
-	line-height: 1.45;
-}
-
-.login-form {
-	display: grid;
-	gap: 0.65rem;
-	margin-top: 2rem;
-}
-
-.login-form label {
-	color: color-mix(in srgb, var(--text) 85%, var(--muted));
-	font-size: 0.86rem;
-	font-weight: 750;
-}
-
-.login-form input {
-	width: 100%;
-	min-height: 3.15rem;
-	padding: 0.75rem 0.9rem;
-	border: 1px solid color-mix(in srgb, var(--border) 70%, var(--muted));
-	border-radius: var(--radius-control);
-	color: var(--text);
-	background: var(--surface);
-	transition: border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.login-form input:hover,
-.login-form input:focus {
-	border-color: var(--primary);
-}
-
-.primary-button {
-	min-height: 3.15rem;
-	margin-top: 0.5rem;
-	padding: 0.75rem 1rem;
-	border: 0;
-	border-radius: var(--radius-control);
-	color: #fff;
-	background: var(--primary);
-	font-weight: 800;
-	box-shadow: 0 4px 12px rgba(4, 0, 102, 0.16);
-	transition: transform 160ms ease, box-shadow 160ms ease;
-}
-
-.primary-button:hover {
-	transform: translateY(-1px);
-	box-shadow: 0 6px 16px rgba(4, 0, 102, 0.2);
-}
-
-.link-button {
-	display: inline-block;
-	text-align: center;
-	text-decoration: none;
-}
-
-
-.delete-session-button {
-	display: inline-grid;
-	flex: none;
-	place-items: center;
-	width: 2.25rem;
-	height: 2.25rem;
-	padding: 0;
-	border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
-	border-radius: var(--radius-control);
-	color: var(--danger);
-	background: var(--danger-soft);
-	transition: border-color 160ms ease, filter 160ms ease;
-}
-
-.delete-session-icon {
-	display: block;
-	width: 1rem;
-	height: 1rem;
-	background: currentColor;
-	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6h12M9 6V3h6v3M8 6l.7 14h6.6L16 6'/%3E%3C/svg%3E") center / contain no-repeat;
-	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6h12M9 6V3h6v3M8 6l.7 14h6.6L16 6'/%3E%3C/svg%3E") center / contain no-repeat;
-}
-
-.delete-session-button:hover:not(:disabled) {
-	border-color: var(--danger);
-	filter: brightness(0.97);
-}
-
-.delete-session-button:disabled {
-	cursor: wait;
-	opacity: 0.65;
-}
+/* ========================================================================== */
+/* Delete dialog                                                              */
+/* ========================================================================== */
 
 .delete-session-dialog {
-	width: min(30rem, calc(100% - 2rem));
+	width: min(30rem, calc(100vw - 2rem));
 	padding: 0;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-panel);
+	border: var(--rule-strong);
+	border-radius: 0;
+	background-color: var(--surface);
 	color: var(--text);
-	background: var(--surface-raised);
 	box-shadow: var(--shadow-card);
 }
 
 .delete-session-dialog::backdrop {
-	background: color-mix(in srgb, var(--text) 48%, transparent);
-	backdrop-filter: blur(2px);
+	background-color: color-mix(in srgb, var(--panel-deep) 76%, transparent);
+	animation: backdrop-in var(--dur-state) var(--ease-latch);
+}
+
+.delete-session-dialog[open] {
+	animation: latch-in var(--dur-state) var(--ease-latch);
 }
 
 .delete-session-dialog form {
-	padding: clamp(1.4rem, 5vw, 2rem);
-}
-
-.delete-session-dialog h2 {
-	margin-bottom: 0.75rem;
-	font-size: 1.5rem;
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	padding: 1.5rem;
 }
 
 .delete-session-copy {
-	display: grid;
+	display: flex;
+	flex-direction: column;
 	gap: 0.35rem;
-	margin-bottom: 0;
 	color: var(--muted);
-	line-height: 1.5;
+	font-size: 0.9375rem;
+	max-width: 60ch;
 }
 
 .delete-session-copy strong {
@@ -771,227 +1000,184 @@ h2 {
 
 .delete-dialog-actions {
 	display: flex;
+	align-items: center;
 	justify-content: flex-end;
+	gap: 1rem;
+	padding-top: 0.75rem;
+	border-top: var(--rule);
+}
+
+/* ========================================================================== */
+/* Sign-in                                                                    */
+/* ========================================================================== */
+
+.login-page {
+	display: flex;
+	min-height: 100vh;
+	align-items: center;
+	justify-content: center;
+	padding: 1.5rem;
+}
+
+.theme-toggle--floating {
+	position: fixed;
+	top: 1.25rem;
+	right: 1.25rem;
+	z-index: 30;
+}
+
+.login-shell {
+	width: min(26rem, 100%);
+}
+
+/*
+ * The sign-in plate. This is the only screen in Quizzle with nothing else on it, so the plate is
+ * given real machined presence: a raised panel seated on the panel ground, capped by its own rule
+ * rather than by a coloured tab.
+ */
+.login-card {
+	display: flex;
+	flex-direction: column;
 	gap: 0.75rem;
-	margin-top: 1.5rem;
+	padding: 2rem;
+	border: var(--rule-strong);
+	background-color: var(--surface);
+	box-shadow: var(--emboss), var(--shadow-card);
+	animation: latch-in var(--dur-board) var(--ease-latch);
 }
 
-.dialog-delete-button {
-	min-height: 2.75rem;
-	padding: 0.6rem 1rem;
-	border: 1px solid transparent;
-	border-radius: var(--radius-control);
-	color: var(--on-danger);
-	background: var(--danger);
-	font-weight: 800;
-	transition: filter 160ms ease, transform 160ms ease;
+.login-card .brand-mark {
+	width: 2.75rem;
+	height: 2.75rem;
+	font-size: 1.25rem;
 }
 
-.dialog-delete-button:hover:not(:disabled) {
-	filter: brightness(1.06);
-	transform: translateY(-1px);
+.brand-name {
+	margin: 0.5rem 0 0;
+	color: var(--heading);
+	font-size: 1.5rem;
+	font-stretch: 88%;
+	font-weight: 700;
 }
 
-.dialog-delete-button:disabled {
-	cursor: wait;
-	color: var(--disabled-text);
-	background: var(--disabled-surface);
+.login-card h2 {
+	margin-top: 0.75rem;
 }
 
-.delete-dialog-actions .text-button:disabled {
-	cursor: wait;
-	color: var(--disabled-text);
+.login-form {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin-top: 0.75rem;
 }
 
-@media (max-width: 1000px) {
-	.session-grid,
-	.quiz-grid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+.login-form label {
+	color: var(--muted);
+	font-size: 0.6875rem;
+	font-stretch: 82%;
+	font-weight: 620;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+/*
+ * An input is a slot milled into the panel, so it is recessed, not raised. Focus lights the slot's
+ * own edge rather than drawing a ring around it: the field itself becomes the live element.
+ */
+.login-form input {
+	padding: 0.7rem 0.85rem;
+	border: var(--rule-strong);
+	border-radius: 0;
+	background-color: var(--panel-deep);
+	box-shadow: var(--recess);
+	color: var(--text);
+	font-family: inherit;
+	font-size: 1rem;
+	transition:
+		border-color var(--dur-latch) var(--ease-latch),
+		background-color var(--dur-latch) var(--ease-latch);
+}
+
+.login-form input:focus {
+	outline: none;
+	border-color: var(--primary);
+	background-color: var(--surface);
+}
+
+.login-form input:focus-visible {
+	border-color: var(--primary);
+}
+
+.login-form .primary-button {
+	margin-top: 0.75rem;
+	padding: 0.75rem 1.25rem;
+}
+
+/* ========================================================================== */
+/* Narrow screens                                                             */
+/* ========================================================================== */
+
+@media (max-width: 46rem) {
+	.session-card {
+		grid-template-columns: 1fr;
+		grid-template-areas:
+			"details"
+			"qr"
+			"join"
+			"footer";
+		justify-items: start;
 	}
-}
 
-@media (max-width: 620px) {
-	.session-grid,
-	.quiz-grid {
-		grid-template-columns: minmax(0, 1fr);
+	.session-join {
+		align-items: flex-start;
+		text-align: left;
 	}
 
-	.site-header {
-		padding-inline: 1.1rem;
+	.session-join-meta {
+		align-items: flex-start;
+	}
+
+	.quiz-card {
+		grid-template-columns: 1fr;
+		grid-template-areas:
+			"topline"
+			"title"
+			"count"
+			"desc"
+			"meta";
 	}
 
 	.page-shell {
-		width: min(100% - 2rem, 1180px);
-		padding-top: 2.5rem;
+		gap: 2rem;
 	}
 
-	.page-heading,
-	.section-heading {
-		align-items: flex-start;
-		flex-direction: column;
-	}
-
-	.summary-pill {
-		display: flex;
-		align-items: baseline;
-		gap: 0.5rem;
-		min-width: 0;
-	}
-
-	.issue-card {
-		grid-template-columns: 1fr;
-		gap: 0.65rem;
-	}
-
-	.session-card {
-		grid-template-columns: 1fr;
-		grid-template-rows: auto auto auto 1fr;
-	}
-
-	.session-qr {
-		width: 100%;
-	}
-
-	.session-qr-panel {
-		justify-self: center;
-		width: min(12rem, 100%);
-	}
-
-	.delete-dialog-actions {
-		align-items: stretch;
-		flex-direction: column-reverse;
-	}
-
-	.delete-dialog-actions button {
-		width: 100%;
-	}
-}
-
-/* Product-level polish: compact branding, explicit states, and stable readable controls. */
-:root {
-	line-height: 1.5;
-}
-button:focus-visible,
-input:focus-visible,
-a:focus-visible {
-	outline-color: var(--focus-ring);
-}
-.brand {
-	gap: 0.4rem;
-	font-weight: 850;
-	letter-spacing: -0.025em;
-}
-.brand [data-brand-name] {
-	font-size: clamp(1.25rem, 2.4vw, 1.45rem);
-	line-height: 1;
-}
-.login-form input {
-	border-color: var(--control-border);
-}
-.primary-button {
-	border: 1px solid transparent;
-	color: var(--on-primary);
-	transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
-}
-.primary-button:hover:not(:disabled) {
-	background: var(--primary-hover);
-}
-.primary-button:active:not(:disabled) {
-	transform: translateY(0);
-}
-.primary-button:disabled {
-	cursor: not-allowed;
-	border-color: var(--border);
-	color: var(--disabled-text);
-	background: var(--disabled-surface);
-	box-shadow: none;
-	opacity: 1;
-	transform: none;
-}
-@media (max-width: 620px) {
 	.site-header {
-		height: auto;
-		min-height: 4.5rem;
 		flex-wrap: wrap;
-		gap: 0.55rem 1rem;
-		padding-block: 0.65rem;
-	}
-	.brand [data-brand-name] {
-		font-size: 1.25rem;
+		gap: 0.75rem;
 	}
 }
 
+/* ========================================================================== */
+/* Reduced motion                                                             */
+/* ========================================================================== */
 
-/* ============================================================================
-   Motion layer - "instrument sweep"
-   ----------------------------------------------------------------------------
-   Shared tokens, keyframes and the reduced-motion contract live in theme.css.
-   Admin is a working screen, not a stage, so it gets the quietest version of the
-   gesture: one short sweep as the catalog resolves, and precise feedback on the
-   cards. Selectors stay admin-specific because presenter.html also loads this
-   file, and the presenter has its own choreography.
-   ============================================================================ */
+/*
+ * The chassis zeroes --travel, which removes the movement from every latch while leaving the lamp,
+ * colour and state changes intact. Only the genuinely ornamental gestures are switched off here.
+ */
+@media (prefers-reduced-motion: reduce) {
+	.section-heading::after,
+	.session-card,
+	.quiz-card,
+	.status-card,
+	.login-card,
+	.delete-session-dialog[open] {
+		animation: none;
+	}
 
-.page-shell > section {
-	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
-}
-
-/* The catalog arrives over the network, so the cards resolve as a list rather than all at once.
-   The stagger is capped well short of the point where waiting becomes noticeable. */
-.quiz-card,
-.session-card,
-.issue-card {
-	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
-	animation-delay: calc(var(--i, 0) * var(--stagger));
-}
-
-.quiz-card:nth-child(1),
-.session-card:nth-child(1),
-.issue-card:nth-child(1) { --i: 0; }
-.quiz-card:nth-child(2),
-.session-card:nth-child(2),
-.issue-card:nth-child(2) { --i: 1; }
-.quiz-card:nth-child(3),
-.session-card:nth-child(3),
-.issue-card:nth-child(3) { --i: 2; }
-.quiz-card:nth-child(4),
-.session-card:nth-child(4),
-.issue-card:nth-child(4) { --i: 3; }
-.quiz-card:nth-child(5),
-.session-card:nth-child(5),
-.issue-card:nth-child(5) { --i: 4; }
-.quiz-card:nth-child(n + 6),
-.session-card:nth-child(n + 6),
-.issue-card:nth-child(n + 6) { --i: 5; }
-
-.quiz-card,
-.session-card {
-	transition:
-		border-color var(--dur-state) ease,
-		box-shadow var(--dur-state) var(--ease-sweep),
-		transform var(--dur-state) var(--ease-sweep);
-}
-
-/* A card is a button here, so the pointer-down state has to be felt, not just seen. */
-.quiz-card:has(.quiz-card-action:active),
-.session-card:has(.session-card-action:active) {
-	transform: translateY(0) scale(0.995);
-	transition-duration: 70ms;
-}
-
-/* The destructive control stays out of the way until the card is actually being worked on. */
-.delete-session-button {
-	transition: opacity var(--dur-state) ease, color var(--dur-state) ease, background-color var(--dur-state) ease;
-}
-
-.status-card {
-	animation: sweep-reveal var(--dur-state) var(--ease-sweep) backwards;
-}
-
-.delete-session-dialog[open] {
-	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
-}
-
-.delete-session-dialog::backdrop {
-	animation: backdrop-in var(--dur-state) var(--ease-sweep) backwards;
+	.quiz-card.is-loading::before,
+	.session-card.is-loading::before {
+		animation: none;
+		opacity: 1;
+	}
 }

@@ -28,8 +28,7 @@
 			const dark = theme === "dark";
 			button.setAttribute("aria-pressed", String(dark));
 			button.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
-			const icon = button.querySelector(".theme-toggle-icon");
-			if (icon) icon.textContent = dark ? "☀️" : "🌙";
+			// The icon is drawn in CSS off :root[data-theme]; writing a glyph here would erase it.
 		}
 	}
 

@@ -441,12 +441,18 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		const text = document.createElement("span");
 		text.textContent = option.text;
 		const votes = document.createElement("span");
-		votes.textContent = `${option.voteCount} ${option.correct ? "✓" : ""}`.trim();
+		// The correct option is named in words by the result plate itself; a tick glyph here would
+		// be an icon made of text, and it would read out as "check mark" to a screen reader.
+		votes.textContent = String(option.voteCount);
 		title.append(text, votes);
 		const bar = document.createElement("div");
 		bar.className = "result-bar";
 		const fill = document.createElement("span");
-		fill.style.width = `${Math.max(0, Math.min(100, (Number(option.voteCount) / maximumVotes) * 100))}%`;
+		const share = maximumVotes > 0
+			? Math.max(0, Math.min(1, Number(option.voteCount) / maximumVotes))
+			: 0;
+		// Driven as a scale factor rather than a width, so the reveal animates on the compositor.
+		fill.style.setProperty("--fill", String(share));
 		bar.append(fill);
 		card.append(title, bar);
 		return card;

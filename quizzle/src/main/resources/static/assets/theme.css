@@ -1,56 +1,248 @@
 /*
- * Shared dark-mode theme layer for every Quizzle surface.
+ * Quizzle shared chassis - "Assembly Board".
  *
- * The light and dark palettes live in /assets/branding.css. This file contains only shared
- * theme behavior and component treatment. theme.js applies the resolved theme as an explicit
- * data-theme="dark|light" attribute on <html>, so no media query is needed.
+ * Every surface in Quizzle is one board in a chamber. Participants vote anonymously from their own
+ * seat unit; a large shared board resolves the room into a tally. The board shows THAT you voted,
+ * never WHAT you voted, until the division closes.
+ *
+ * Structure is carried by hairlines and right angles, never by floating rounded cards or by drop
+ * shadows standing in for hierarchy. Depth is engraving: a plate sits proud of the panel or recessed
+ * into it, described by a light top edge and a dark bottom edge, the way a real plate in a real
+ * panel is described.
+ *
+ * The light and dark palettes live in /assets/branding.css and are generated per installation from
+ * branding.yaml. Nothing here may hardcode a brand colour: the operator's --primary is the single
+ * illuminating accent in this world (lamps, the active plate, the division rail), and the chassis
+ * around it stays neutral so an unknown brand colour always lands correctly.
  */
 
-/* Inter is vendored locally (assets/vendor/inter) so every machine renders the same typography
-   instead of silently falling back to the host's UI sans. One variable file per subset covers the
-   whole 100-900 range, which is why the stylesheets can lean on weights like 750 and 850. */
+/*
+ * Archivo is vendored locally (assets/vendor/archivo). One variable file per subset carries BOTH
+ * axes: weight 100-900 and width 62-125%. The width axis is load-bearing in this world - it is the
+ * condensed voice of an engraved name plate, where a long name has to fit a fixed plate, and it
+ * comes from the same file as the text voice rather than from a second family.
+ */
 @font-face {
-	font-family: "Inter";
+	font-family: "Archivo";
 	font-style: normal;
 	font-weight: 100 900;
+	font-stretch: 62% 125%;
 	font-display: swap;
-	src: url("/assets/vendor/inter/inter-latin.woff2") format("woff2");
+	src: url("/assets/vendor/archivo/archivo-latin.woff2") format("woff2");
 	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
-	font-family: "Inter";
+	font-family: "Archivo";
 	font-style: normal;
 	font-weight: 100 900;
+	font-stretch: 62% 125%;
 	font-display: swap;
-	src: url("/assets/vendor/inter/inter-latin-ext.woff2") format("woff2");
+	src: url("/assets/vendor/archivo/archivo-latin-ext.woff2") format("woff2");
 	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* ========================================================================== */
+/* Chassis tokens                                                             */
+/* ========================================================================== */
+
 :root {
 	color-scheme: light;
-	--radius-control: 0.5rem;
-	--radius-card: 0.75rem;
-	--radius-panel: 0.875rem;
-	--shadow-control: 0 1px 2px rgba(13, 23, 42, 0.08);
-	--shadow-card: 0 12px 30px rgba(13, 23, 42, 0.08);
+
+	--font-board: "Archivo", ui-sans-serif, system-ui, sans-serif;
+
+	/*
+	 * Right angles carry this world. The two exceptions are genuine circles (indicator lamps,
+	 * avatars), which are round because the object is round, not because a corner was softened.
+	 */
+	--radius-control: 0;
+	--radius-card: 0;
+	--radius-panel: 0;
+
+	/* One hairline width for the whole product. Structure is drawn, not shadowed. */
+	--hairline: 1px;
+	--rule: var(--hairline) solid var(--border);
+	--rule-strong: var(--hairline) solid var(--control-border);
+
+	/*
+	 * Engraving, not elevation. --emboss describes a plate standing proud of the panel; --recess
+	 * describes a slot milled into it. Both are inset edge pairs with a real offset, so they read as
+	 * a lit edge and a shaded edge rather than as a coloured halo.
+	 */
+	--edge-light: rgba(255, 255, 255, 0.66);
+	--edge-dark: rgba(9, 14, 24, 0.16);
+	--emboss: inset 0 1px 0 var(--edge-light), inset 0 -2px 0 var(--edge-dark);
+	--recess: inset 0 2px 3px var(--edge-dark), inset 0 -1px 0 var(--edge-light);
+
+	/* Cast shadow, used only where a plate genuinely lifts off the board (dialogs, the podium). */
+	--shadow-control: 0 1px 2px rgba(13, 23, 42, 0.1);
+	--shadow-card: 0 10px 26px rgba(13, 23, 42, 0.14);
+
+	/* The board ground: a panel, faintly distinct from the surface plates set into it. */
+	--panel: color-mix(in srgb, var(--background) 88%, var(--text) 4%);
+	--panel-deep: color-mix(in srgb, var(--background) 74%, var(--text) 9%);
+
+	/* Lamp states. An unlit lamp is a hollow recess; a lit lamp carries the operator's colour. */
+	--lamp-off: color-mix(in srgb, var(--border) 70%, var(--muted));
+	--lamp-on: var(--primary);
+	--lamp-glow: color-mix(in srgb, var(--primary) 34%, transparent);
 }
 
 :root[data-theme="dark"] {
 	color-scheme: dark;
+	--edge-light: rgba(255, 255, 255, 0.09);
+	--edge-dark: rgba(0, 0, 0, 0.55);
+	--panel: color-mix(in srgb, var(--background) 82%, #ffffff 3%);
+	--panel-deep: color-mix(in srgb, var(--background) 92%, #000000 22%);
+	--shadow-card: 0 10px 26px rgba(0, 0, 0, 0.5);
 }
 
-/* The text badge/logo sits on the bright accent, so keep its text dark for contrast. */
+/* Shared palette derivations. Page stylesheets depend on every name in this block. */
+:root {
+	--surface-raised: var(--surface);
+	--heading: var(--primary);
+	--control-border: color-mix(in srgb, var(--border) 35%, var(--muted));
+	--primary-hover: color-mix(in srgb, var(--primary) 88%, #ffffff);
+	--on-primary: #ffffff;
+	--on-accent: #071622;
+	--on-danger: #ffffff;
+	--focus-ring: color-mix(in srgb, var(--accent) 72%, #ffffff);
+	--disabled-surface: color-mix(in srgb, var(--border) 58%, var(--surface));
+	--disabled-text: color-mix(in srgb, var(--muted) 78%, var(--surface));
+}
+
+/* ========================================================================== */
+/* Motion: the latch                                                          */
+/* ========================================================================== */
+
+/*
+ * This board is electromechanical. Nothing eases in gently and nothing bounces: a plate travels
+ * into its slot and stops dead, a lamp latches on, digits step rather than tween, and the register
+ * reorders by rows sliding to their seat.
+ *
+ * --travel is the single spatial dimension of that gesture. The reduced-motion block at the end of
+ * this file zeroes it, which removes movement while leaving every lamp, colour and state change
+ * fully intact - a latch that no longer travels still latches.
+ */
+:root {
+	--ease-latch: cubic-bezier(0.15, 0.85, 0.1, 1);
+	--ease-release: cubic-bezier(0.45, 0, 0.9, 1);
+	--dur-lamp: 90ms;
+	--dur-latch: 120ms;
+	--dur-state: 200ms;
+	--dur-seat: 300ms;
+	--dur-board: 380ms;
+	--stagger: 30ms;
+	--travel: 0.5rem;
+}
+
+/* A plate arriving in its slot: short travel down, hard stop. */
+@keyframes latch-in {
+	from {
+		opacity: 0;
+		transform: translateY(calc(var(--travel) * -1));
+	}
+}
+
+/* A rule drawing itself across the board. The board's own arrival gesture. */
+@keyframes rule-draw {
+	from {
+		transform: scaleX(0);
+	}
+}
+
+/* An indicator lamp latching on: it overshoots in brightness, never in geometry. */
+@keyframes lamp-latch {
+	from {
+		box-shadow: 0 0 0 0 var(--lamp-glow);
+	}
+
+	60% {
+		box-shadow: 0 0 0 0.45rem transparent;
+	}
+
+	to {
+		box-shadow: 0 0 0 0 transparent;
+	}
+}
+
+/* A row travelling sideways into its seat. */
+@keyframes seat-in {
+	from {
+		opacity: 0;
+		transform: translateX(calc(var(--travel) * -1.6));
+	}
+}
+
+/* ========================================================================== */
+/* Board primitives                                                           */
+/* ========================================================================== */
+
+/*
+ * The legend. This world has no kickers: a label above a heading is banned, and every place that
+ * used one now carries either nothing or a real legend - a condensed engraved caption naming a
+ * control, a plate, or the session's own state. Legends label things; they never introduce
+ * headings.
+ */
+.legend {
+	display: block;
+	margin: 0;
+	color: var(--muted);
+	font-size: 0.75rem;
+	font-stretch: 82%;
+	font-weight: 620;
+	letter-spacing: 0.14em;
+	line-height: 1.2;
+	text-transform: uppercase;
+}
+
+/*
+ * The readout. Every number this product shows is a measurement - a tally, a rank, a countdown, a
+ * score, a join code - so all of them are set in tabular figures and never reflow as they change.
+ */
+.readout,
+.session-code,
+.standing-points,
+.standing-rank,
+#countdown,
+#display-points {
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* The indicator lamp: unlit is a hollow recess, lit carries the operator's colour. */
+.lamp {
+	display: inline-block;
+	flex: none;
+	width: 0.6rem;
+	height: 0.6rem;
+	border-radius: 50%;
+	background: var(--lamp-off);
+	box-shadow: var(--recess);
+	transition: background-color var(--dur-lamp) var(--ease-latch);
+}
+
+.lamp.is-lit {
+	background: var(--lamp-on);
+	animation: lamp-latch 420ms var(--ease-release);
+}
+
+.lamp.is-danger {
+	background: var(--danger);
+}
+
+/* ========================================================================== */
+/* Brand mark                                                                 */
+/* ========================================================================== */
+
 :root[data-theme="dark"] .brand-mark:not(.brand-mark--image) {
 	color: var(--on-accent);
 }
 
-/* Image marks use a real background area instead of CSS generated content. The extra
-   specificity keeps this shared fix ahead of the page-specific legacy rules loaded later. */
 :root .brand-mark.brand-mark--image {
-	width: clamp(4.5rem, 10vw, 8rem);
-	height: 3rem;
-	min-width: 4.5rem;
+	width: clamp(3.1rem, 4vw, 3.75rem);
+	height: 2.75rem;
+	min-width: 3.1rem;
 	padding: 0;
 	border-radius: 0;
 	background-color: transparent;
@@ -72,24 +264,48 @@
 	background: var(--qr-surface);
 }
 
-/* Theme toggle control, reused on every page. */
-.theme-toggle {
+/* ========================================================================== */
+/* Panel controls                                                             */
+/* ========================================================================== */
+
+/*
+ * Controls in this world are panel hardware: square, engraved, and physically pressable. The press
+ * is real travel into the panel, not a colour change - a key that only tints has no thesis.
+ */
+.theme-toggle,
+.music-toggle,
+.auto-advance-toggle {
 	display: inline-grid;
 	place-items: center;
 	width: 2.5rem;
 	height: 2.5rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-control);
+	border: var(--hairline) solid var(--control-border);
+	border-radius: 0;
 	background: var(--surface-raised, var(--surface));
 	color: var(--primary);
 	line-height: 1;
-	box-shadow: var(--shadow-control);
-	transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+	box-shadow: var(--emboss);
+	transition:
+		color var(--dur-state) var(--ease-latch),
+		background-color var(--dur-state) var(--ease-latch),
+		border-color var(--dur-state) var(--ease-latch),
+		box-shadow var(--dur-latch) var(--ease-latch),
+		transform var(--dur-latch) var(--ease-latch);
 }
 
-.theme-toggle:hover {
+.theme-toggle:hover,
+.music-toggle:hover,
+.auto-advance-toggle:hover {
+	border-color: color-mix(in srgb, var(--primary) 55%, var(--control-border));
 	background: var(--primary-soft);
-	border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+
+/* Declared after the hover rule so the press still wins while the pointer is down. */
+.theme-toggle:active,
+.music-toggle:active,
+.auto-advance-toggle:active {
+	transform: translateY(1px);
+	box-shadow: var(--recess);
 }
 
 .theme-toggle .theme-toggle-icon {
@@ -108,14 +324,12 @@
 	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41'/%3E%3C/svg%3E");
 }
 
-/* Floating placement used on pages without a header bar. Keep it aligned with
-   the right-hand header actions used throughout the rest of the application. */
 .theme-toggle.theme-toggle--floating {
 	position: fixed;
 	z-index: 30;
 	top: 1rem;
 	right: 1rem;
-	box-shadow: 0 8px 20px rgba(13, 23, 42, 0.12);
+	box-shadow: var(--emboss), var(--shadow-control);
 }
 
 @media (max-width: 620px) {
@@ -125,136 +339,53 @@
 	}
 }
 
-/* Shared visual-polish tokens keep light and dark themes consistent across every role. */
-:root {
-	--surface-raised: var(--surface);
-	--heading: var(--primary);
-	--control-border: color-mix(in srgb, var(--border) 35%, var(--muted));
-	--primary-hover: color-mix(in srgb, var(--primary) 88%, #ffffff);
-	--on-primary: #ffffff;
-	--on-accent: #071622;
-	--on-danger: #ffffff;
-	--focus-ring: color-mix(in srgb, var(--accent) 72%, #ffffff);
-	--disabled-surface: color-mix(in srgb, var(--border) 58%, var(--surface));
-	--disabled-text: color-mix(in srgb, var(--muted) 78%, var(--surface));
-}
-:root .brand-mark.brand-mark--image {
-	width: clamp(3.1rem, 4vw, 3.75rem);
-	height: 2.75rem;
-	min-width: 3.1rem;
-}
-.theme-toggle {
-	border-color: var(--control-border);
-}
-.theme-toggle:hover {
-	border-color: color-mix(in srgb, var(--primary) 55%, var(--control-border));
-}
-.theme-toggle:active {
-	transform: scale(0.96);
-}
+/* ========================================================================== */
+/* Dark-theme control corrections                                             */
+/* ========================================================================== */
+
 :root[data-theme="dark"] .primary-button {
 	color: var(--on-primary);
 	background: var(--primary);
-	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.26), inset 0 1px rgba(255, 255, 255, 0.32);
 }
+
 :root[data-theme="dark"] .primary-button:hover:not(:disabled) {
 	background: var(--primary-hover);
-	box-shadow: 0 11px 24px rgba(0, 0, 0, 0.3), inset 0 1px rgba(255, 255, 255, 0.38);
 }
+
 :root[data-theme="dark"] .secondary-button {
 	border-color: color-mix(in srgb, var(--primary) 38%, var(--control-border));
 	color: var(--primary);
 	background: color-mix(in srgb, var(--primary) 12%, var(--surface-raised));
 }
+
 :root[data-theme="dark"] .danger-button {
 	color: var(--on-danger);
 	background: var(--danger);
 }
+
 :root[data-theme="dark"] :where(.theme-toggle, .music-toggle, .auto-advance-toggle, .ghost-button, input, .header-sign-out) {
 	border-color: var(--control-border);
 }
+
 :root[data-theme="dark"] :where(.primary-button, .secondary-button, .danger-button):disabled {
 	border-color: var(--border);
 	color: var(--disabled-text);
 	background: var(--disabled-surface);
 	box-shadow: none;
 }
+
 :root[data-theme="dark"] :where(.correct-tag, .podium-block) {
 	color: var(--on-accent);
 }
-/*
- * Motion system: "instrument sweep".
- *
- * Quizzle's one pre-existing signature is the timer bar travelling left to right. Every arrival in
- * the app is built from that same gesture - a calibrated wipe from the left with a short rise -
- * instead of a generic fade. Cadence is linear and confident, never bouncy: this is a workplace
- * safety briefing, and the motion should read like an instrument, not a game show. The single
- * earned exception is the podium, which is allowed one overshoot.
- *
- * --travel and --wipe are the two spatial dimensions of that gesture. The reduced-motion block at
- * the end of this file zeroes both, which removes all movement while leaving opacity, colour and
- * state feedback fully intact.
- */
-:root {
-	--ease-sweep: cubic-bezier(0.16, 1, 0.3, 1);
-	--ease-exit: cubic-bezier(0.4, 0, 1, 1);
-	--ease-press: cubic-bezier(0.3, 0, 0.2, 1);
-	/* The only overshoot in the product. Reserved for the podium: a safety briefing gets exactly
-	   one moment of celebration, and scattering this curve elsewhere would spend it. */
-	--ease-celebrate: cubic-bezier(0.22, 1.2, 0.36, 1);
-	--dur-feedback: 130ms;
-	--dur-state: 220ms;
-	--dur-view: 420ms;
-	--dur-focal: 640ms;
-	--stagger: 45ms;
-	--travel: 0.45rem;
-	--wipe: 100%;
-}
 
-@keyframes sweep-in {
-	from {
-		opacity: 0;
-		clip-path: inset(-30% var(--wipe) -30% -30%);
-		transform: translateY(var(--travel));
-	}
-
-	to {
-		opacity: 1;
-		clip-path: inset(-30% -30% -30% -30%);
-		transform: translateY(0);
-	}
-}
-
-/* Same gesture without the rise, for items that are already in place and only need to be revealed. */
-@keyframes sweep-reveal {
-	from {
-		opacity: 0;
-		clip-path: inset(-30% var(--wipe) -30% -30%);
-	}
-
-	to {
-		opacity: 1;
-		clip-path: inset(-30% -30% -30% -30%);
-	}
-}
-
-/* A single specular pass, used on live surfaces (the running timer) to show they are still moving
-   even when their own width is changing too slowly to notice. */
-@keyframes scan-pass {
-	from {
-		transform: translateX(-110%);
-	}
-
-	to {
-		transform: translateX(210%);
-	}
-}
+/* ========================================================================== */
+/* Browser surfaces                                                           */
+/* ========================================================================== */
 
 /*
- * Browser surfaces.
- *
- * Selection, caret, form accents and scrollbars ship with defaults that belong to no design system
- * and read as unthemed next to the rest of the app. They are cheap to bring into the palette.
+ * Selection, caret, form accents and scrollbars ship with defaults that belong to no design system.
+ * On a board built from hairlines, a rounded pill scrollbar is the loudest unthemed object on the
+ * page, so the scrollbar is square too.
  */
 ::selection {
 	background: color-mix(in srgb, var(--primary) 90%, transparent);
@@ -274,17 +405,17 @@ textarea {
 }
 
 ::-webkit-scrollbar {
-	width: 0.65rem;
-	height: 0.65rem;
+	width: 0.6rem;
+	height: 0.6rem;
 }
 
 ::-webkit-scrollbar-track {
-	background: transparent;
+	background: var(--panel-deep);
 }
 
 ::-webkit-scrollbar-thumb {
-	border: 0.2rem solid transparent;
-	border-radius: 999px;
+	border: 0.18rem solid transparent;
+	border-radius: 0;
 	background: color-mix(in srgb, var(--primary) 35%, var(--border));
 	background-clip: content-box;
 }
@@ -295,42 +426,36 @@ textarea {
 }
 
 /*
- * Focus ring. A single accent outline disappears on the answer tiles, which are themselves
- * saturated colour. Two tones - a tight ring in the surface colour and the accent outside it -
- * stay visible on every background the app can put behind a control.
+ * Focus ring. A single accent outline disappears on the answer keys, which are themselves saturated
+ * colour. Two tones - a tight ring in the surface colour and the accent outside it - stay visible on
+ * every ground this board can put behind a control. Square, like everything else.
  */
 :where(button, input, a, summary, [tabindex]):focus-visible {
 	outline: 3px solid var(--focus-ring);
-	outline-offset: 3px;
+	outline-offset: 2px;
+	border-radius: 0;
 	box-shadow: 0 0 0 2px var(--surface);
-	transition: outline-offset var(--dur-feedback) var(--ease-press);
 }
 
-/* Controls acknowledge the press itself, not just the resulting state change. */
+/* Every control acknowledges the press as travel into the panel. */
 :where(.primary-button, .secondary-button, .danger-button, .ghost-button):active:not(:disabled) {
-	transform: translateY(0) scale(0.985);
+	transform: translateY(1px);
 }
 
-.theme-toggle:hover,
-.music-toggle:hover,
-.auto-advance-toggle:hover {
-	transform: translateY(-1px);
+/* Dialogs are the one thing that genuinely lifts off the board, so they alone cast a shadow. */
+.confirm-dialog {
+	border: var(--hairline) solid var(--control-border);
+	border-radius: 0;
+	box-shadow: var(--shadow-card);
 }
 
-/* Declared after the hover rule above so the press still wins while the pointer is down. */
-.theme-toggle:active,
-.music-toggle:active,
-.auto-advance-toggle:active {
-	transform: scale(0.94);
-}
-
-/* Dialogs arrive with the same gesture as everything else, and leave faster than they came. */
 .confirm-dialog[open] {
-	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+	animation: latch-in var(--dur-board) var(--ease-latch) backwards;
 }
 
 .confirm-dialog::backdrop {
-	animation: backdrop-in var(--dur-state) var(--ease-sweep) backwards;
+	background: color-mix(in srgb, var(--text) 52%, transparent);
+	animation: backdrop-in var(--dur-state) var(--ease-latch) backwards;
 }
 
 @keyframes backdrop-in {
@@ -339,20 +464,22 @@ textarea {
 	}
 }
 
+/* ========================================================================== */
+/* Reduced motion                                                             */
+/* ========================================================================== */
+
 /*
- * Reduced motion removes travel, not meaning.
- *
- * Zeroing --travel and --wipe collapses every sweep in the app to a plain cross-fade, so the
- * keyframes keep running and state changes stay legible instead of snapping. Only genuinely
- * decorative loops (the scan pass, the confetti canvas) are switched off outright.
+ * Reduced motion removes travel, not meaning. Zeroing --travel collapses every latch to a plain
+ * cross-fade, so the keyframes keep running and state changes stay legible instead of snapping.
+ * Lamps still latch, tallies still resolve, the register still reorders - none of that is decoration
+ * and none of it is removed here. Only genuinely decorative loops are switched off outright.
  */
 @media (prefers-reduced-motion: reduce) {
 	:root {
 		--travel: 0rem;
-		--wipe: 0%;
 		--stagger: 0ms;
-		--dur-view: 180ms;
-		--dur-focal: 200ms;
+		--dur-board: 180ms;
+		--dur-seat: 160ms;
 	}
 
 	*,
@@ -366,10 +493,7 @@ textarea {
 		display: none !important;
 	}
 
-	[class*="scan"]::after,
-	.timer-bar span::after,
-	.timer-track span::after {
-		display: none !important;
+	.lamp.is-lit {
+		animation: none !important;
 	}
 }
-

@@ -1,105 +1,118 @@
-.presenter-body {
-	display: flex;
-	flex-direction: column;
-	min-height: 100vh;
-}
+/*
+ * The projected chamber board - "Assembly Board".
+ *
+ * This surface is read by a whole room at once, from three to fifteen metres, usually through a
+ * projector with washed-out blacks and a room light nobody will turn off. Every decision here is
+ * made for that scene: enormous type, hairline structure that survives low contrast, solid fills
+ * instead of subtle tints, and no information that requires walking closer.
+ *
+ * It layers on admin.css, which owns the shell, the type scale and the control family.
+ *
+ * The board's central claim: while a question is open it shows THAT each participant has voted,
+ * never WHAT they chose. The server withholds the submitted options until the division closes, so
+ * the seat grid can be projected in front of the room without leaking a single answer.
+ */
 
-.presenter-body.presenter-stage-active {
-	height: 100dvh;
-	min-height: 0;
-	overflow: hidden;
+/* ========================================================================== */
+/* The board                                                                  */
+/* ========================================================================== */
+
+.presenter-body {
+	min-height: 100vh;
+	background-color: var(--panel);
 }
 
 .presenter-shell {
-	width: min(1240px, calc(100% - 2.5rem));
+	width: min(96rem, 100%);
 	margin: 0 auto;
-	padding: clamp(1.75rem, 4vw, 2.75rem) 0 3rem;
-	/* Fills whatever height is left under the header so the control bar below can dock to the bottom. */
+	padding: clamp(1rem, 2.5vw, 2rem) clamp(1rem, 3vw, 2.75rem) 2rem;
+}
+
+.view {
 	display: flex;
 	flex-direction: column;
-	flex: 1 1 auto;
+	gap: clamp(1rem, 2vw, 1.75rem);
+	animation: latch-in var(--dur-board) var(--ease-latch);
+}
+
+/*
+ * A fitted stage is a board, not a page: the question, its options and the seat grid are sized to
+ * the viewport so the presenter never scrolls in front of an audience.
+ */
+.presenter-stage-active .presenter-shell {
+	display: flex;
+	flex-direction: column;
+	min-height: calc(100vh - 4.5rem);
+}
+
+.presenter-stage-active .view {
+	flex: 1;
 	min-height: 0;
 }
 
-.presenter-stage-active .presenter-shell {
-	overflow: hidden;
+.presenter-body .status-card {
+	margin-bottom: 1.25rem;
 }
 
-.header-status {
-	display: flex;
-	align-items: center;
-	gap: 0.65rem;
-}
+/* ========================================================================== */
+/* The rail                                                                   */
+/* ========================================================================== */
 
-.music-toggle,
-.auto-advance-toggle {
-	display: inline-grid;
-	place-items: center;
-	width: 2.5rem;
-	height: 2.5rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-control);
-	color: var(--primary);
-	background: var(--surface-raised);
-	line-height: 1;
-	box-shadow: var(--shadow-control);
-	transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
-}
-
-.music-toggle span {
-	display: block;
-	width: 1rem;
-	height: 1rem;
-	background: currentColor;
-	font-size: 0;
-	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 5 6 9H2v6h4l5 4V5Z'/%3E%3Cpath d='M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13'/%3E%3C/svg%3E") center / contain no-repeat;
-	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 5 6 9H2v6h4l5 4V5Z'/%3E%3Cpath d='M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13'/%3E%3C/svg%3E") center / contain no-repeat;
-}
-
-.music-toggle[aria-pressed="true"] span {
-	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 5 6 9H2v6h4l5 4V5Z'/%3E%3Cpath d='m17 9 5 5M22 9l-5 5'/%3E%3C/svg%3E");
-	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 5 6 9H2v6h4l5 4V5Z'/%3E%3Cpath d='m17 9 5 5M22 9l-5 5'/%3E%3C/svg%3E");
-}
-
-.music-toggle:hover,
-.auto-advance-toggle:hover {
-	background: var(--primary-soft);
-}
-
-.music-toggle[aria-pressed="true"] {
-	color: var(--muted);
-	background: color-mix(in srgb, var(--border) 60%, transparent);
-}
-
-.auto-advance-toggle span {
-	display: block;
-	width: 1rem;
-	height: 1rem;
-	background: currentColor;
-	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 5 9 7-9 7V5Z'/%3E%3Cpath d='M18 5v14'/%3E%3C/svg%3E") center / contain no-repeat;
-	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 5 9 7-9 7V5Z'/%3E%3Cpath d='M18 5v14'/%3E%3C/svg%3E") center / contain no-repeat;
-}
-
-.auto-advance-toggle[aria-pressed="true"] {
-	border-color: var(--accent);
-	color: var(--on-accent);
-	background: var(--accent);
-	box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent), var(--shadow-control);
-}
-
-.feed-status {
+/*
+ * The state rail. Every view used to open with a kicker naming itself; the board names itself once,
+ * permanently, in the rail - so the state is legible even mid-question when no heading is on screen.
+ */
+.board-state {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.5rem;
-	height: 2.5rem;
-	padding: 0.4rem 0.75rem;
-	border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
-	border-radius: var(--radius-control);
-	background: color-mix(in srgb, var(--accent) 10%, var(--surface-raised));
-	color: var(--primary);
-	font-size: 0.72rem;
-	font-weight: 850;
-	letter-spacing: 0.08em;
+	margin: 0;
+	padding: 0.3rem 0.75rem;
+	border: var(--rule);
+	background-color: var(--panel-deep);
+	box-shadow: var(--recess);
+	color: var(--heading);
+	font-size: 0.75rem;
+	font-stretch: 78%;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.board-state::before {
+	content: "";
+	width: 0.5rem;
+	height: 0.5rem;
+	flex: none;
+	border-radius: 50%;
+	background-color: var(--lamp-off);
+	transition: background-color var(--dur-lamp) var(--ease-latch);
+}
+
+/* The chamber is live only while a question is open. That is the one state worth a lit lamp. */
+.board-state[data-state="question-view"]::before {
+	background-color: var(--lamp-on);
+	box-shadow: 0 0 0 0.18rem var(--lamp-glow);
+}
+
+.board-state[data-state="closed-view"]::before {
+	background-color: var(--danger);
+}
+
+/*
+ * The connection readout. A presenter glances at this exactly once - when something looks wrong -
+ * so it is a lamp and a word, never a coloured pill competing with the board for attention.
+ */
+.feed-status {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	color: var(--muted);
+	font-size: 0.6875rem;
+	font-stretch: 82%;
+	font-weight: 700;
+	letter-spacing: 0.14em;
 	text-transform: uppercase;
 }
 
@@ -107,98 +120,147 @@
 	content: "";
 	width: 0.5rem;
 	height: 0.5rem;
+	flex: none;
 	border-radius: 50%;
-	background: currentColor;
+	background-color: var(--lamp-off);
+	box-shadow: var(--recess);
 }
 
-.feed-status.connecting {
-	background: var(--surface-raised);
-	color: var(--muted);
+.feed-status.open::before {
+	background-color: var(--success);
+	box-shadow: 0 0 0 0.16rem color-mix(in srgb, var(--success) 30%, transparent);
 }
 
-.feed-status.offline {
-	background: var(--danger-soft);
+.feed-status.connecting::before {
+	background-color: var(--muted);
+	animation: lamp-pulse 900ms steps(2, jump-none) infinite;
+}
+
+.feed-status.closed {
 	color: var(--danger);
 }
 
-
-.view {
-	/* flex:1 lets the view stretch to the shell's height, so a short view's control bar still lands at the bottom. */
-	display: flex;
-	flex-direction: column;
-	flex: 1 1 auto;
-	min-height: 0;
-	animation: presenter-enter 220ms ease both;
+.feed-status.closed::before {
+	background-color: var(--danger);
 }
 
-.view.centered-card {
-	/* This card was already centred by its own margin; it shouldn't stretch to fill the view. */
-	flex: 0 1 auto;
+/*
+ * The mute key's icon is drawn from the board's own geometry - a rectangle and a triangle forming a
+ * speaker, with a hairline cross-stroke when muted. No emoji stands in for a control in this world.
+ */
+.music-toggle-icon {
+	position: relative;
+	display: block;
+	width: 0.55rem;
+	height: 0.6rem;
+	background-color: currentColor;
 }
 
-@keyframes presenter-enter {
-	from {
-		opacity: 0;
-		transform: translateY(0.5rem);
-	}
+.music-toggle-icon::before {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 100%;
+	width: 0;
+	height: 0;
+	border-top: 0.55rem solid transparent;
+	border-bottom: 0.55rem solid transparent;
+	border-right: 0.5rem solid currentColor;
+	transform: translateY(-50%);
 }
+
+.music-toggle-icon::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: -0.15rem;
+	width: 1.5rem;
+	height: 1.5px;
+	background-color: currentColor;
+	transform: translateY(-50%) rotate(-45deg);
+	transform-origin: center;
+	transition: opacity var(--dur-latch) var(--ease-latch);
+}
+
+/* aria-pressed="true" is the muted state, so the cross-stroke is present exactly then. */
+.music-toggle[aria-pressed="false"] .music-toggle-icon::after {
+	opacity: 0;
+}
+
+/* ========================================================================== */
+/* Lobby                                                                      */
+/* ========================================================================== */
 
 .lobby-layout {
 	display: grid;
-	grid-template-columns: minmax(0, 21rem) minmax(0, 1fr);
-	gap: 2rem;
+	grid-template-columns: minmax(16rem, 22rem) 1fr;
+	gap: clamp(1.25rem, 3vw, 2.5rem);
 	align-items: start;
 }
 
-.join-card,
-.centered-card {
-	padding: 1.75rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-panel);
-	background: var(--surface-raised);
-	box-shadow: var(--shadow-card);
-}
-
+/*
+ * The join plate. Before the quiz starts, one number matters in the room and it is the join code,
+ * so this plate is the loudest object on the lobby board and everything else defers to it.
+ */
 .join-card {
-	border-top: 3px solid var(--primary);
-}
-
-.centered-card {
-	max-width: 40rem;
-	margin: 8vh auto;
-	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 1.25rem;
+	border: var(--rule-strong);
+	background-color: var(--surface);
+	box-shadow: var(--emboss);
 }
 
 .join-qr {
 	display: block;
 	width: 100%;
 	height: auto;
-	max-width: 16rem;
-	margin: 0 auto 1.5rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-control);
-	background: #fff;
+	max-width: 15rem;
+	padding: 0.6rem;
+	border: var(--rule);
+	background-color: var(--qr-surface, #ffffff);
+	box-shadow: var(--recess);
+}
+
+.join-card .session-code {
+	width: 100%;
+	padding: 0.5rem;
+	font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2.25rem);
+	letter-spacing: 0.24em;
+	text-align: center;
+}
+
+.join-card .session-link {
+	text-align: center;
+}
+
+.lobby-main {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	min-width: 0;
 }
 
 .lobby-metrics,
 .live-metrics {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.85rem;
-	margin: 1.75rem 0;
+	gap: 0.75rem;
 }
 
+/*
+ * The lobby seat field. Each participant is an engraved name plate taking its seat, and the plate
+ * width is fixed so the grid stays a grid - a long name narrows on the width axis rather than
+ * pushing its neighbours out of alignment.
+ */
 .avatar-field {
-	position: relative;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 1.1rem;
-	min-height: 10rem;
-	padding: 1.25rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-card);
-	background: var(--surface-raised);
-	box-shadow: var(--shadow-control);
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+	gap: var(--hairline);
+	border: var(--rule);
+	background-color: var(--border);
 }
 
 .avatar-field:empty {
@@ -206,630 +268,165 @@
 }
 
 .avatar-chip {
-	display: grid;
-	justify-items: center;
-	gap: 0.4rem;
-	width: 6.25rem;
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	min-width: 0;
+	padding: 0.6rem 0.7rem;
+	background-color: var(--surface);
+	box-shadow: var(--emboss);
+}
+
+.avatar-chip.joining {
+	animation: latch-in var(--dur-seat) var(--ease-latch);
 }
 
 .avatar-chip img {
-	width: 4rem;
-	height: 4rem;
-	border: 2px solid var(--surface);
+	width: 1.9rem;
+	height: 1.9rem;
+	flex: none;
 	border-radius: 50%;
-	background: var(--surface);
-	box-shadow: 0 3px 10px rgba(13, 23, 42, 0.12);
+	background-color: var(--panel-deep);
 }
 
 .avatar-chip strong {
+	min-width: 0;
 	overflow: hidden;
-	max-width: 100%;
-	color: var(--primary);
-	font-size: 0.82rem;
+	color: var(--text);
+	font-size: 0.9375rem;
+	font-stretch: 85%;
+	font-weight: 620;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.avatar-chip .kick-button {
-	padding: 0.15rem 0.5rem;
-	border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--surface));
-	border-radius: 999px;
-	color: var(--danger);
-	background: var(--danger-soft);
-	font-size: 0.68rem;
-	font-weight: 800;
+/*
+ * Removing a participant is rare and destructive, so the key is hidden until the plate is aimed at
+ * and never occupies layout - the lobby must not read as a list of delete buttons.
+ */
+.kick-button {
+	margin-left: auto;
+	padding: 0.2rem 0.45rem;
+	border: var(--hairline) solid transparent;
+	background: none;
+	color: var(--muted);
+	font-family: inherit;
+	font-size: 0.6875rem;
+	font-stretch: 82%;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
 	opacity: 0;
-	transition: opacity 160ms ease;
+	cursor: pointer;
+	transition:
+		opacity var(--dur-latch) var(--ease-latch),
+		color var(--dur-latch) var(--ease-latch),
+		border-color var(--dur-latch) var(--ease-latch);
 }
 
 .avatar-chip:hover .kick-button,
-.avatar-chip:focus-within .kick-button {
+.kick-button:focus-visible {
 	opacity: 1;
 }
 
-.offline-heading {
-	margin-top: 2rem;
+.kick-button:hover {
+	border-color: var(--danger);
+	color: var(--danger);
 }
 
+/* Disconnected participants are a register, not a field: they are read, not counted at a glance. */
 .offline-list {
-	display: grid;
-	gap: 0.6rem;
+	display: flex;
+	flex-direction: column;
+	border-top: var(--rule);
+}
+
+.offline-list:empty {
+	display: none;
 }
 
 .offline-row {
 	display: flex;
 	align-items: center;
-	gap: 0.85rem;
-	padding: 0.7rem 0.9rem;
-	border: 1px dashed var(--border);
-	border-radius: var(--radius-card);
-	background: var(--surface-raised);
+	gap: 0.75rem;
+	padding: 0.5rem 0.25rem;
+	border-bottom: var(--rule);
+	color: var(--muted);
 }
 
 .offline-row img {
-	width: 2.25rem;
-	height: 2.25rem;
+	width: 1.6rem;
+	height: 1.6rem;
+	flex: none;
 	border-radius: 50%;
 	filter: grayscale(1);
-	opacity: 0.65;
+	opacity: 0.7;
 }
 
 .offline-row strong {
-	color: var(--muted);
+	font-size: 0.9375rem;
+	font-stretch: 85%;
+	font-weight: 620;
 }
 
-.offline-row .status-tag {
+.offline-row .ghost-button {
 	margin-left: auto;
+	padding: 0.3rem 0.7rem;
+	font-size: 0.75rem;
+}
+
+.status-tag {
 	color: var(--muted);
-	font-size: 0.7rem;
-	font-weight: 800;
-	letter-spacing: 0.08em;
+	font-size: 0.6875rem;
+	font-stretch: 82%;
+	font-weight: 700;
+	letter-spacing: 0.12em;
 	text-transform: uppercase;
 }
 
+.offline-heading {
+	margin-top: 0.5rem;
+}
+
+/* ========================================================================== */
+/* The control bar                                                            */
+/* ========================================================================== */
+
+/*
+ * The presenter's own keys, docked at the foot of every board. Fixed position in every view, so the
+ * hand that drives the session never has to search for the next key.
+ */
 .control-bar {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	flex: none;
 	gap: 1rem;
 	margin-top: auto;
-	padding-top: clamp(.75rem, 2vh, 1.25rem);
-	border-top: 1px solid var(--border);
+	padding-top: 1rem;
+	border-top: var(--rule-strong);
 }
 
-.control-bar .push-right {
+.push-right {
 	margin-left: auto;
 }
 
-.stage-title {
-	color: var(--heading);
-	font-size: clamp(1.75rem, min(4.2vw, 6.5vh), 4.15rem);
-	line-height: 1.03;
-	text-align: center;
-}
-
-.stage-subtitle,
-.center-text {
-	text-align: center;
-}
-
-.stage-heading {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 4fr) minmax(0, 1fr);
-	align-items: start;
-	gap: 1rem;
-}
-
-.stage-heading-main {
-	text-align: center;
-}
-
-.stage-heading-side {
-	display: flex;
-}
-
-.stage-heading-side.end {
-	justify-content: flex-end;
-}
-
 .control-bar .primary-button {
-	min-width: 15rem;
-	font-size: 1.05rem;
+	padding: 0.7rem 1.75rem;
+	font-size: 1rem;
 }
 
-.ghost-button {
-	min-height: 2.5rem;
-	padding: 0.5rem 0.85rem;
-	border: 1px solid var(--control-border);
-	border-radius: var(--radius-control);
-	color: var(--muted);
-	background: transparent;
-	font-size: 0.8rem;
-	font-weight: 750;
-	transition: color 160ms ease, border-color 160ms ease;
-}
-
-.ghost-button:hover {
-	color: var(--primary);
-	border-color: var(--primary);
-}
-
-.abort-button:hover {
-	color: var(--danger);
-	border-color: color-mix(in srgb, var(--danger) 35%, var(--surface));
-}
-
-.danger-button {
-	padding: 0.7rem 1.1rem;
-	border: 0;
-	border-radius: var(--radius-control);
-	color: #fff;
-	background: var(--danger);
-	font-weight: 800;
-}
-
-.question-topline {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
-}
-
-.question-topline .eyebrow,
-.live-metrics {
-	margin: 0;
-}
-
-.countdown-pill strong {
-	font-variant-numeric: tabular-nums;
-}
-
-.countdown-pill.warning strong {
-	color: #b26a00;
-}
-
-.countdown-pill.danger strong {
+.abort-button:hover:not(:disabled) {
+	border-color: var(--danger);
 	color: var(--danger);
 }
 
-.timer-track {
-	overflow: hidden;
-	height: 0.55rem;
-	margin: 1.25rem 0 2rem;
-	border-radius: 999px;
-	background: color-mix(in srgb, var(--border) 80%, var(--muted));
-}
-
-.timer-track span {
-	display: block;
-	width: 100%;
-	height: 100%;
-	border-radius: 999px;
-	background: linear-gradient(90deg, var(--primary), var(--accent));
-}
-
-.option-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-	gap: 1rem;
-	width: min(100%, 64rem);
-	margin: 1.75rem auto 0;
-}
-
-/* The palette and shapes mirror the participant answer tiles so both screens match. */
-.option-tile:nth-child(6n + 1),
-.result-column:nth-child(6n + 1) {
-	--tile: var(--answer-1);
-	--shape: "\25B2";
-}
-
-.option-tile:nth-child(6n + 2),
-.result-column:nth-child(6n + 2) {
-	--tile: var(--answer-2);
-	--shape: "\25C6";
-}
-
-.option-tile:nth-child(6n + 3),
-.result-column:nth-child(6n + 3) {
-	--tile: color-mix(in srgb, var(--answer-3) 82%, #000);
-	--shape: "\25CF";
-}
-
-.option-tile:nth-child(6n + 4),
-.result-column:nth-child(6n + 4) {
-	--tile: var(--answer-4);
-	--shape: "\25A0";
-}
-
-.option-tile:nth-child(6n + 5),
-.result-column:nth-child(6n + 5) {
-	--tile: var(--answer-5);
-	--shape: "\2605";
-}
-
-.option-tile:nth-child(6n + 6),
-.result-column:nth-child(6n + 6) {
-	--tile: color-mix(in srgb, var(--answer-6) 82%, #000);
-	--shape: "\25B6";
-}
-
-/* An odd answer count leaves a lone tile in the last row; span it and center it instead of stretching it. */
-.option-tile:last-child:nth-child(odd) {
-	grid-column: 1 / -1;
-	width: calc(50% - 0.5rem);
-	justify-self: center;
-}
-
-/* Below this width the auto-fit grid already collapses to one column, so the lone tile must go full-width too. */
-@media (max-width: 759px) {
-	.option-tile:last-child:nth-child(odd) {
-		width: 100%;
-	}
-}
-
-/* The mirrored trailing column keeps every marker on the same left edge while the text stays centred. */
-.option-tile {
-	display: grid;
-	grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
-	align-items: center;
-	gap: 1rem;
-	min-height: 6.25rem;
-	padding: 1.35rem;
-	border: 0;
-	border-radius: var(--radius-card);
-	color: #fff;
-	background: var(--tile);
-	box-shadow: 0 4px 14px rgba(13, 23, 42, 0.14);
-	font-size: 1.15rem;
-	font-weight: 800;
-	text-align: center;
-}
-
-.option-marker {
-	display: grid;
-	place-items: center;
-	width: 2.75rem;
-	height: 2.75rem;
-	border-radius: 0.8rem;
-	color: #fff;
-	background: color-mix(in srgb, #fff 22%, transparent);
-	font-size: 1.4rem;
-	line-height: 1;
-}
-
-.option-marker::before {
-	content: var(--shape);
-}
-
-.results-chart {
-	display: grid;
-	grid-auto-flow: column;
-	grid-auto-columns: minmax(0, 1fr);
-	grid-template-rows: minmax(0, 1fr) auto;
-	align-items: stretch;
-	gap: 1.25rem;
-	width: min(100%, 72rem);
-	height: clamp(16rem, 42vh, 27rem);
-	margin: 1.5rem auto 0;
-}
-
-.result-column {
-	display: grid;
-	grid-row: span 2;
-	grid-template-rows: subgrid;
-	justify-items: center;
-	gap: 0.6rem;
-	transition: opacity 600ms ease;
-}
-
-/* Without subgrid the label row height differs per column, so a fixed label box keeps one baseline. */
-@supports not (grid-template-rows: subgrid) {
-	.result-column {
-		grid-row: auto;
-		grid-template-rows: minmax(0, 1fr) 3.5rem;
-	}
-
-	.results-chart {
-		grid-template-rows: minmax(0, 1fr);
-	}
-}
-
-.result-cap {
-	position: absolute;
-	bottom: 100%;
-	left: 0;
-	right: 0;
-	display: grid;
-	justify-items: center;
-	gap: 0.25rem;
-	padding-bottom: 0.4rem;
-}
-
-.result-votes {
-	color: var(--primary);
-	font-size: 1.6rem;
-	font-variant-numeric: tabular-nums;
-	font-weight: 900;
-	line-height: 1;
-}
-
-.result-track {
-	display: flex;
-	flex-direction: column;
-	justify-content: flex-end;
-	width: 100%;
-	height: 100%;
-	min-height: 0;
-	padding-top: 3.6rem;
-}
-
-.result-bar {
-	position: relative;
-	flex: none;
-	width: 100%;
-	height: var(--fill);
-	min-height: 0.4rem;
-	border-radius: var(--radius-card) var(--radius-card) 0 0;
-	background: var(--tile);
-	animation: grow-column 1100ms cubic-bezier(0.22, 1, 0.36, 1) both;
-	animation-delay: var(--column-delay);
-}
-
-@keyframes grow-column {
-	from {
-		height: 0;
-	}
-}
-
-.result-label {
-	display: flex;
-	align-items: flex-start;
-	align-self: start;
-	justify-content: center;
-	gap: 0.5rem;
-	color: var(--text);
-	font-weight: 750;
-	text-align: center;
-	overflow-wrap: anywhere;
-}
-
-.result-shape {
-	color: var(--tile);
-	font-size: 1.15rem;
-	line-height: 1;
-}
-
-.result-shape::before {
-	content: var(--shape);
-}
-
-.correct-tag {
-	padding: 0.2rem 0.55rem;
-	border-radius: 999px;
-	background: var(--accent);
-	color: var(--primary);
-	font-size: 0.72rem;
-	font-weight: 850;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-	white-space: nowrap;
-	opacity: 0;
-	transform: scale(0.6);
-}
-
-.results-chart.revealed .result-column:not(.correct) {
-	opacity: 0.55;
-}
-
-.results-chart.revealed .result-column.correct .correct-tag {
-	opacity: 1;
-	transform: scale(1);
-}
-
-.results-chart.revealed .result-column.correct .result-bar {
-	box-shadow: 0 0 0 3px var(--accent), 0 12px 30px color-mix(in srgb, var(--accent) 35%, transparent);
-}
-
-.podium {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 1.25rem;
-	align-items: end;
-	margin-top: 2.5rem;
-}
-
-.podium-place {
-	display: grid;
-	align-content: end;
-	justify-items: center;
-	gap: 0.85rem;
-	--podium-delay: calc(var(--podium-index, 0) * 1700ms);
-}
-
-.podium-place.third {
-	grid-column: 3;
-	--podium-height: 6rem;
-}
-
-.podium-place.second {
-	grid-column: 1;
-	--podium-height: 8.5rem;
-}
-
-.podium-place.first {
-	grid-column: 2;
-	--podium-height: 12rem;
-}
-
-.podium-place[hidden] {
-	display: none;
-}
-
-.podium-player {
-	display: grid;
-	justify-items: center;
-	gap: 0.35rem;
-	text-align: center;
-}
-
-/* A place nobody reached still shows its pedestal; only the player card above it is hidden. */
-.podium-player[hidden] {
-	display: none;
-}
-
-.podium-avatar {
-	width: 5rem;
-	height: 5rem;
-	border: 3px solid var(--surface);
-	border-radius: 50%;
-	background: var(--surface);
-	box-shadow: 0 14px 30px rgba(4, 0, 102, 0.18);
-}
-
-.podium-place.first .podium-avatar {
-	width: 6.5rem;
-	height: 6.5rem;
-	border-color: var(--accent);
-}
-
-.podium-crown {
-	width: 3.6rem;
-	height: auto;
-	margin-bottom: -0.9rem;
-	filter: drop-shadow(0 6px 12px rgba(4, 0, 102, 0.22));
-}
-
-.podium-name {
-	color: var(--primary);
-	font-size: 1.05rem;
-}
-
-.podium-points {
-	color: var(--muted);
-	font-size: 0.85rem;
-	font-weight: 750;
-}
-
-.podium-block {
-	/* Height is reserved from the start; only the fill (::before) animates, so the page never grows. */
-	position: relative;
-	display: grid;
-	place-items: center;
-	overflow: hidden;
-	width: 100%;
-	height: var(--podium-height);
-	border-radius: 1rem 1rem 0 0;
-	color: #fff;
-	font-size: 2rem;
-	font-weight: 900;
-}
-
-.podium-block span {
-	position: relative;
-	z-index: 1;
-}
-
-.podium-block::before {
-	content: "";
-	position: absolute;
-	inset: 0;
-	background: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 82%, var(--accent)));
-	transform: scaleY(1);
-	transform-origin: bottom;
-	animation: grow-podium 1100ms cubic-bezier(0.22, 1, 0.36, 1) both;
-	animation-delay: var(--podium-delay);
-}
-
-@keyframes grow-podium {
-	from {
-		transform: scaleY(0);
-	}
-}
-
-.podium-place.first .podium-block {
-	color: var(--primary);
-}
-
-.podium-place.first .podium-block::before {
-	background: linear-gradient(180deg, var(--accent), var(--primary));
-}
-
-.standings-list {
-	display: grid;
-	gap: 0.5rem;
-	margin-top: 2rem;
-}
-
-.leaderboard-list {
-	width: min(100%, 52rem);
-	margin: 1.25rem auto 0;
-	gap: 0.4rem;
-}
-
-.leaderboard-empty {
-	width: min(100%, 52rem);
-	margin: 2rem auto 0;
-	padding: 2rem;
-	border: 1px dashed var(--control-border);
-	border-radius: 1rem;
-	color: var(--muted);
-	background: color-mix(in srgb, var(--surface-raised) 78%, transparent);
-	text-align: center;
-}
-
-.leaderboard-list .standing-row {
-	padding: 0.6rem 1rem;
-}
-
-.standing-row {
-	display: grid;
-	grid-template-columns: 3.5rem 2.5rem minmax(0, 1fr) auto;
-	align-items: center;
-	gap: 1rem;
-	padding: 0.8rem 1.1rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-card);
-	background: var(--surface-raised);
-	box-shadow: var(--shadow-control);
-}
-
-.standing-avatar {
-	width: clamp(1.75rem, 4.5vh, 2.5rem);
-	height: clamp(1.75rem, 4.5vh, 2.5rem);
-	border-radius: 50%;
-	background: var(--primary-soft);
-}
-.confetti-canvas {
-	position: fixed;
-	inset: 0;
-	z-index: 60;
-	width: 100%;
-	height: 100%;
-	pointer-events: none;
-}
-
-.standing-rank {
-	color: var(--muted);
-	font-weight: 850;
-}
-
-.standing-points {
-	color: var(--primary);
-	font-variant-numeric: tabular-nums;
-	font-weight: 850;
-}
-
-/* Lobby toggle: show the leaderboard between questions or not. */
+/* A switch is a two-position lever in a slot: the slot is recessed, the lever is a raised plate. */
 .switch-control {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.6rem;
 	cursor: pointer;
-	color: var(--muted);
-	font-size: 0.82rem;
-	font-weight: 750;
 	user-select: none;
 }
 
@@ -837,540 +434,860 @@
 	position: absolute;
 	width: 1px;
 	height: 1px;
-	padding: 0;
-	margin: -1px;
-	overflow: hidden;
-	clip: rect(0 0 0 0);
-	white-space: nowrap;
-	border: 0;
+	opacity: 0;
+	pointer-events: none;
 }
 
 .switch-track {
 	position: relative;
+	display: block;
+	width: 2.6rem;
+	height: 1.4rem;
 	flex: none;
-	width: 2.8rem;
-	height: 1.6rem;
-	border-radius: 999px;
-	background: color-mix(in srgb, var(--border) 75%, var(--muted));
-	transition: background-color 180ms ease;
+	border: var(--rule-strong);
+	background-color: var(--panel-deep);
+	box-shadow: var(--recess);
+	transition: background-color var(--dur-state) var(--ease-latch);
 }
 
 .switch-thumb {
 	position: absolute;
-	top: 0.2rem;
-	left: 0.2rem;
-	width: 1.2rem;
-	height: 1.2rem;
-	border-radius: 50%;
-	background: #fff;
-	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
-	transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+	top: 0.1rem;
+	left: 0.1rem;
+	width: 1.1rem;
+	height: 1.1rem;
+	background-color: var(--muted);
+	box-shadow: var(--emboss);
+	transition:
+		transform var(--dur-latch) var(--ease-latch),
+		background-color var(--dur-latch) var(--ease-latch);
 }
 
 .switch-control input:checked + .switch-track {
-	background: var(--accent);
+	background-color: color-mix(in srgb, var(--primary) 22%, var(--surface));
+	border-color: var(--primary);
 }
 
 .switch-control input:checked + .switch-track .switch-thumb {
+	background-color: var(--primary);
 	transform: translateX(1.2rem);
 }
 
 .switch-control input:focus-visible + .switch-track {
-	outline: 3px solid var(--accent);
+	outline: 2px solid var(--primary);
 	outline-offset: 2px;
 }
 
-.switch-control:hover .switch-label {
-	color: var(--primary);
+.switch-label {
+	color: var(--muted);
+	font-size: 0.8125rem;
+	font-stretch: 88%;
 }
 
-/* Mid-quiz leaderboard: top 10, medals for the first three, glide + arrow on rank change. */
-.leaderboard-list .standing-row {
+/* ========================================================================== */
+/* The division: question, rail, plates                                       */
+/* ========================================================================== */
+
+.question-topline,
+.stage-heading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.stage-heading-main {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	min-width: 0;
+	flex: 1;
+}
+
+.stage-heading-side {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.stage-heading-side.end {
+	margin-left: auto;
+}
+
+/*
+ * The division rail. Not a progress bar filling up and not liquid draining away: a track under
+ * tension, with the remaining time held between a fixed left anchor and a needle that travels back
+ * toward it. What the room watches is the needle returning to zero.
+ */
+.timer-track {
 	position: relative;
-	grid-template-columns: 3.5rem 2.5rem minmax(0, 1fr) auto auto;
-	transition: border-color 300ms ease, background-color 300ms ease;
+	height: 0.75rem;
+	border: var(--rule-strong);
+	background-color: var(--panel-deep);
+	box-shadow: var(--recess);
+	overflow: hidden;
 }
 
-.leaderboard-list .standing-row.rank-1 {
-	border-color: color-mix(in srgb, #ffcf3f 60%, var(--border));
-	background: linear-gradient(100deg, color-mix(in srgb, #ffcf3f 22%, var(--surface)), var(--surface));
+/*
+ * The needle is the fill's own leading edge, painted into its background rather than hung off it as
+ * a separate stripe. As the fill retracts, the needle retracts with it - one object, not two.
+ */
+#timer-fill {
+	position: absolute;
+	inset: 0 auto 0 0;
+	display: block;
+	width: 100%;
+	background-color: var(--primary);
+	background-image: linear-gradient(to left, var(--heading) 0 3px, transparent 3px);
+	/* The width is written every 100ms, so the transition only smooths between samples. */
+	transition:
+		width 100ms linear,
+		background-color var(--dur-state) var(--ease-latch);
 }
 
-.leaderboard-list .standing-row.rank-2 {
-	border-color: color-mix(in srgb, #c9d2dc 60%, var(--border));
-	background: linear-gradient(100deg, color-mix(in srgb, #c9d2dc 24%, var(--surface)), var(--surface));
+#timer-fill.warning {
+	background-color: var(--answer-3, var(--accent));
 }
 
-.leaderboard-list .standing-row.rank-3 {
-	border-color: color-mix(in srgb, #e0965a 55%, var(--border));
-	background: linear-gradient(100deg, color-mix(in srgb, #e0965a 20%, var(--surface)), var(--surface));
+#timer-fill.danger {
+	background-color: var(--danger);
 }
 
-.standing-rank {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
+.countdown-pill strong {
+	transition: color var(--dur-state) var(--ease-latch);
 }
 
-.rank-medal {
-	display: inline-grid;
-	place-items: center;
-	width: clamp(1.65rem, 4vh, 2.1rem);
-	height: clamp(1.65rem, 4vh, 2.1rem);
-	border-radius: 50%;
-	font-size: 1.15rem;
-	line-height: 1;
-	box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5), 0 4px 10px rgba(0, 0, 0, 0.18);
+.countdown-pill.warning strong {
+	color: var(--answer-3, var(--accent));
 }
 
-.rank-medal.gold {
-	background: radial-gradient(circle at 35% 30%, #fff2b0, #f6c026 62%, #d99a10);
-}
-
-.rank-medal.silver {
-	background: radial-gradient(circle at 35% 30%, #ffffff, #cdd6de 62%, #9aa6b2);
-}
-
-.rank-medal.bronze {
-	background: radial-gradient(circle at 35% 30%, #ffd9b0, #d98b4e 62%, #b06a30);
-}
-
-.rank-move {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 1.8rem;
-	font-size: 0.8rem;
-	font-weight: 850;
-	font-variant-numeric: tabular-nums;
-}
-
-.rank-move.up {
-	color: var(--green);
-}
-
-.rank-move.down {
+.countdown-pill.danger strong {
 	color: var(--danger);
 }
 
-.rank-move.same {
+/*
+ * The question is the interface's own material. It is set directly on the board ground - no card,
+ * no panel, no container - because in a chamber the motion under debate is not filed inside a box.
+ * It is the largest type in the product and it is what the room is looking at.
+ */
+.stage-title {
+	margin: 0;
+	padding-bottom: clamp(0.75rem, 1.5vw, 1.25rem);
+	border-bottom: var(--rule-strong);
+	color: var(--heading);
+	font-size: clamp(1.75rem, 1rem + 3.2vw, 4rem);
+	font-stretch: 90%;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	line-height: 1.05;
+	text-wrap: balance;
+}
+
+.stage-subtitle {
 	color: var(--muted);
-	opacity: 0.6;
+	font-size: clamp(0.9375rem, 0.85rem + 0.4vw, 1.125rem);
 }
 
-.confirm-dialog {
-	width: min(30rem, calc(100% - 2rem));
-	padding: 1.75rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-panel);
-	box-shadow: var(--shadow-card);
+/* --- Answer plates --- */
+
+/*
+ * A strict grid of plates separated by hairlines, seated in a single frame. The frame's own
+ * background is the border colour, so the gaps between plates read as milled seams rather than as
+ * empty space between floating tiles.
+ */
+.option-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: var(--hairline);
+	border: var(--rule-strong);
+	background-color: var(--control-border);
+	counter-reset: option;
 }
 
-.confirm-dialog::backdrop {
-	background: rgba(9, 15, 25, 0.62);
+.option-grid:has(> :nth-child(5)) {
+	grid-template-columns: repeat(3, 1fr);
 }
 
-.confirm-dialog h2 {
-	margin-bottom: 0.75rem;
+.option-tile {
+	display: flex;
+	align-items: center;
+	gap: clamp(0.75rem, 1.5vw, 1.25rem);
+	min-width: 0;
+	padding: clamp(0.75rem, 1.6vw, 1.4rem);
+	background-color: var(--surface);
+	box-shadow: var(--emboss);
+	counter-increment: option;
+	color: var(--text);
+	font-size: clamp(1rem, 0.8rem + 0.8vw, 1.6rem);
+	font-stretch: 92%;
+	font-weight: 600;
+	line-height: 1.2;
+	animation: latch-in var(--dur-seat) var(--ease-latch) backwards;
 }
+
+.option-tile:nth-child(1) { animation-delay: 0ms; }
+.option-tile:nth-child(2) { animation-delay: calc(var(--stagger) * 1); }
+.option-tile:nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
+.option-tile:nth-child(4) { animation-delay: calc(var(--stagger) * 3); }
+.option-tile:nth-child(5) { animation-delay: calc(var(--stagger) * 4); }
+.option-tile:nth-child(6) { animation-delay: calc(var(--stagger) * 5); }
+
+/*
+ * The engraved index, sunk into a slot in the plate. This carries the operator's answer colour -
+ * the single key that ties a plate on the projected board to a key under the participant's thumb.
+ * The colour lives here, on a small solid object, rather than flooding the whole plate: six
+ * saturated fields side by side is the category default this board exists to refuse.
+ */
+.option-marker,
+.result-shape {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	background-color: var(--tile, var(--primary));
+	color: var(--tile-ink, #ffffff);
+	font-stretch: 75%;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	box-shadow: var(--recess), 0 0 0 var(--hairline) var(--edge-dark);
+}
+
+.option-marker {
+	width: clamp(2rem, 3.4vw, 3rem);
+	height: clamp(2rem, 3.4vw, 3rem);
+	font-size: clamp(1rem, 1.6vw, 1.5rem);
+}
+
+.option-marker::before {
+	content: counter(option);
+}
+
+/*
+ * The operator supplies these six colours and may supply any six, so each is paired with an ink
+ * chosen for it rather than a single global foreground. Colours 3 and 6 are darkened first: a mid
+ * gold or orange carries neither white nor black at 4.5:1 straight from the palette.
+ */
+.option-tile:nth-child(6n + 1) { --tile: var(--answer-1); --tile-ink: #ffffff; }
+.option-tile:nth-child(6n + 2) { --tile: var(--answer-2); --tile-ink: #ffffff; }
+.option-tile:nth-child(6n + 3) { --tile: color-mix(in srgb, var(--answer-3) 82%, #000000); --tile-ink: #ffffff; }
+.option-tile:nth-child(6n + 4) { --tile: var(--answer-4); --tile-ink: #ffffff; }
+.option-tile:nth-child(6n + 5) { --tile: var(--answer-5); --tile-ink: #ffffff; }
+.option-tile:nth-child(6n + 6) { --tile: color-mix(in srgb, var(--answer-6) 82%, #000000); --tile-ink: #ffffff; }
+
+/* ========================================================================== */
+/* The division floor: who has voted                                          */
+/* ========================================================================== */
+
+/*
+ * The signature of this product. One press on a participant's key latches their vote, and in the
+ * same instant their name plate's lamp latches here, in front of the room. The room can see the
+ * division filling without anyone learning a single answer.
+ */
+.division-floor {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	min-height: 0;
+}
+
+.seat-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+	gap: var(--hairline);
+	border: var(--rule);
+	background-color: var(--border);
+	overflow: hidden;
+}
+
+.seat-grid:empty {
+	display: none;
+}
+
+.seat-plate {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 0;
+	padding: 0.4rem 0.6rem;
+	background-color: var(--panel-deep);
+	box-shadow: var(--recess);
+	transition:
+		background-color var(--dur-state) var(--ease-latch),
+		box-shadow var(--dur-state) var(--ease-latch);
+}
+
+/*
+ * A seat that has voted is a plate that has seated itself: it comes up proud of the panel and takes
+ * the surface colour, while an unvoted seat stays recessed and dim. The difference is legible from
+ * the back of a room as texture alone, before any lamp colour is resolved.
+ */
+.seat-plate.has-voted {
+	background-color: var(--surface);
+	box-shadow: var(--emboss);
+}
+
+.seat-name {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--muted);
+	font-size: 0.875rem;
+	font-stretch: 80%;
+	font-weight: 620;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	transition: color var(--dur-state) var(--ease-latch);
+}
+
+.seat-plate.has-voted .seat-name {
+	color: var(--text);
+}
+
+.seat-tally {
+	margin: 0;
+	color: var(--heading);
+	font-size: clamp(1.25rem, 1rem + 1vw, 2rem);
+	font-stretch: 85%;
+	font-weight: 700;
+}
+
+/* ========================================================================== */
+/* Results                                                                    */
+/* ========================================================================== */
+
+/*
+ * The tally. Bars grow from a common baseline inside a ruled frame; the correct plate is the only
+ * one that carries a lit edge, so the answer is unmistakable at fifteen metres.
+ */
+.results-chart {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: 1fr;
+	gap: clamp(0.5rem, 1.5vw, 1.25rem);
+	align-items: end;
+	flex: 1;
+	min-height: 12rem;
+	padding: 1rem 1rem 0;
+	border: var(--rule-strong);
+	border-bottom-width: 2px;
+	background-color: var(--surface);
+	box-shadow: var(--emboss);
+	counter-reset: result;
+}
+
+.result-column {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	min-width: 0;
+	height: 100%;
+	counter-increment: result;
+}
+
+.result-track {
+	display: flex;
+	align-items: flex-end;
+	flex: 1;
+	min-height: 0;
+}
+
+/*
+ * The bar's height is set inline by the renderer. It is revealed by a clip rather than by scaling:
+ * scaling the bar would stretch the tally figure riding on its cap, and the figure is the point.
+ * The clip wipes upward from the baseline, so the number lands exactly as the bar reaches its value.
+ */
+.result-bar {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	width: 100%;
+	min-height: 0.5rem;
+	background-color: var(--tile, var(--primary));
+	box-shadow: var(--emboss);
+	clip-path: inset(100% 0 0 0);
+	transition: clip-path var(--dur-board) var(--ease-latch);
+}
+
+.results-chart.revealed .result-bar {
+	clip-path: inset(0 0 0 0);
+}
+
+.result-column:nth-child(6n + 1) .result-bar,
+.result-column:nth-child(6n + 1) .result-shape { --tile: var(--answer-1); --tile-ink: #ffffff; }
+.result-column:nth-child(6n + 2) .result-bar,
+.result-column:nth-child(6n + 2) .result-shape { --tile: var(--answer-2); --tile-ink: #ffffff; }
+.result-column:nth-child(6n + 3) .result-bar,
+.result-column:nth-child(6n + 3) .result-shape { --tile: color-mix(in srgb, var(--answer-3) 82%, #000000); --tile-ink: #ffffff; }
+.result-column:nth-child(6n + 4) .result-bar,
+.result-column:nth-child(6n + 4) .result-shape { --tile: var(--answer-4); --tile-ink: #ffffff; }
+.result-column:nth-child(6n + 5) .result-bar,
+.result-column:nth-child(6n + 5) .result-shape { --tile: var(--answer-5); --tile-ink: #ffffff; }
+.result-column:nth-child(6n + 6) .result-bar,
+.result-column:nth-child(6n + 6) .result-shape { --tile: color-mix(in srgb, var(--answer-6) 82%, #000000); --tile-ink: #ffffff; }
+
+/* The cap rides the top of the bar and carries the tally figure. */
+.result-cap {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.2rem;
+	padding: 0.4rem 0.3rem;
+}
+
+.result-votes {
+	color: #ffffff;
+	font-size: clamp(1.125rem, 0.9rem + 1vw, 2rem);
+	font-stretch: 85%;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums lining-nums;
+	line-height: 1;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.correct-tag {
+	padding: 0.1rem 0.4rem;
+	background-color: var(--success);
+	color: #ffffff;
+	font-size: 0.6875rem;
+	font-stretch: 80%;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	opacity: 0;
+}
+
+.result-column.correct .correct-tag {
+	opacity: 1;
+}
+
+/* The correct column is marked on the board itself, not only on its bar. */
+.result-column.correct .result-track {
+	box-shadow: inset 0 -3px 0 var(--success);
+}
+
+.result-label {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 0;
+	padding: 0.6rem 0 0.75rem;
+	border-top: var(--rule);
+}
+
+.result-shape {
+	width: 1.75rem;
+	height: 1.75rem;
+	font-size: 0.875rem;
+}
+
+.result-shape::before {
+	content: counter(result);
+}
+
+.result-label span:last-child {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--text);
+	font-size: 0.9375rem;
+	font-stretch: 88%;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ========================================================================== */
+/* Standings                                                                  */
+/* ========================================================================== */
+
+.standings-list {
+	display: flex;
+	flex-direction: column;
+	border-top: var(--rule-strong);
+	border-bottom: var(--rule-strong);
+}
+
+/*
+ * The register. Rows are ruled, ranks and points are tabular and right-aligned, and a row that
+ * changes rank travels to its new seat rather than cutting there - the FLIP transition in
+ * presenter.js drives the transform, so nothing here may animate transform on a settled row.
+ */
+.standing-row {
+	display: grid;
+	grid-template-columns: 3.5rem 2.25rem 1fr auto;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.6rem 0.75rem;
+	border-bottom: var(--rule);
+	background-color: var(--surface);
+	animation: seat-in var(--dur-seat) var(--ease-latch) backwards;
+	animation-delay: calc(var(--row-index, 0) * var(--stagger));
+}
+
+.standing-row:last-child {
+	border-bottom: 0;
+}
+
+.standing-rank {
+	color: var(--muted);
+	font-size: 1.125rem;
+	font-stretch: 78%;
+	font-weight: 700;
+	text-align: right;
+}
+
+.standing-avatar {
+	width: 2.25rem;
+	height: 2.25rem;
+	border-radius: 50%;
+	background-color: var(--panel-deep);
+}
+
+.standing-row strong {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--text);
+	font-size: clamp(1rem, 0.9rem + 0.4vw, 1.25rem);
+	font-stretch: 88%;
+	font-weight: 620;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.standing-points {
+	color: var(--heading);
+	font-size: clamp(1rem, 0.9rem + 0.5vw, 1.375rem);
+	font-stretch: 82%;
+	font-weight: 700;
+	text-align: right;
+}
+
+/* The top three are lit, not medalled. Rank is a state of the plate, not a trinket on it. */
+.standing-row.rank-1,
+.standing-row.rank-2,
+.standing-row.rank-3 {
+	box-shadow: var(--emboss);
+}
+
+.standing-row.rank-1 {
+	background-color: color-mix(in srgb, var(--primary) 12%, var(--surface));
+}
+
+.standing-row.rank-1 .standing-rank,
+.standing-row.rank-1 .standing-points {
+	color: var(--primary);
+}
+
+.standing-row.rank-2 {
+	background-color: color-mix(in srgb, var(--primary) 7%, var(--surface));
+}
+
+.standing-row.rank-3 {
+	background-color: color-mix(in srgb, var(--primary) 4%, var(--surface));
+}
+
+.rank-medal {
+	display: none;
+}
+
+/*
+ * Rank movement is drawn, never spelled with an arrow glyph or an emoji: a triangle pointing the
+ * way the row moved, or a hairline dash for a row that held its seat.
+ */
+.rank-move {
+	position: relative;
+	display: inline-block;
+	width: 0.6rem;
+	height: 0.6rem;
+	margin-left: 0.4rem;
+	vertical-align: middle;
+}
+
+.rank-move.up::before,
+.rank-move.down::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	margin: auto;
+	width: 0;
+	height: 0;
+	border-left: 0.3rem solid transparent;
+	border-right: 0.3rem solid transparent;
+}
+
+.rank-move.up::before {
+	border-bottom: 0.4rem solid var(--success);
+}
+
+.rank-move.down::before {
+	border-top: 0.4rem solid var(--danger);
+}
+
+.rank-move.same::before,
+.rank-move.new::before {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 0;
+	width: 100%;
+	height: var(--hairline);
+	background-color: var(--muted);
+}
+
+.rank-move.new::before {
+	background-color: var(--primary);
+	height: 2px;
+}
+
+.leaderboard-empty {
+	margin: 0;
+	padding: 2rem 1rem;
+	border: var(--rule);
+	background-color: var(--panel-deep);
+	box-shadow: var(--recess);
+	color: var(--muted);
+	text-align: center;
+}
+
+/* ========================================================================== */
+/* The final board                                                            */
+/* ========================================================================== */
+
+.podium {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	align-items: end;
+	gap: clamp(0.5rem, 1.5vw, 1.25rem);
+	max-width: 56rem;
+	width: 100%;
+	margin: 1rem auto 0;
+}
+
+.podium-place {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.6rem;
+	min-width: 0;
+	animation: latch-in var(--dur-board) var(--ease-latch) backwards;
+	animation-delay: calc(var(--podium-index, 0) * 220ms);
+}
+
+.podium-player {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.3rem;
+	min-width: 0;
+	text-align: center;
+}
+
+.podium-lamp {
+	width: 0.75rem;
+	height: 0.75rem;
+}
+
+.podium-avatar {
+	width: clamp(3rem, 6vw, 4.5rem);
+	height: clamp(3rem, 6vw, 4.5rem);
+	border-radius: 50%;
+	background-color: var(--panel-deep);
+	box-shadow: var(--emboss);
+}
+
+.podium-name {
+	max-width: 100%;
+	overflow: hidden;
+	color: var(--text);
+	font-size: clamp(0.9375rem, 0.85rem + 0.4vw, 1.25rem);
+	font-stretch: 85%;
+	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.podium-points {
+	color: var(--muted);
+	font-size: 0.875rem;
+	font-stretch: 82%;
+	font-variant-numeric: tabular-nums lining-nums;
+}
+
+/*
+ * The pedestals are machined blocks seated on the board floor, sized by rank. The winner's block is
+ * the only one that carries the operator's colour - the board's single illuminating accent, spent
+ * on the one thing the room came to see.
+ */
+.podium-block {
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	width: 100%;
+	padding-top: 0.5rem;
+	border: var(--rule-strong);
+	border-bottom: 0;
+	background-color: var(--surface);
+	box-shadow: var(--emboss);
+	color: var(--muted);
+	font-size: clamp(1.25rem, 1rem + 1.2vw, 2.25rem);
+	font-stretch: 75%;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+
+.podium-place.first .podium-block {
+	height: clamp(6rem, 12vh, 9rem);
+	background-color: var(--primary);
+	border-color: var(--primary);
+	color: var(--on-primary);
+}
+
+.podium-place.second .podium-block {
+	height: clamp(4.5rem, 9vh, 7rem);
+}
+
+.podium-place.third .podium-block {
+	height: clamp(3.25rem, 7vh, 5.5rem);
+}
+
+.podium-place.first .podium-name {
+	font-size: clamp(1.125rem, 0.95rem + 0.7vw, 1.625rem);
+}
+
+#final-view {
+	align-items: center;
+	text-align: center;
+}
+
+#final-view .stage-title {
+	border-bottom: 0;
+	padding-bottom: 0;
+}
+
+#final-view .control-bar,
+#final-view .standings-list,
+#final-view .stage-subtitle {
+	width: 100%;
+	text-align: left;
+}
+
+#standings-list {
+	max-width: 56rem;
+	margin: 0 auto;
+}
+
+/* ========================================================================== */
+/* Closed                                                                     */
+/* ========================================================================== */
+
+.centered-card {
+	align-items: center;
+	justify-content: center;
+	gap: 1.5rem;
+	min-height: 60vh;
+	text-align: center;
+}
+
+/* ========================================================================== */
+/* Dialogs                                                                    */
+/* ========================================================================== */
 
 .dialog-actions {
 	display: flex;
+	align-items: center;
 	justify-content: flex-end;
-	gap: 0.75rem;
-	margin-top: 1.5rem;
+	gap: 1rem;
+	padding-top: 0.75rem;
+	border-top: var(--rule);
 }
 
-@media (max-width: 900px) {
-	.lobby-layout {
-		grid-template-columns: minmax(0, 1fr);
-	}
+/* ========================================================================== */
+/* Compact stage                                                              */
+/* ========================================================================== */
 
-	.podium {
-		gap: 0.6rem;
-	}
-
-	.results-chart {
-		gap: 0.5rem;
-	}
-
-	.result-label {
-		font-size: 0.8rem;
-	}
-
-	.control-bar .primary-button {
-		min-width: 100%;
-	}
-}
-
-/* Presenter polish favors projector readability and keeps controls predictable on narrow screens. */
-.music-toggle,
-.auto-advance-toggle {
-	width: 2.5rem;
-	height: 2.5rem;
-	border-color: var(--control-border);
-	color: var(--primary);
-	transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
-}
-.music-toggle:active,
-.auto-advance-toggle:active {
-	transform: scale(0.96);
-}
-.stage-title {
-	max-width: 72rem;
-	margin-inline: auto;
-	text-wrap: balance;
-}
-.stage-subtitle,
-.center-text {
-	max-width: 56rem;
-	margin-inline: auto;
-	text-wrap: balance;
-}
-.control-bar .primary-button {
-	margin-top: 0;
-}
-.danger-button {
-	border: 1px solid transparent;
-	color: var(--on-danger);
-	transition: filter 160ms ease, transform 160ms ease;
-}
-.danger-button:hover:not(:disabled) {
-	filter: brightness(1.06);
-	transform: translateY(-1px);
-}
-.danger-button:active:not(:disabled) {
-	transform: translateY(0);
-}
-.option-tile {
-	border: 1px solid rgba(255, 255, 255, 0.18);
-	box-shadow: 0 4px 14px rgba(13, 23, 42, 0.16);
-}
-.confirm-dialog {
-	color: var(--text);
-	background: var(--surface-raised);
-}
-@media (max-width: 700px) {
-	.presenter-shell {
-		width: min(100% - 1.5rem, 1320px);
-		padding-top: 1.5rem;
-	}
-	.header-status {
-		flex-wrap: wrap;
-		justify-content: flex-end;
-		gap: 0.45rem;
-	}
-	.stage-heading {
-		grid-template-columns: 1fr;
-	}
-	.stage-heading-side,
-	.stage-heading-side.end {
-		justify-content: center;
-	}
-	.control-bar {
-		gap: 0.75rem;
-	}
-	.control-bar .push-right {
-		margin-left: 0;
-	}
-	.standing-row,
-	.leaderboard-list .standing-row {
-		grid-template-columns: 2.75rem 2.25rem minmax(0, 1fr) auto;
-		gap: 0.55rem;
-	}
-	.rank-move {
-		display: none;
-	}
-}
-
-/* Applied by presenter.js only when the active stage would otherwise overflow.
-   Normal questions and short leaderboards retain the spacious default sizing. */
-.presenter-stage-compact .presenter-shell {
-	padding-top: .65rem;
-	padding-bottom: .65rem;
-}
+/*
+ * Set by the renderer when a fitted view would otherwise overflow the viewport. The board does not
+ * scroll in front of an audience; it tightens. Type steps down a notch and the seams close up.
+ */
 .presenter-stage-compact .stage-title {
-	margin-bottom: .5rem;
-	font-size: clamp(1.45rem, min(3.2vw, 4.8vh), 3rem);
+	font-size: clamp(1.5rem, 0.9rem + 2.2vw, 2.75rem);
 }
-.presenter-stage-compact .stage-subtitle {
-	margin-bottom: .5rem;
+
+.presenter-stage-compact .option-tile {
+	padding: 0.6rem 0.75rem;
+	font-size: clamp(0.9375rem, 0.8rem + 0.5vw, 1.25rem);
 }
-.presenter-stage-compact .timer-track {
-	margin: .55rem 0 .75rem;
-}
-.presenter-stage-compact .option-grid {
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: .45rem;
-	margin-top: .5rem;
-}
-.presenter-stage-compact .option-tile,
-.presenter-stage-compact .option-tile:last-child:nth-child(odd) {
-	min-height: 3.5rem;
-	padding: .55rem .7rem;
-	font-size: clamp(.78rem, 1.8vh, 1rem);
-	line-height: 1.15;
-}
+
 .presenter-stage-compact .option-marker {
 	width: 2rem;
 	height: 2rem;
 	font-size: 1rem;
 }
-.presenter-stage-compact .results-chart {
-	flex: 1 1 auto;
-	min-height: 0;
-	height: auto;
-	margin-top: .5rem;
-}
-.presenter-stage-compact .leaderboard-list {
-	gap: .2rem;
-	margin-top: .4rem;
-}
-.presenter-stage-compact .leaderboard-list .standing-row {
-	padding: .25rem .75rem;
-}
-.presenter-stage-compact .standing-avatar {
-	width: 1.8rem;
-	height: 1.8rem;
-}
-.presenter-stage-compact .rank-medal {
-	width: 1.7rem;
-	height: 1.7rem;
-	font-size: .9rem;
-}
-.presenter-stage-compact .control-bar {
-	gap: .5rem;
-	padding-top: .5rem;
+
+.presenter-stage-compact .view {
+	gap: 0.75rem;
 }
 
-:root[data-theme="dark"] .podium-place.first .podium-block {
-	color: var(--on-accent);
+.presenter-stage-compact .seat-plate {
+	padding: 0.3rem 0.5rem;
 }
 
-/* ============================================================================
-   Motion layer - "instrument sweep"
-   ----------------------------------------------------------------------------
-   Shared tokens, keyframes and the reduced-motion contract live in theme.css.
-   The presenter screen is projected: it is read from across a room, so its
-   motion is slower and larger than the participant's, but it is the same
-   left-to-right gesture. The podium is the one place allowed to celebrate.
-   Loaded last, so these rules intentionally supersede the earlier animations.
-   ============================================================================ */
-
-.view {
-	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+.presenter-stage-compact .seat-name {
+	font-size: 0.8125rem;
 }
 
-/* The room is looking at these two, so they are given the full arrival. */
-#question-view,
-#final-view {
-	animation-duration: var(--dur-focal);
+.presenter-stage-compact .standing-row {
+	padding: 0.4rem 0.75rem;
 }
 
-.music-toggle,
-.auto-advance-toggle {
-	transition:
-		color var(--dur-state) ease,
-		background-color var(--dur-state) ease,
-		border-color var(--dur-state) ease,
-		transform var(--dur-feedback) var(--ease-press);
-}
+/* ========================================================================== */
+/* Narrow screens                                                             */
+/* ========================================================================== */
 
-/* --- Lobby -------------------------------------------------------------- */
+@media (max-width: 60rem) {
+	.lobby-layout {
+		grid-template-columns: 1fr;
+	}
 
-/* Someone walking into the room and appearing on the projector is the lobby's only real event,
-   so the arrival is the thing that moves. The class is removed once it has played, which keeps
-   every other chip still while the field re-orders around the newcomer. */
-.avatar-chip.joining {
-	animation: chip-join 520ms var(--ease-sweep) backwards;
-}
+	.option-grid,
+	.option-grid:has(> :nth-child(5)) {
+		grid-template-columns: 1fr;
+	}
 
-@keyframes chip-join {
-	from {
-		opacity: 0;
-		transform: translateY(calc(var(--travel) * 1.6)) scale(calc(1 - 0.14 * var(--travel-scale, 1)));
+	.results-chart {
+		min-height: 10rem;
+	}
+
+	.standing-row {
+		grid-template-columns: 2.75rem 2rem 1fr auto;
+	}
+
+	.presenter-stage-active .presenter-shell {
+		min-height: 0;
 	}
 }
 
-.avatar-chip img {
-	transition: box-shadow var(--dur-state) var(--ease-sweep), transform var(--dur-state) var(--ease-sweep);
-}
-
-.avatar-chip:hover img,
-.avatar-chip:focus-within img {
-	transform: translateY(-2px);
-	box-shadow: 0 8px 18px rgba(13, 23, 42, 0.2);
-}
-
-.kick-button {
-	transition: opacity var(--dur-state) ease, transform var(--dur-state) var(--ease-sweep);
-	transform: translateY(calc(var(--travel) * -0.4));
-}
-
-.avatar-chip:hover .kick-button,
-.avatar-chip:focus-within .kick-button {
-	transform: translateY(0);
-}
-
-/* The join code is what everyone in the room is typing, so the card leads the lobby's entrance. */
-.lobby-layout > .join-card {
-	animation: sweep-in var(--dur-focal) var(--ease-sweep) backwards;
-}
-
-.session-code {
-	transition: color var(--dur-state) ease;
-}
-
-/* --- Question ----------------------------------------------------------- */
-
-/* Same live scan as the participant timer, so both screens report the clock the same way: quiet
-   until ten seconds remain, then escalating in both colour and cadence. */
-.timer-track span {
-	position: relative;
-	overflow: hidden;
-	transition: background var(--dur-state) ease;
-}
-
-.timer-track span.warning {
-	background: linear-gradient(90deg, #c77800, #ffb020);
-}
-
-.timer-track span.danger {
-	background: linear-gradient(90deg, color-mix(in srgb, var(--danger) 70%, #000), var(--danger));
-}
-
-.timer-track span.warning::after,
-.timer-track span.danger::after {
-	content: "";
-	position: absolute;
-	inset: 0;
-	background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.55), transparent 65%);
-	animation: scan-pass 1.4s linear infinite;
-}
-
-.timer-track span.danger::after {
-	animation-duration: 0.75s;
-}
-
-.option-tile {
-	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
-	animation-delay: calc(var(--i, 0) * var(--stagger) * 2 + 120ms);
-}
-
-.option-tile:nth-child(1) { --i: 0; }
-.option-tile:nth-child(2) { --i: 1; }
-.option-tile:nth-child(3) { --i: 2; }
-.option-tile:nth-child(4) { --i: 3; }
-.option-tile:nth-child(5) { --i: 4; }
-.option-tile:nth-child(n + 6) { --i: 5; }
-
-/* --- Results ------------------------------------------------------------ */
-
-/* The vote count lands as its own column finishes growing, rather than popping independently. */
-.result-votes {
-	animation: sweep-in 420ms var(--ease-sweep) backwards;
-	animation-delay: calc(var(--column-delay) + 1100ms);
-}
-
-.result-column {
-	transition: opacity 600ms var(--ease-sweep);
-}
-
-/* The correct answer is the payload of this screen. It is the only column that keeps moving after
-   everything else has settled: a slow breath on its ring, so the eye returns to it. */
-.results-chart.revealed .result-column.correct .result-bar {
-	animation: correct-hold 2.8s ease-in-out 400ms infinite;
-}
-
-@keyframes correct-hold {
-	50% {
-		box-shadow:
-			0 0 0 calc(3px + 0.2rem * var(--hold-reach, 1)) var(--accent),
-			0 12px 34px color-mix(in srgb, var(--accent) 45%, transparent);
-	}
-}
-
-.correct-tag {
-	transition: opacity 320ms ease, transform 320ms var(--ease-sweep);
-}
-
-/* --- Leaderboard -------------------------------------------------------- */
-
-/* `backwards` releases the transform the moment the entrance ends, so the FLIP reorder in
-   presenter.js is never fighting a lingering fill-mode. */
-.leaderboard-list .standing-row {
-	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
-	animation-delay: calc(var(--row-index, 0) * var(--stagger) * 1.6);
-}
-
-/* --- Podium ------------------------------------------------------------- */
-
-/* The one earned celebration in the product. The pedestal grows, the player settles onto it, then
-   the crown drops last - an order, not a simultaneous pop. The overshoot is kept only here. */
-.podium-player {
-	animation: podium-settle 620ms var(--ease-celebrate) backwards;
-	animation-delay: calc(var(--podium-delay) + 1100ms);
-}
-
-@keyframes podium-settle {
-	from {
-		opacity: 0;
-		transform: translateY(calc(var(--travel) * 2.4)) scale(calc(1 - 0.16 * var(--travel-scale, 1)));
-	}
-}
-
-.podium-crown {
-	animation: crown-drop 700ms var(--ease-celebrate) backwards;
-	animation-delay: calc(var(--podium-delay) + 1400ms);
-}
-
-@keyframes crown-drop {
-	from {
-		opacity: 0;
-		transform: translateY(calc(var(--travel) * -4)) rotate(calc(-10deg * var(--travel-rotate, 1)));
-	}
-}
-
-/* A light pass runs up the winner's pedestal as it finishes growing, tying the celebration back
-   to the same scan gesture the timer uses instead of inventing a second visual idea. */
-.podium-place.first .podium-block::after {
-	content: "";
-	position: absolute;
-	inset: 0;
-	z-index: 0;
-	background: linear-gradient(0deg, transparent 35%, rgba(255, 255, 255, 0.45), transparent 65%);
-	pointer-events: none;
-	animation: podium-sheen 900ms var(--ease-sweep) backwards;
-	animation-delay: calc(var(--podium-delay) + 700ms);
-}
-
-@keyframes podium-sheen {
-	from {
-		transform: translateY(120%);
-	}
-
-	to {
-		transform: translateY(-120%);
-	}
-}
-
-/* --- Dialogs ------------------------------------------------------------ */
-
-.confirm-dialog {
-	transition: opacity var(--dur-state) var(--ease-exit);
-}
+/* ========================================================================== */
+/* Reduced motion                                                             */
+/* ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
-	:root {
-		--travel-scale: 0;
-		--travel-rotate: 0;
-		--hold-reach: 0;
+	.view,
+	.option-tile,
+	.avatar-chip.joining,
+	.podium-place,
+	.standing-row {
+		animation: none;
 	}
 
-	/* Endless loops are decoration here: the correct column is already marked by its ring, tag and
-	   the dimming of every other column. */
-	.results-chart.revealed .result-column.correct .result-bar,
-	.podium-place.first .podium-block::after {
+	.feed-status.connecting::before {
 		animation: none;
+	}
+
+	/* The reveal still happens - it simply arrives rather than wiping. */
+	.result-bar {
+		transition: none;
+		clip-path: inset(0 0 0 0);
 	}
 }
