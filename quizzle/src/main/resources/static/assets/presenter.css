@@ -210,7 +210,6 @@
 	justify-items: center;
 	gap: 0.4rem;
 	width: 6.25rem;
-	animation: none;
 }
 
 .avatar-chip img {
@@ -246,16 +245,6 @@
 .avatar-chip:hover .kick-button,
 .avatar-chip:focus-within .kick-button {
 	opacity: 1;
-}
-
-@keyframes float-avatar {
-	0%, 100% {
-		transform: translateY(0);
-	}
-
-	50% {
-		transform: translateY(-0.65rem);
-	}
 }
 
 .offline-heading {
@@ -564,8 +553,6 @@
 	font-variant-numeric: tabular-nums;
 	font-weight: 900;
 	line-height: 1;
-	animation: pop-in 460ms cubic-bezier(0.2, 1.5, 0.45, 1) both;
-	animation-delay: calc(var(--column-delay) + 1100ms);
 }
 
 .result-track {
@@ -596,13 +583,6 @@
 	}
 }
 
-@keyframes pop-in {
-	from {
-		opacity: 0;
-		transform: translateY(0.8rem) scale(0.7);
-	}
-}
-
 .result-label {
 	display: flex;
 	align-items: flex-start;
@@ -630,14 +610,13 @@
 	border-radius: 999px;
 	background: var(--accent);
 	color: var(--primary);
-	font-size: 0.68rem;
+	font-size: 0.72rem;
 	font-weight: 850;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
 	white-space: nowrap;
 	opacity: 0;
 	transform: scale(0.6);
-	transition: opacity 320ms ease, transform 320ms cubic-bezier(0.2, 1.5, 0.45, 1);
 }
 
 .results-chart.revealed .result-column:not(.correct) {
@@ -693,8 +672,6 @@
 	justify-items: center;
 	gap: 0.35rem;
 	text-align: center;
-	animation: pop-in 620ms cubic-bezier(0.2, 1.5, 0.45, 1) both;
-	animation-delay: calc(var(--podium-delay) + 1100ms);
 }
 
 /* A place nobody reached still shows its pedestal; only the player card above it is hidden. */
@@ -722,8 +699,6 @@
 	height: auto;
 	margin-bottom: -0.9rem;
 	filter: drop-shadow(0 6px 12px rgba(4, 0, 102, 0.22));
-	animation: pop-in 620ms cubic-bezier(0.2, 1.5, 0.45, 1) both;
-	animation-delay: calc(var(--podium-delay) + 1400ms);
 }
 
 .podium-name {
@@ -806,8 +781,6 @@
 
 .leaderboard-list .standing-row {
 	padding: 0.6rem 1rem;
-	animation: pop-in 420ms cubic-bezier(0.2, 1.5, 0.45, 1) both;
-	animation-delay: calc(var(--row-index, 0) * 90ms);
 }
 
 .standing-row {
@@ -1172,4 +1145,232 @@
 
 :root[data-theme="dark"] .podium-place.first .podium-block {
 	color: var(--on-accent);
+}
+
+/* ============================================================================
+   Motion layer - "instrument sweep"
+   ----------------------------------------------------------------------------
+   Shared tokens, keyframes and the reduced-motion contract live in theme.css.
+   The presenter screen is projected: it is read from across a room, so its
+   motion is slower and larger than the participant's, but it is the same
+   left-to-right gesture. The podium is the one place allowed to celebrate.
+   Loaded last, so these rules intentionally supersede the earlier animations.
+   ============================================================================ */
+
+.view {
+	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+}
+
+/* The room is looking at these two, so they are given the full arrival. */
+#question-view,
+#final-view {
+	animation-duration: var(--dur-focal);
+}
+
+.music-toggle,
+.auto-advance-toggle {
+	transition:
+		color var(--dur-state) ease,
+		background-color var(--dur-state) ease,
+		border-color var(--dur-state) ease,
+		transform var(--dur-feedback) var(--ease-press);
+}
+
+/* --- Lobby -------------------------------------------------------------- */
+
+/* Someone walking into the room and appearing on the projector is the lobby's only real event,
+   so the arrival is the thing that moves. The class is removed once it has played, which keeps
+   every other chip still while the field re-orders around the newcomer. */
+.avatar-chip.joining {
+	animation: chip-join 520ms var(--ease-sweep) backwards;
+}
+
+@keyframes chip-join {
+	from {
+		opacity: 0;
+		transform: translateY(calc(var(--travel) * 1.6)) scale(calc(1 - 0.14 * var(--travel-scale, 1)));
+	}
+}
+
+.avatar-chip img {
+	transition: box-shadow var(--dur-state) var(--ease-sweep), transform var(--dur-state) var(--ease-sweep);
+}
+
+.avatar-chip:hover img,
+.avatar-chip:focus-within img {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 18px rgba(13, 23, 42, 0.2);
+}
+
+.kick-button {
+	transition: opacity var(--dur-state) ease, transform var(--dur-state) var(--ease-sweep);
+	transform: translateY(calc(var(--travel) * -0.4));
+}
+
+.avatar-chip:hover .kick-button,
+.avatar-chip:focus-within .kick-button {
+	transform: translateY(0);
+}
+
+/* The join code is what everyone in the room is typing, so the card leads the lobby's entrance. */
+.lobby-layout > .join-card {
+	animation: sweep-in var(--dur-focal) var(--ease-sweep) backwards;
+}
+
+.session-code {
+	transition: color var(--dur-state) ease;
+}
+
+/* --- Question ----------------------------------------------------------- */
+
+/* Same live scan as the participant timer, so both screens report the clock the same way: quiet
+   until ten seconds remain, then escalating in both colour and cadence. */
+.timer-track span {
+	position: relative;
+	overflow: hidden;
+	transition: background var(--dur-state) ease;
+}
+
+.timer-track span.warning {
+	background: linear-gradient(90deg, #c77800, #ffb020);
+}
+
+.timer-track span.danger {
+	background: linear-gradient(90deg, color-mix(in srgb, var(--danger) 70%, #000), var(--danger));
+}
+
+.timer-track span.warning::after,
+.timer-track span.danger::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.55), transparent 65%);
+	animation: scan-pass 1.4s linear infinite;
+}
+
+.timer-track span.danger::after {
+	animation-duration: 0.75s;
+}
+
+.option-tile {
+	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+	animation-delay: calc(var(--i, 0) * var(--stagger) * 2 + 120ms);
+}
+
+.option-tile:nth-child(1) { --i: 0; }
+.option-tile:nth-child(2) { --i: 1; }
+.option-tile:nth-child(3) { --i: 2; }
+.option-tile:nth-child(4) { --i: 3; }
+.option-tile:nth-child(5) { --i: 4; }
+.option-tile:nth-child(n + 6) { --i: 5; }
+
+/* --- Results ------------------------------------------------------------ */
+
+/* The vote count lands as its own column finishes growing, rather than popping independently. */
+.result-votes {
+	animation: sweep-in 420ms var(--ease-sweep) backwards;
+	animation-delay: calc(var(--column-delay) + 1100ms);
+}
+
+.result-column {
+	transition: opacity 600ms var(--ease-sweep);
+}
+
+/* The correct answer is the payload of this screen. It is the only column that keeps moving after
+   everything else has settled: a slow breath on its ring, so the eye returns to it. */
+.results-chart.revealed .result-column.correct .result-bar {
+	animation: correct-hold 2.8s ease-in-out 400ms infinite;
+}
+
+@keyframes correct-hold {
+	50% {
+		box-shadow:
+			0 0 0 calc(3px + 0.2rem * var(--hold-reach, 1)) var(--accent),
+			0 12px 34px color-mix(in srgb, var(--accent) 45%, transparent);
+	}
+}
+
+.correct-tag {
+	transition: opacity 320ms ease, transform 320ms var(--ease-sweep);
+}
+
+/* --- Leaderboard -------------------------------------------------------- */
+
+/* `backwards` releases the transform the moment the entrance ends, so the FLIP reorder in
+   presenter.js is never fighting a lingering fill-mode. */
+.leaderboard-list .standing-row {
+	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+	animation-delay: calc(var(--row-index, 0) * var(--stagger) * 1.6);
+}
+
+/* --- Podium ------------------------------------------------------------- */
+
+/* The one earned celebration in the product. The pedestal grows, the player settles onto it, then
+   the crown drops last - an order, not a simultaneous pop. The overshoot is kept only here. */
+.podium-player {
+	animation: podium-settle 620ms var(--ease-celebrate) backwards;
+	animation-delay: calc(var(--podium-delay) + 1100ms);
+}
+
+@keyframes podium-settle {
+	from {
+		opacity: 0;
+		transform: translateY(calc(var(--travel) * 2.4)) scale(calc(1 - 0.16 * var(--travel-scale, 1)));
+	}
+}
+
+.podium-crown {
+	animation: crown-drop 700ms var(--ease-celebrate) backwards;
+	animation-delay: calc(var(--podium-delay) + 1400ms);
+}
+
+@keyframes crown-drop {
+	from {
+		opacity: 0;
+		transform: translateY(calc(var(--travel) * -4)) rotate(calc(-10deg * var(--travel-rotate, 1)));
+	}
+}
+
+/* A light pass runs up the winner's pedestal as it finishes growing, tying the celebration back
+   to the same scan gesture the timer uses instead of inventing a second visual idea. */
+.podium-place.first .podium-block::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	background: linear-gradient(0deg, transparent 35%, rgba(255, 255, 255, 0.45), transparent 65%);
+	pointer-events: none;
+	animation: podium-sheen 900ms var(--ease-sweep) backwards;
+	animation-delay: calc(var(--podium-delay) + 700ms);
+}
+
+@keyframes podium-sheen {
+	from {
+		transform: translateY(120%);
+	}
+
+	to {
+		transform: translateY(-120%);
+	}
+}
+
+/* --- Dialogs ------------------------------------------------------------ */
+
+.confirm-dialog {
+	transition: opacity var(--dur-state) var(--ease-exit);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--travel-scale: 0;
+		--travel-rotate: 0;
+		--hold-reach: 0;
+	}
+
+	/* Endless loops are decoration here: the correct column is already marked by its ring, tag and
+	   the dimming of every other column. */
+	.results-chart.revealed .result-column.correct .result-bar,
+	.podium-place.first .podium-block::after {
+		animation: none;
+	}
 }

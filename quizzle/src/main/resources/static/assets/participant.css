@@ -156,7 +156,7 @@ body.results-active .waiting-copy { flex: none; margin: 0; }
 .result-card.selected { box-shadow: inset 4px 0 var(--accent); }
 .result-title { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .6rem; font-weight: 800; }
 .result-bar { height: .7rem; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--border) 80%, var(--muted)); }
-.result-bar span { display: block; height: 100%; background: var(--primary); transition: width .35s ease; }
+.result-bar span { display: block; height: 100%; background: var(--primary); }
 .result-card.correct .result-bar span { background: var(--green); }
 .standing-row { display: grid; grid-template-columns: 2.5rem 2.2rem 1fr auto; align-items: center; gap: .8rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-raised); box-shadow: var(--shadow-control); }
 .standing-row.me { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
@@ -178,7 +178,7 @@ body.results-active .waiting-copy { flex: none; margin: 0; }
 .rank-move.down { color: var(--danger); }
 .rank-move.same { color: var(--muted); opacity: .6; }
 
-.results-verdict { display: grid; gap: .3rem; margin-bottom: 1rem; padding: 1rem 1.1rem; border: 1px solid var(--border); border-left-width: 4px; border-radius: var(--radius-card); background: var(--surface); animation: verdict-in .5s cubic-bezier(.22,1,.36,1) both; }
+.results-verdict { display: grid; gap: .3rem; margin-bottom: 1rem; padding: 1rem 1.1rem; border: 1px solid var(--border); border-top-width: 3px; border-radius: var(--radius-card); background: var(--surface); animation: verdict-in .5s cubic-bezier(.22,1,.36,1) both; }
 .results-verdict strong { font-size: 1.3rem; }
 .results-verdict[data-result="correct"] { border-color: color-mix(in srgb, var(--green) 45%, var(--surface)); background: color-mix(in srgb, var(--green) 8%, var(--surface)); }
 .results-verdict[data-result="correct"] strong { color: var(--green); }
@@ -255,7 +255,7 @@ body.results-active .waiting-copy { flex: none; margin: 0; }
 	:root { --status-clearance: 2.5rem; }
 	.participant-status-controls { top: .35rem; right: .5rem; gap: .4rem; }
 	.participant-status-controls .theme-toggle { width: 1.9rem; height: 1.9rem; }
-	.connection-status { min-height: 1.9rem; padding: .3rem .55rem; gap: .4rem; font-size: .68rem; }
+	.connection-status { min-height: 1.9rem; padding: .3rem .55rem; gap: .4rem; font-size: .72rem; }
 	.status-dot { width: .5rem; height: .5rem; }
 	body.question-active .participant-shell { padding-top: var(--status-clearance); padding-bottom: .4rem; }
 	body.question-active .participant-header { display: none; }
@@ -380,3 +380,332 @@ input:focus-visible,
 .answer-tile:nth-child(6n + 6) { --tile: color-mix(in srgb, var(--answer-6) 82%, #000); color: #fff; }
 .answer-tile:nth-child(6n + 6) .answer-marker::before { clip-path: polygon(2% 2%, 98% 50%, 2% 98%); }
 
+
+/* ============================================================================
+   Motion layer - "instrument sweep"
+   ----------------------------------------------------------------------------
+   Shared tokens, keyframes and the reduced-motion contract live in theme.css.
+   Everything below is participant-specific choreography built from the same
+   left-to-right gesture as the timer bar. Loaded last, so these rules
+   intentionally supersede the older entrance animations further up this file.
+   ============================================================================ */
+
+/* Views arrive with the signature sweep. `backwards` (not `both`) means the clip-path is dropped
+   again once the animation ends, so nothing stays inside a clipping context afterwards. */
+.view {
+	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+}
+
+/* The question is the moment the participant is actually here for, so it gets the longer arrival. */
+#question-view {
+	animation-duration: var(--dur-focal);
+}
+
+/* --- Answer tiles ------------------------------------------------------- */
+
+/* The grid reads as a list, so it arrives as one: capped stagger, sweeping in reading order. */
+.answer-tile {
+	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+	animation-delay: calc(var(--i, 0) * var(--stagger) + 90ms);
+	transition:
+		transform var(--dur-feedback) var(--ease-press),
+		box-shadow var(--dur-state) var(--ease-sweep),
+		border-color var(--dur-state) ease,
+		opacity var(--dur-state) ease;
+}
+
+.answer-tile:nth-child(1) { --i: 0; }
+.answer-tile:nth-child(2) { --i: 1; }
+.answer-tile:nth-child(3) { --i: 2; }
+.answer-tile:nth-child(4) { --i: 3; }
+.answer-tile:nth-child(5) { --i: 4; }
+.answer-tile:nth-child(6) { --i: 5; }
+.answer-tile:nth-child(n + 7) { --i: 6; }
+
+/* Pressing an answer is the one irreversible act on this screen. It reads as a mechanical lock:
+   the tile dips under the finger, then the confirmation ring snaps out around it. */
+.answer-tile:active:not(:disabled) {
+	transform: scale(0.97);
+	transition-duration: 60ms;
+}
+
+.answer-tile.selected {
+	animation: tile-lock 340ms var(--ease-sweep);
+}
+
+@keyframes tile-lock {
+	0% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 var(--surface), 0 0 0 0 var(--accent), 0 3px 10px rgba(13, 23, 42, 0.12);
+	}
+
+	34% {
+		transform: scale(calc(1 - 0.035 * var(--lock-dip, 1)));
+	}
+
+	100% {
+		transform: scale(1);
+		box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--accent), 0 12px 28px rgba(0, 0, 0, 0.24);
+	}
+}
+
+/* A single light pass across the locked tile - the same scan gesture the timer uses - so the
+   confirmation is legible even on the saturated tile colours where a ring alone can get lost. */
+.answer-tile.selected::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	background: linear-gradient(100deg, transparent 38%, rgba(255, 255, 255, 0.5), transparent 62%);
+	pointer-events: none;
+	animation: scan-pass 620ms var(--ease-sweep) 1 both;
+}
+
+/* --- Timer -------------------------------------------------------------- */
+
+/* The fill shrinks too slowly to look alive. Under ten seconds a light pass starts running along
+   it, and the cadence tightens again under five: the scan appears exactly when it carries
+   information, so the countdown becomes something felt before it is read. Above that threshold
+   the bar is quiet, which is why the escalation registers at all. */
+.timer-bar span {
+	position: relative;
+	overflow: hidden;
+	transition: background-color var(--dur-state) ease;
+}
+
+.timer-bar span.warning::after,
+.timer-bar span.danger::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.55), transparent 65%);
+	animation: scan-pass 1.4s linear infinite;
+}
+
+.timer-bar span.danger::after {
+	animation-duration: 0.75s;
+}
+
+/* Under five seconds the whole readout - not just the bar - picks up the pulse. */
+.timer-bar span.danger {
+	animation: timer-alarm 0.75s ease-in-out infinite;
+}
+
+@keyframes timer-alarm {
+	50% {
+		box-shadow: 0 0 0 calc(0.25rem * var(--alarm-reach, 1)) color-mix(in srgb, var(--danger) 30%, transparent);
+	}
+}
+
+.points-card strong {
+	display: inline-block;
+	transition: color var(--dur-state) ease;
+}
+
+/* Points on offer fall as the clock runs, so each ten-point step drops in from above. The colour
+   follows the same warning/danger thresholds as the timer bar, so the two read as one instrument. */
+.points-card strong.ticking {
+	animation: points-tick 260ms var(--ease-sweep);
+}
+
+@keyframes points-tick {
+	from {
+		opacity: 0.25;
+		transform: translateY(calc(var(--travel) * -1.1));
+	}
+}
+
+.points-card strong.warning {
+	color: #b26a00;
+}
+
+.points-card strong.danger {
+	color: var(--danger);
+}
+
+/* --- Waiting ------------------------------------------------------------ */
+
+/* Replaces the 3.2s border spinner, which was slow enough to read as a stalled page. A drawn
+   sweep around the ring says "still running" at a believable pace and uses the brand colours. */
+.waiting-pulse {
+	width: 4rem;
+	height: 4rem;
+	margin: 0 auto 1.5rem;
+	border: 0;
+	border-radius: 50%;
+	background: conic-gradient(from 0deg, transparent 0deg, var(--primary) 90deg, var(--accent) 200deg, transparent 300deg);
+	-webkit-mask: radial-gradient(circle, transparent 58%, #000 60%);
+	mask: radial-gradient(circle, transparent 58%, #000 60%);
+	animation: spin 1.3s linear infinite;
+}
+
+/* --- Results ------------------------------------------------------------ */
+
+.results-verdict {
+	animation: sweep-in var(--dur-focal) var(--ease-sweep) backwards;
+}
+
+.result-card {
+	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+	animation-delay: calc(var(--i, 0) * var(--stagger) + 140ms);
+}
+
+.result-card:nth-child(1) { --i: 0; }
+.result-card:nth-child(2) { --i: 1; }
+.result-card:nth-child(3) { --i: 2; }
+.result-card:nth-child(4) { --i: 3; }
+.result-card:nth-child(5) { --i: 4; }
+.result-card:nth-child(n + 6) { --i: 5; }
+
+/* The vote bars are written straight to style.width by script, so a width transition never fires.
+   Scaling from the left reproduces the intended growth and rides the card's own stagger. */
+.result-bar span {
+	transform-origin: left center;
+	animation: bar-grow 760ms var(--ease-sweep) backwards;
+	animation-delay: calc(var(--i, 0) * var(--stagger) + 260ms);
+}
+
+@keyframes bar-grow {
+	from {
+		transform: scaleX(0);
+	}
+}
+
+/* --- Standings ---------------------------------------------------------- */
+
+/* Only rows that are genuinely new to the board animate in. Re-appending an already-attached
+   element restarts its CSS animations, and the leaderboard re-appends every row on each update to
+   reorder it - so an unconditional entrance would replay on all rows and fight the FLIP glide.
+   `entering` is set at creation and dropped on animationend (see participant.js). */
+.standing-row.entering {
+	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+	animation-delay: calc(var(--i, 0) * var(--stagger));
+}
+
+.standing-row:nth-child(1) { --i: 0; }
+.standing-row:nth-child(2) { --i: 1; }
+.standing-row:nth-child(3) { --i: 2; }
+.standing-row:nth-child(4) { --i: 3; }
+.standing-row:nth-child(5) { --i: 4; }
+.standing-row:nth-child(6) { --i: 5; }
+.standing-row:nth-child(7) { --i: 6; }
+.standing-row:nth-child(n + 8) { --i: 7; }
+
+/* The participant's own row already carries an accent border and a tinted background, which is a
+   complete marker on its own - an extra left stripe was decoration on top of a solved problem. */
+/* --- Final -------------------------------------------------------------- */
+
+/* The single place in the app that is allowed to celebrate. The crown settles after the card,
+   so the reveal has an order to it instead of everything landing at once. */
+.winner-card {
+	animation: sweep-in var(--dur-focal) var(--ease-sweep) backwards;
+}
+
+/* The crown arrives after the card rather than bouncing: the projected podium on the presenter
+   screen owns the celebration, and repeating it on every phone would spend the moment twice. */
+.winner-crown {
+	animation: sweep-in var(--dur-focal) var(--ease-sweep) 260ms backwards;
+}
+
+.winner-avatar {
+	animation: sweep-reveal var(--dur-focal) var(--ease-sweep) 180ms backwards;
+}
+
+#confirm-multiple-button.just-activated {
+	animation: submit-pulse 380ms var(--ease-sweep);
+}
+
+/* Keep the press acknowledgement on the participant buttons: the rules earlier in this file
+   reset transform on :active, which would otherwise swallow it. */
+.primary-button:active:not(:disabled),
+.secondary-button:active:not(:disabled) {
+	transform: scale(0.985);
+	transition-duration: 60ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--lock-dip: 0;
+		--alarm-reach: 0;
+		--travel-rotate: 0;
+	}
+
+	/* Rotation and the endless ring sweep are pure movement; the state they report is already
+	   carried by colour and layout, so they stop rather than slow down. */
+	.waiting-pulse,
+	.timer-bar span.danger {
+		animation: none;
+	}
+
+	.waiting-pulse {
+		opacity: 0.7;
+	}
+}
+
+/* --- Leaderboard marks --------------------------------------------------
+   The medals and the move indicators were emoji and box-drawing glyphs, which render in whatever
+   emoji font the device happens to ship and never matched the CSS-drawn answer markers elsewhere
+   in the app. They are drawn here instead, in one consistent geometry, and the medal now carries
+   the rank number rather than replacing it. */
+
+.rank-medal {
+	color: #3a2a06;
+	font-size: 0.85rem;
+	font-weight: 900;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0;
+}
+
+.rank-medal.silver {
+	color: #2b3440;
+}
+
+.rank-medal.bronze {
+	color: #ffffff;
+	text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+.rank-move {
+	gap: 0.15rem;
+}
+
+.rank-move::before {
+	content: "";
+	width: 0.5rem;
+	height: 0.5rem;
+	background: currentColor;
+	flex: none;
+}
+
+.rank-move.up::before {
+	clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+
+.rank-move.down::before {
+	clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+}
+
+/* No change: a short rule, not a hyphen glyph, so it sits on the same optical centre as the arrows. */
+.rank-move.same::before {
+	height: 2px;
+	border-radius: 1px;
+}
+
+.rank-move.new::before {
+	border-radius: 50%;
+}
+
+.rank-move.new {
+	color: var(--accent);
+}
+
+.rank-move.same {
+	color: var(--muted);
+	opacity: 0.6;
+}
+
+/* The arrow is the reason to look at this column, so it arrives after the row has settled. */
+.rank-move.up,
+.rank-move.down {
+	animation: sweep-in 360ms var(--ease-sweep) 420ms backwards;
+}

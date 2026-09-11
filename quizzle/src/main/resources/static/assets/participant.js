@@ -504,7 +504,9 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			if (!consumed.has(playerId)) row.remove();
 		}
 		// append() moves rows that are already attached instead of recreating them, so a
-		// continuing player's row keeps its identity (and never replays its entrance animation).
+		// continuing player's row keeps its identity. Re-appending does restart CSS animations,
+		// but createStandingRow already dropped `entering` from reused rows, so only genuinely
+		// new players animate in.
 		for (const row of orderedRows) list.append(row);
 
 		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -533,7 +535,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		}, LEADERBOARD_FLIP_DELAY_MS);
 	}
 
-	const MEDALS = { 1: ["gold", "🥇"], 2: ["silver", "🥈"], 3: ["bronze", "🥉"] };
+	const MEDALS = { 1: "gold", 2: "silver", 3: "bronze" };
 
 	// Mid-quiz leaderboard row: medal for the top three, plus a move arrow versus the previous
 	// question. Pass an existing row to update it in place instead of creating a new element.
@@ -545,10 +547,12 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		const rank = row.querySelector(".standing-rank");
 		const medal = MEDALS[standing.rank];
 		if (medal) {
+			// The medal is drawn in CSS. It carries the rank number itself so the position is still
+			// readable - the previous emoji badge replaced the number rather than labelling it.
 			rank.textContent = "";
 			const badge = document.createElement("span");
-			badge.className = `rank-medal ${medal[0]}`;
-			badge.textContent = medal[1];
+			badge.className = `rank-medal ${medal}`;
+			badge.textContent = String(standing.rank);
 			rank.append(badge);
 		}
 
@@ -556,20 +560,18 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		const move = document.createElement("span");
 		move.className = "rank-move";
 		if (previousRank === undefined) {
-			move.classList.add("same");
-			move.textContent = "•";
+			move.classList.add("new");
 			move.setAttribute("aria-label", "New on the leaderboard");
 		} else if (previousRank > standing.rank) {
 			move.classList.add("up");
-			move.textContent = `▲${previousRank - standing.rank}`;
+			move.textContent = String(previousRank - standing.rank);
 			move.setAttribute("aria-label", `Up ${previousRank - standing.rank}`);
 		} else if (previousRank < standing.rank) {
 			move.classList.add("down");
-			move.textContent = `▼${standing.rank - previousRank}`;
+			move.textContent = String(standing.rank - previousRank);
 			move.setAttribute("aria-label", `Down ${standing.rank - previousRank}`);
 		} else {
 			move.classList.add("same");
-			move.textContent = "–";
 			move.setAttribute("aria-label", "No change");
 		}
 		row.append(move);
@@ -609,7 +611,11 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 	// Creates a standing row, or refreshes an existing one in place (passed as `row`) so a
 	// continuing player keeps the same DOM element across re-renders.
 	function createStandingRow(standing, row = document.createElement("article")) {
-		row.className = "standing-row";
+		// A row that is not in the document yet is new to the board, so it earns the entrance
+		// animation. Reused rows are already on screen and only glide (see updateLeaderboardRows);
+		// resetting className below drops `entering` from them, so it never replays.
+		const isNew = !row.isConnected;
+		row.className = isNew ? "standing-row entering" : "standing-row";
 		row.dataset.playerId = String(standing.playerId);
 		row.replaceChildren();
 		if (standing.playerId === currentParticipant.playerId) row.classList.add("me");
@@ -640,7 +646,18 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			timerFill.style.width = `${ratio * 100}%`;
 			timerFill.classList.toggle("warning", remaining <= 10_000 && remaining > 5_000);
 			timerFill.classList.toggle("danger", remaining <= 5_000);
-			displayPoints.textContent = String(steppedPoints(question.maximumPoints, ratio));
+			const nextPoints = String(steppedPoints(question.maximumPoints, ratio));
+			if (displayPoints.textContent !== nextPoints) {
+				// The points still on offer fall in steps of ten as the clock runs. Ticking each step
+				// down makes the drain visible in peripheral vision, so nobody has to stare at the
+				// number to notice that answering sooner is worth more.
+				displayPoints.textContent = nextPoints;
+				displayPoints.classList.remove("ticking");
+				void displayPoints.offsetWidth;
+				displayPoints.classList.add("ticking");
+			}
+			displayPoints.classList.toggle("warning", remaining <= 10_000 && remaining > 5_000);
+			displayPoints.classList.toggle("danger", remaining <= 5_000);
 			if (remaining <= 0) {
 				setAnswerControlsDisabled(true);
 				return;

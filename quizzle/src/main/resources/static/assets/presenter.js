@@ -310,7 +310,7 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		setText("#connected-count", connected.length);
 		setText("#disconnected-count", offline.length);
 
-		document.querySelector("#avatar-field").replaceChildren(...connected.map(createAvatarChip));
+		renderAvatarField(connected);
 		document.querySelector("#lobby-empty").hidden = participants.length !== 0;
 		document.querySelector("#offline-list").replaceChildren(...offline.map(createOfflineRow));
 		document.querySelector(".offline-heading").hidden = offline.length === 0;
@@ -322,11 +322,34 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		renderedQuestionId = null;
 	}
 
-	function createAvatarChip(participant) {
-		const chip = document.createElement("article");
+	// Chips are keyed by player id and reused across renders, so only a genuinely new participant
+	// plays the join animation. Rebuilding the whole field on every update made every avatar in the
+	// lobby flash whenever anyone joined, and dropped keyboard focus from the Remove buttons.
+	function renderAvatarField(connected) {
+		const field = document.querySelector("#avatar-field");
+		const existing = new Map();
+		for (const chip of field.children) existing.set(chip.dataset.playerId, chip);
+		const ordered = connected.map(participant =>
+			createAvatarChip(participant, existing.get(String(participant.playerId))));
+		field.replaceChildren(...ordered);
+	}
+
+	function createAvatarChip(participant, chip) {
+		const isNewChip = chip === undefined;
+		chip = chip || document.createElement("article");
 		chip.className = "avatar-chip";
-		chip.style.animationDelay = `${hashToUnitInterval(participant.playerId) * -6}s`;
-		chip.style.animationDuration = `${5 + hashToUnitInterval(participant.name) * 3}s`;
+		chip.dataset.playerId = String(participant.playerId);
+		if (isNewChip) {
+			// Only the arrival itself is worth animating. The marker is cleared once the entrance
+			// has played so later re-orders of the same chip stay silent.
+			chip.classList.add("joining");
+			chip.addEventListener("animationend", function releaseJoin(event) {
+				if (event.target !== chip) return;
+				chip.classList.remove("joining");
+				chip.removeEventListener("animationend", releaseJoin);
+			});
+		}
+		chip.replaceChildren();
 
 		const avatar = document.createElement("img");
 		avatar.alt = "";
@@ -636,13 +659,15 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		row.style.setProperty("--row-index", String(index));
 		row.replaceChildren();
 		if (isNewRow) {
-			// The entrance "pop-in" animation has fill-mode "both", which keeps controlling the
-			// row's transform forever (even after it finishes) unless the animation is released -
-			// otherwise it silently overrides the FLIP reorder transition later and every rank
-			// change appears to jump instantly instead of gliding. Free `transform` for our own
-			// control as soon as the one-time entrance has played.
+			// Releasing the entrance animation serves two ends. A running or re-triggered
+			// `sweep-in` controls the row's transform, which silently overrides the FLIP reorder
+			// transition and makes rank changes jump instead of glide. And because re-appending an
+			// already-attached element restarts its CSS animations, a row that stays on the board
+			// would replay its entrance on every reorder. Pinning `animation: none` inline once the
+			// one-time entrance has played frees `transform` and keeps the entrance a one-time
+			// event for the rest of the row's life.
 			row.addEventListener("animationend", function releaseEntranceAnimation(event) {
-				if (event.target !== row || event.animationName !== "pop-in") return;
+				if (event.target !== row || event.animationName !== "sweep-in") return;
 				row.style.animation = "none";
 				row.removeEventListener("animationend", releaseEntranceAnimation);
 			});
@@ -680,6 +705,10 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			fill.style.width = durationMs > 0 ? `${(remainingMs / durationMs) * 100}%` : "0%";
 			pill.classList.toggle("warning", remainingMs <= 10_000 && remainingMs > 5_000);
 			pill.classList.toggle("danger", remainingMs <= 5_000);
+			// The bar carries the same urgency classes as the pill so the projected timer can change
+			// both its colour and its scan cadence without depending on a sibling selector.
+			fill.classList.toggle("warning", remainingMs <= 10_000 && remainingMs > 5_000);
+			fill.classList.toggle("danger", remainingMs <= 5_000);
 			if (remainingMs <= 0) stopCountdown();
 		};
 		update();
@@ -863,14 +892,6 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 
 	function setText(selector, value) {
 		document.querySelector(selector).textContent = value == null ? "" : String(value);
-	}
-
-	function hashToUnitInterval(value) {
-		let hash = 0;
-		for (const character of String(value)) {
-			hash = (hash * 31 + character.codePointAt(0)) % 100_003;
-		}
-		return hash / 100_003;
 	}
 
 	function readCodehash() {

@@ -217,7 +217,7 @@ h2 {
 
 .summary-pill span {
 	color: var(--muted);
-	font-size: 0.68rem;
+	font-size: 0.72rem;
 	font-weight: 800;
 	letter-spacing: 0.09em;
 	text-transform: uppercase;
@@ -366,7 +366,7 @@ h2 {
 
 .session-qr-caption {
 	color: var(--muted);
-	font-size: 0.67rem;
+	font-size: 0.72rem;
 	font-weight: 800;
 	letter-spacing: 0.08em;
 	line-height: 1.2;
@@ -921,3 +921,77 @@ a:focus-visible {
 	}
 }
 
+
+/* ============================================================================
+   Motion layer - "instrument sweep"
+   ----------------------------------------------------------------------------
+   Shared tokens, keyframes and the reduced-motion contract live in theme.css.
+   Admin is a working screen, not a stage, so it gets the quietest version of the
+   gesture: one short sweep as the catalog resolves, and precise feedback on the
+   cards. Selectors stay admin-specific because presenter.html also loads this
+   file, and the presenter has its own choreography.
+   ============================================================================ */
+
+.page-shell > section {
+	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+}
+
+/* The catalog arrives over the network, so the cards resolve as a list rather than all at once.
+   The stagger is capped well short of the point where waiting becomes noticeable. */
+.quiz-card,
+.session-card,
+.issue-card {
+	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+	animation-delay: calc(var(--i, 0) * var(--stagger));
+}
+
+.quiz-card:nth-child(1),
+.session-card:nth-child(1),
+.issue-card:nth-child(1) { --i: 0; }
+.quiz-card:nth-child(2),
+.session-card:nth-child(2),
+.issue-card:nth-child(2) { --i: 1; }
+.quiz-card:nth-child(3),
+.session-card:nth-child(3),
+.issue-card:nth-child(3) { --i: 2; }
+.quiz-card:nth-child(4),
+.session-card:nth-child(4),
+.issue-card:nth-child(4) { --i: 3; }
+.quiz-card:nth-child(5),
+.session-card:nth-child(5),
+.issue-card:nth-child(5) { --i: 4; }
+.quiz-card:nth-child(n + 6),
+.session-card:nth-child(n + 6),
+.issue-card:nth-child(n + 6) { --i: 5; }
+
+.quiz-card,
+.session-card {
+	transition:
+		border-color var(--dur-state) ease,
+		box-shadow var(--dur-state) var(--ease-sweep),
+		transform var(--dur-state) var(--ease-sweep);
+}
+
+/* A card is a button here, so the pointer-down state has to be felt, not just seen. */
+.quiz-card:has(.quiz-card-action:active),
+.session-card:has(.session-card-action:active) {
+	transform: translateY(0) scale(0.995);
+	transition-duration: 70ms;
+}
+
+/* The destructive control stays out of the way until the card is actually being worked on. */
+.delete-session-button {
+	transition: opacity var(--dur-state) ease, color var(--dur-state) ease, background-color var(--dur-state) ease;
+}
+
+.status-card {
+	animation: sweep-reveal var(--dur-state) var(--ease-sweep) backwards;
+}
+
+.delete-session-dialog[open] {
+	animation: sweep-in var(--dur-view) var(--ease-sweep) backwards;
+}
+
+.delete-session-dialog::backdrop {
+	animation: backdrop-in var(--dur-state) var(--ease-sweep) backwards;
+}
