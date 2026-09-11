@@ -15,7 +15,9 @@ body {
 	margin: 0;
 	min-width: 320px;
 	min-height: 100dvh;
-	background: var(--background);
+	background-color: var(--background);
+	background-image: var(--dot-pattern);
+	background-size: var(--dot-pattern-size);
 }
 
 button, input { font: inherit; }

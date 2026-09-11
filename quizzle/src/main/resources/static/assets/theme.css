@@ -34,6 +34,11 @@
 	--radius-panel: 0.875rem;
 	--shadow-control: 0 1px 2px rgba(13, 23, 42, 0.08);
 	--shadow-card: 0 12px 30px rgba(13, 23, 42, 0.08);
+	/* A faint dot field breaks up the page ground without competing with the panels standing on
+	   it. Derived from --text so it stays legible and correctly muted in both themes without
+	   ever being a hardcoded color. */
+	--dot-pattern: radial-gradient(circle, color-mix(in srgb, var(--text) 15%, transparent) 1px, transparent 1px);
+	--dot-pattern-size: 22px 22px;
 }
 
 :root[data-theme="dark"] {
