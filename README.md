@@ -57,7 +57,7 @@ repository-level sample quizzes, branding, and data directory.
 ```powershell
 Set-Location .\quizzle
 $env:ALLOWED_EMAIL_DOMAIN = 'your-company.com'
-$env:QUIZ_FOLDER = '../quizzes'
+$env:QUIZ_FOLDER = '../data/quizzes'
 $env:BRANDING_FOLDER = '../branding'
 $env:QUIZ_DATABASE_PATH = '../data/quiz-snapshots.db'
 .\gradlew.bat bootRun
@@ -68,7 +68,7 @@ $env:QUIZ_DATABASE_PATH = '../data/quiz-snapshots.db'
 ```bash
 cd quizzle
 ALLOWED_EMAIL_DOMAIN='your-company.com' \
-QUIZ_FOLDER='../quizzes' \
+QUIZ_FOLDER='../data/quizzes' \
 BRANDING_FOLDER='../branding' \
 QUIZ_DATABASE_PATH='../data/quiz-snapshots.db' \
 ./gradlew bootRun
@@ -85,6 +85,8 @@ precedence over `.env`; `.env` takes precedence over built-in defaults.
 | Register | `/register` | New account holder |
 | Login | `/login` | Returning account holder |
 | Session overview | `/admin` | Signed-in account holder |
+| Quiz editor | `/editor` | Signed-in account holder — create/edit/delete their own quizzes |
+| Settings | `/settings` | Signed-in account holder — late-join toggle, auto-advance delay, change password, delete account |
 | Presenter | `/admin/sessions/{codehash}` | Shared presentation screen |
 | Participant | `/{codehash}/` | Players joining by link or QR code |
 
@@ -106,7 +108,7 @@ ignored by Git.
 | `SERVER_PORT` | `8080` | HTTP listening port. |
 | `PUBLIC_BASE_URL` | `http://localhost:8080` | Base URL used in participant links and QR codes. |
 | `SESSION_COOKIE_SECURE` | `false` | Set to `true` when the public URL uses HTTPS. |
-| `QUIZ_FOLDER` | `./quizzes` | Directory scanned for `.yaml` and `.yml` quizzes. |
+| `QUIZ_FOLDER` | `./data/quizzes` | Base folder holding one subfolder per account id (`<QUIZ_FOLDER>/<accountId>/*.yaml`); each account only ever sees its own subfolder. |
 | `BRANDING_FOLDER` | `./branding` | Directory containing branding configuration and images. |
 | `BRANDING_FILE` | `branding.yaml` | Branding filename inside `BRANDING_FOLDER`. |
 | `QUIZ_DATABASE_PATH` | `./data/quiz-snapshots.db` | SQLite snapshot database. |
@@ -272,7 +274,7 @@ The image expects three paths under `/data`, all owned by UID 10001:
 
 | Path | Contents | Mount |
 | --- | --- | --- |
-| `/data/quizzes` | Quiz YAML files | read-only |
+| `/data/quizzes` | Quiz YAML files, one subfolder per account id | read-write (the Editor and account deletion write/delete files here) |
 | `/data/branding` | `branding.yaml` and `images/` | read-only |
 | `/data/db` | SQLite snapshot database | read-write, **must be persistent** |
 
@@ -294,7 +296,7 @@ default relative paths resolve:
 export ALLOWED_EMAIL_DOMAIN='your-company.com'
 export PUBLIC_BASE_URL='https://quiz.example.org'
 export SESSION_COOKIE_SECURE=true
-export QUIZ_FOLDER=./quizzes
+export QUIZ_FOLDER=./data/quizzes
 export BRANDING_FOLDER=./branding
 export QUIZ_DATABASE_PATH=./data/quiz-snapshots.db
 java -jar quizzle/build/libs/quizzle-0.0.1-SNAPSHOT.jar
@@ -323,7 +325,8 @@ server stopped gets a fresh timer instead of an already-expired one. Closed sess
 instead of restored. Back up and persist `QUIZ_DATABASE_PATH`; everything else is rebuilt from the
 quiz and branding files.
 
-Quiz and branding files are read once at startup, so restart Quizzle after editing them.
+Quiz files are re-scanned on every request, so changes to a `QUIZ_FOLDER/<accountId>/` folder show
+up immediately (no restart needed). Branding files are still read once at startup.
 
 For a complete TrueNAS SCALE setup, including persistent datasets, reverse proxy configuration,
 updates, backups, and troubleshooting, see
@@ -334,7 +337,7 @@ updates, backups, and troubleshooting, see
 | Symptom | Check |
 | --- | --- |
 | Server exits immediately | `ALLOWED_EMAIL_DOMAIN` is missing or blank. |
-| Quiz catalog is empty | `QUIZ_FOLDER` points to the directory containing the YAML files. |
+| Quiz catalog is empty | `QUIZ_FOLDER/<your account id>/` has no `.yaml`/`.yml` files; each account only sees its own subfolder. |
 | QR code opens the wrong host | `PUBLIC_BASE_URL` is not reachable from participant devices. |
 | Participants repeatedly disconnect | The reverse proxy is not forwarding WebSocket upgrades. |
 | Presenter shows `Live (polling)` | The proxy is buffering or blocking Server-Sent Events. |

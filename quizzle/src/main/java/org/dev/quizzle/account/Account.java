@@ -7,6 +7,8 @@ import java.util.Objects;
  * A registered user identity. {@code verified} defaults to {@code true} today because no
  * email-verification step exists yet; a future phase can start issuing unverified accounts
  * without changing this shape. {@code roles} is reserved and always empty for now.
+ * {@code allowLateJoin} and {@code autoAdvanceDelayMs} are per-account game defaults, editable
+ * from the Settings screen, applied to games this account creates.
  */
 public record Account(
 		String id,
@@ -14,7 +16,9 @@ public record Account(
 		String passwordHash,
 		boolean verified,
 		List<String> roles,
-		long createdAtEpochMs) {
+		long createdAtEpochMs,
+		boolean allowLateJoin,
+		long autoAdvanceDelayMs) {
 
 	public Account {
 		Objects.requireNonNull(id, "id");
@@ -24,6 +28,12 @@ public record Account(
 	}
 
 	public Account withPasswordHash(String newPasswordHash) {
-		return new Account(id, email, newPasswordHash, verified, roles, createdAtEpochMs);
+		return new Account(id, email, newPasswordHash, verified, roles, createdAtEpochMs,
+				allowLateJoin, autoAdvanceDelayMs);
+	}
+
+	public Account withGameSettings(boolean newAllowLateJoin, long newAutoAdvanceDelayMs) {
+		return new Account(id, email, passwordHash, verified, roles, createdAtEpochMs,
+				newAllowLateJoin, newAutoAdvanceDelayMs);
 	}
 }

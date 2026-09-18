@@ -20,4 +20,14 @@ public final class AdminPageController {
 	public String presenterPage() {
 		return "forward:/presenter.html";
 	}
+
+	@GetMapping({"/editor", "/editor/"})
+	public String editorPage() {
+		return "forward:/editor.html";
+	}
+
+	@GetMapping({"/settings", "/settings/"})
+	public String settingsPage() {
+		return "forward:/settings.html";
+	}
 }

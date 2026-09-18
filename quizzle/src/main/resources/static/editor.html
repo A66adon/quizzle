@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en" data-theme-scope="presenter">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title data-page-title="Quiz editor">Quiz editor</title>
+	<script>
+		(function () {
+			var s = document.documentElement.dataset.themeScope || "app";
+			var v = localStorage.getItem("quizzle-theme-" + s);
+			var t = (v === "dark" || v === "light")
+				? v
+				: (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+			document.documentElement.dataset.theme = t;
+		})();
+	</script>
+	<link rel="icon" href="/assets/branding-mark">
+	<link rel="preload" href="/assets/vendor/inter/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+	<link rel="stylesheet" href="/assets/branding.css">
+	<link rel="stylesheet" href="/assets/theme.css">
+	<link rel="stylesheet" href="/assets/admin.css">
+	<link rel="stylesheet" href="/assets/editor.css">
+	<script type="module" src="/assets/branding.js"></script>
+	<script type="module" src="/assets/theme.js"></script>
+	<script src="/assets/csrf.js"></script>
+	<script src="/assets/editor.js" defer></script>
+</head>
+<body>
+	<header class="site-header">
+		<a class="brand" href="/admin" aria-label="Admin home">
+			<span class="brand-mark" data-brand-mark aria-hidden="true"></span>
+			<span data-brand-name></span>
+		</a>
+		<nav class="header-nav" aria-label="Sections">
+			<a href="/admin">Sessions</a>
+			<a href="/editor" aria-current="page">Editor</a>
+			<a href="/settings">Settings</a>
+		</nav>
+		<div class="header-actions">
+			<button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
+				<span class="theme-toggle-icon" aria-hidden="true"></span>
+			</button>
+			<form action="/logout" method="post">
+				<button class="text-button header-sign-out" type="submit">Sign out</button>
+			</form>
+		</div>
+	</header>
+
+	<main class="page-shell">
+		<section class="page-heading" aria-labelledby="editor-title">
+			<div>
+				<h1 id="editor-title">Quiz editor</h1>
+				<p class="muted">Build questions, answers, points, and time limits, then save to your own quiz library.</p>
+			</div>
+		</section>
+
+		<p class="status-card" id="editor-status" role="status" hidden></p>
+		<p class="form-error" id="editor-error" role="alert" hidden></p>
+		<p class="form-success" id="editor-success" role="status" hidden></p>
+
+		<form id="editor-form" class="editor-form">
+			<section class="editor-card">
+				<h2>Quiz details</h2>
+				<label for="quiz-title">Title</label>
+				<input id="quiz-title" name="title" type="text" maxlength="160" required>
+				<label for="quiz-description">Description</label>
+				<textarea id="quiz-description" name="description" maxlength="2000" rows="2" required></textarea>
+				<label for="quiz-author">Author</label>
+				<input id="quiz-author" name="author" type="text" maxlength="120" required>
+			</section>
+
+			<section id="questions-list" class="questions-list"></section>
+
+			<button type="button" id="add-question" class="text-button add-question-button">+ Add question</button>
+
+			<div class="editor-actions">
+				<button type="submit" id="save-quiz" class="primary-button">Save quiz</button>
+				<button type="button" id="delete-quiz" class="text-button danger-text-button" hidden>Delete quiz</button>
+				<a href="/admin" class="text-button">Cancel</a>
+			</div>
+		</form>
+	</main>
+
+	<template id="question-template">
+		<article class="question-card">
+			<div class="question-card-header">
+				<h3><span class="question-index"></span></h3>
+				<div class="question-card-header-actions">
+					<button type="button" class="text-button move-question-up" aria-label="Move question up">↑</button>
+					<button type="button" class="text-button move-question-down" aria-label="Move question down">↓</button>
+					<button type="button" class="text-button danger-text-button remove-question">Remove question</button>
+				</div>
+			</div>
+			<label>Question text
+				<textarea class="question-text" maxlength="500" rows="2" required></textarea>
+			</label>
+			<div class="question-grid">
+				<label>Points
+					<input class="question-points" type="number" min="1" max="100000" value="100" required>
+				</label>
+				<label>Time limit (seconds)
+					<input class="question-time" type="number" min="1" max="600" value="20" required>
+				</label>
+				<label class="checkbox-label">
+					<input class="question-multiple" type="checkbox">
+					Allow multiple correct answers
+				</label>
+				<label class="checkbox-label">
+					<input class="question-shuffle" type="checkbox" checked>
+					Shuffle answer order for players
+				</label>
+			</div>
+			<div class="answers-list"></div>
+			<button type="button" class="text-button add-answer">+ Add answer</button>
+		</article>
+	</template>
+
+	<template id="answer-template">
+		<div class="answer-row">
+			<input class="answer-text" type="text" maxlength="300" placeholder="Answer text" required>
+			<label class="checkbox-label answer-correct-label">
+				<input class="answer-correct" type="checkbox">
+				Correct
+			</label>
+			<button type="button" class="text-button danger-text-button remove-answer" aria-label="Remove answer">✕</button>
+		</div>
+	</template>
+</body>
+</html>

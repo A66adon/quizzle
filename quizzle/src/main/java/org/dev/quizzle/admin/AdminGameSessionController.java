@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import org.dev.quizzle.account.AccountService;
+import org.dev.quizzle.account.AccountSession;
 import org.dev.quizzle.config.GameSessionProperties;
 import org.dev.quizzle.session.GameSessionRegistry;
 import org.dev.quizzle.session.GameSessionRegistry.PlayerNotFoundException;
@@ -28,6 +30,7 @@ import org.dev.quizzle.session.InvalidGameTransitionException;
 import org.dev.quizzle.session.QrCodeService;
 import org.dev.quizzle.session.SessionAddressService;
 import org.dev.quizzle.websocket.SessionRealtimePublisher;
+import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/admin/api/sessions")
@@ -40,49 +43,54 @@ public final class AdminGameSessionController {
 	private final QrCodeService qrCodeService;
 	private final SessionRealtimePublisher realtimePublisher;
 	private final GameSessionProperties sessionProperties;
+	private final AccountService accountService;
 
 	public AdminGameSessionController(
 			GameSessionRegistry sessionRegistry,
 			SessionAddressService addressService,
 			QrCodeService qrCodeService,
 			SessionRealtimePublisher realtimePublisher,
-			GameSessionProperties sessionProperties) {
+			GameSessionProperties sessionProperties,
+			AccountService accountService) {
 		this.sessionRegistry = sessionRegistry;
 		this.addressService = addressService;
 		this.qrCodeService = qrCodeService;
 		this.realtimePublisher = realtimePublisher;
 		this.sessionProperties = sessionProperties;
+		this.accountService = accountService;
 	}
 
 	@GetMapping
-	public List<AdminGameSessionResponse> sessions() {
-		return sessionRegistry.list().stream()
+	public List<AdminGameSessionResponse> sessions(HttpSession session) {
+		return sessionRegistry.list(accountId(session)).stream()
 				.map(this::toResponse)
 				.toList();
 	}
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public AdminGameSessionResponse create(@RequestBody(required = false) CreateSessionRequest request) {
+	public AdminGameSessionResponse create(
+			HttpSession session,
+			@RequestBody(required = false) CreateSessionRequest request) {
 		if (request == null || request.quizFileName() == null || request.quizFileName().isBlank()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
 		}
 		try {
-			return toResponse(sessionRegistry.create(request.quizFileName()));
+			return toResponse(sessionRegistry.create(accountId(session), request.quizFileName()));
 		} catch (QuizNotFoundException exception) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 		}
 	}
 
 	@GetMapping("/{codehash}")
-	public AdminGameSessionResponse session(@PathVariable String codehash) {
-		return toResponse(requireSession(codehash));
+	public AdminGameSessionResponse session(HttpSession session, @PathVariable String codehash) {
+		return toResponse(requireOwnedSession(session, codehash));
 	}
 
 	@GetMapping(value = "/{codehash}/qr.svg", produces = "image/svg+xml")
-	public ResponseEntity<String> qrCode(@PathVariable String codehash) {
-		GameSessionSnapshot session = requireSession(codehash);
-		String svg = qrCodeService.createSvg(addressService.joinUrl(session.codehash()));
+	public ResponseEntity<String> qrCode(HttpSession session, @PathVariable String codehash) {
+		GameSessionSnapshot ownedSession = requireOwnedSession(session, codehash);
+		String svg = qrCodeService.createSvg(addressService.joinUrl(ownedSession.codehash()));
 		return ResponseEntity.ok()
 				.contentType(SVG_MEDIA_TYPE)
 				.header("X-Content-Type-Options", "nosniff")
@@ -91,11 +99,13 @@ public final class AdminGameSessionController {
 
 	@PostMapping("/{codehash}/commands")
 	public AdminGameSessionResponse command(
+			HttpSession session,
 			@PathVariable String codehash,
 			@RequestBody(required = false) LifecycleCommandRequest request) {
 		if (request == null || request.command() == null || request.command().isBlank()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
 		}
+		requireOwnedSession(session, codehash);
 		GameCommand command;
 		try {
 			command = GameCommand.valueOf(request.command().strip().toUpperCase(java.util.Locale.ROOT));
@@ -114,28 +124,29 @@ public final class AdminGameSessionController {
 	}
 
 	@GetMapping(value = "/{codehash}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-	public ResponseEntity<SseEmitter> events(@PathVariable String codehash) {
-		GameSessionSnapshot session = requireSession(codehash);
+	public ResponseEntity<SseEmitter> events(HttpSession session, @PathVariable String codehash) {
+		GameSessionSnapshot ownedSession = requireOwnedSession(session, codehash);
 		return ResponseEntity.ok()
 				.header("X-Accel-Buffering", "no")
-				.body(realtimePublisher.subscribePresenter(session));
+				.body(realtimePublisher.subscribePresenter(ownedSession));
 	}
 
 	// Fallback for networks where a proxy buffers or blocks the SSE stream.
 	@GetMapping(value = "/{codehash}/state", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<String> state(@PathVariable String codehash) {
-		GameSessionSnapshot session = requireSession(codehash);
+	public ResponseEntity<String> state(HttpSession session, @PathVariable String codehash) {
+		GameSessionSnapshot ownedSession = requireOwnedSession(session, codehash);
 		return ResponseEntity.ok()
 				.cacheControl(CacheControl.noStore())
 				// Some corporate proxies only honour the legacy header, and would otherwise
 				// keep serving a stale snapshot to a polling presenter forever.
 				.header("Pragma", "no-cache")
-				.body(realtimePublisher.stateJson(session));
+				.body(realtimePublisher.stateJson(ownedSession));
 	}
 
 	@PostMapping("/{codehash}/players/{playerId}/kick")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void kickPlayer(@PathVariable String codehash, @PathVariable UUID playerId) {
+	public void kickPlayer(HttpSession session, @PathVariable String codehash, @PathVariable UUID playerId) {
+		requireOwnedSession(session, codehash);
 		try {
 			GameSessionSnapshot updated = sessionRegistry.kickPlayer(codehash, playerId);
 			realtimePublisher.disconnectKickedPlayer(codehash, playerId);
@@ -147,11 +158,13 @@ public final class AdminGameSessionController {
 
 	@PostMapping("/{codehash}/leaderboard")
 	public AdminGameSessionResponse leaderboard(
+			HttpSession session,
 			@PathVariable String codehash,
 			@RequestBody(required = false) LeaderboardSettingRequest request) {
 		if (request == null || request.enabled() == null) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
 		}
+		requireOwnedSession(session, codehash);
 		try {
 			GameSessionSnapshot updated = sessionRegistry.setLeaderboardEnabled(codehash, request.enabled());
 			realtimePublisher.publish(updated);
@@ -164,12 +177,20 @@ public final class AdminGameSessionController {
 	}
 
 	private AdminGameSessionResponse toResponse(GameSessionSnapshot snapshot) {
-		return AdminGameSessionResponse.from(
-				snapshot, addressService, sessionProperties.autoAdvanceDelayMs());
+		long autoAdvanceDelayMs = accountService.findById(snapshot.ownerAccountId())
+				.map(account -> account.autoAdvanceDelayMs())
+				.orElse(sessionProperties.autoAdvanceDelayMs());
+		return AdminGameSessionResponse.from(snapshot, addressService, autoAdvanceDelayMs);
 	}
 
-	private GameSessionSnapshot requireSession(String codehash) {
-		return sessionRegistry.find(codehash)
+	private String accountId(HttpSession session) {
+		return AccountSession.currentAccountId(session);
+	}
+
+	// Returns 404 (not 403) for sessions owned by someone else, so a guess never confirms
+	// that a given codehash exists.
+	private GameSessionSnapshot requireOwnedSession(HttpSession session, String codehash) {
+		return sessionRegistry.findOwned(codehash, accountId(session))
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 	}
 

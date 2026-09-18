@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en" data-theme-scope="presenter">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title data-page-title="Settings">Settings</title>
+	<script>
+		(function () {
+			var s = document.documentElement.dataset.themeScope || "app";
+			var v = localStorage.getItem("quizzle-theme-" + s);
+			var t = (v === "dark" || v === "light")
+				? v
+				: (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+			document.documentElement.dataset.theme = t;
+		})();
+	</script>
+	<link rel="icon" href="/assets/branding-mark">
+	<link rel="preload" href="/assets/vendor/inter/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+	<link rel="stylesheet" href="/assets/branding.css">
+	<link rel="stylesheet" href="/assets/theme.css">
+	<link rel="stylesheet" href="/assets/admin.css">
+	<link rel="stylesheet" href="/assets/editor.css">
+	<script type="module" src="/assets/branding.js"></script>
+	<script type="module" src="/assets/theme.js"></script>
+	<script src="/assets/csrf.js"></script>
+	<script src="/assets/settings.js" defer></script>
+</head>
+<body>
+	<header class="site-header">
+		<a class="brand" href="/admin" aria-label="Admin home">
+			<span class="brand-mark" data-brand-mark aria-hidden="true"></span>
+			<span data-brand-name></span>
+		</a>
+		<nav class="header-nav" aria-label="Sections">
+			<a href="/admin">Sessions</a>
+			<a href="/editor">Editor</a>
+			<a href="/settings" aria-current="page">Settings</a>
+		</nav>
+		<div class="header-actions">
+			<button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
+				<span class="theme-toggle-icon" aria-hidden="true"></span>
+			</button>
+			<form action="/logout" method="post">
+				<button class="text-button header-sign-out" type="submit">Sign out</button>
+			</form>
+		</div>
+	</header>
+
+	<main class="page-shell">
+		<section class="page-heading" aria-labelledby="settings-title">
+			<div>
+				<h1 id="settings-title">Settings</h1>
+				<p class="muted" id="settings-account-email">&nbsp;</p>
+			</div>
+		</section>
+
+		<section class="editor-card" aria-labelledby="game-defaults-title">
+			<h2 id="game-defaults-title">Game defaults</h2>
+			<p class="muted">Applied to games you create. Changing these does not affect games already running.</p>
+			<p class="form-error" id="settings-error" role="alert" hidden></p>
+			<p class="form-success" id="settings-success" role="status" hidden></p>
+			<label class="checkbox-label">
+				<input type="checkbox" id="allow-late-join">
+				Allow players to join after a game has started
+			</label>
+			<label for="auto-advance-delay">Auto-advance delay after revealing an answer (seconds)</label>
+			<input type="number" id="auto-advance-delay" min="0" max="120" step="1">
+			<div class="editor-actions">
+				<button type="button" id="save-settings" class="primary-button">Save settings</button>
+			</div>
+		</section>
+
+		<section class="editor-card" aria-labelledby="password-title">
+			<h2 id="password-title">Change password</h2>
+			<p class="form-error" id="password-error" role="alert" hidden></p>
+			<p class="form-success" id="password-success" role="status" hidden></p>
+			<label for="current-password">Current password</label>
+			<input type="password" id="current-password" autocomplete="current-password">
+			<label for="new-password">New password</label>
+			<input type="password" id="new-password" autocomplete="new-password" minlength="8">
+			<div class="editor-actions">
+				<button type="button" id="save-password" class="primary-button">Update password</button>
+			</div>
+		</section>
+
+		<section class="editor-card" aria-labelledby="delete-account-title">
+			<h2 id="delete-account-title">Delete account</h2>
+			<p class="muted">Permanently deletes your account, all of your quizzes, and closes any running games. This cannot be undone.</p>
+			<p class="form-error" id="delete-error" role="alert" hidden></p>
+			<div class="editor-actions">
+				<button type="button" id="delete-account" class="text-button danger-text-button">Delete my account</button>
+			</div>
+		</section>
+	</main>
+</body>
+</html>

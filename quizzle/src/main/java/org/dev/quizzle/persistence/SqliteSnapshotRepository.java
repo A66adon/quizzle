@@ -27,7 +27,7 @@ import tools.jackson.databind.ObjectMapper;
 public final class SqliteSnapshotRepository {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SqliteSnapshotRepository.class);
-	private static final int SNAPSHOT_SCHEMA_VERSION = 1;
+	private static final int SNAPSHOT_SCHEMA_VERSION = 2;
 	private static final String UPSERT_SQL = """
 			INSERT INTO session_snapshots (
 			    codehash, schema_version, state, current_question_index,

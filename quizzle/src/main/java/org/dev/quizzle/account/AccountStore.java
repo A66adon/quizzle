@@ -21,6 +21,7 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 import org.yaml.snakeyaml.representer.Representer;
 
 import org.dev.quizzle.config.AccountProperties;
+import org.dev.quizzle.config.GameSessionProperties;
 
 /**
  * Flat-file account storage. Accounts live in a single YAML file
@@ -32,10 +33,14 @@ import org.dev.quizzle.config.AccountProperties;
 public final class AccountStore {
 
 	private final Path file;
+	private final boolean defaultAllowLateJoin;
+	private final long defaultAutoAdvanceDelayMs;
 	private final ReentrantLock lock = new ReentrantLock();
 
-	public AccountStore(AccountProperties properties) {
+	public AccountStore(AccountProperties properties, GameSessionProperties sessionProperties) {
 		this.file = properties.file();
+		this.defaultAllowLateJoin = sessionProperties.allowJoinAfterStart();
+		this.defaultAutoAdvanceDelayMs = sessionProperties.autoAdvanceDelayMs();
 	}
 
 	public Optional<Account> findByEmail(String email) {
@@ -146,7 +151,11 @@ public final class AccountStore {
 				String.valueOf(values.get("passwordHash")),
 				Boolean.TRUE.equals(values.get("verified")),
 				roles,
-				values.get("createdAtEpochMs") instanceof Number number ? number.longValue() : 0L);
+				values.get("createdAtEpochMs") instanceof Number number ? number.longValue() : 0L,
+				values.get("allowLateJoin") instanceof Boolean flag ? flag : defaultAllowLateJoin,
+				values.get("autoAdvanceDelayMs") instanceof Number delay
+						? delay.longValue()
+						: defaultAutoAdvanceDelayMs);
 	}
 
 	private void writeAll(List<Account> accounts) {
@@ -160,6 +169,8 @@ public final class AccountStore {
 			map.put("verified", account.verified());
 			map.put("roles", new ArrayList<>(account.roles()));
 			map.put("createdAtEpochMs", account.createdAtEpochMs());
+			map.put("allowLateJoin", account.allowLateJoin());
+			map.put("autoAdvanceDelayMs", account.autoAdvanceDelayMs());
 			serialized.add(map);
 		}
 		root.put("accounts", serialized);

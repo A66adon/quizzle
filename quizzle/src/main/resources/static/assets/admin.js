@@ -114,6 +114,11 @@
 		const action = card.querySelector(".quiz-card-action");
 		action.setAttribute("aria-label", `Create a session for ${quiz.title}`);
 		action.addEventListener("click", () => createSession(quiz.fileName, card, action));
+		const editLink = card.querySelector(".quiz-edit-link");
+		if (editLink) {
+			editLink.href = `/editor?file=${encodeURIComponent(quiz.fileName)}`;
+			editLink.setAttribute("aria-label", `Edit ${quiz.title}`);
+		}
 		return card;
 	}
 

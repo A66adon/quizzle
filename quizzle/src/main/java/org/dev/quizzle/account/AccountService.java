@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import org.dev.quizzle.config.AccountProperties;
+import org.dev.quizzle.config.GameSessionProperties;
 
 /**
  * Registration and authentication for {@link Account}s. The allowed-domain check and the
@@ -24,11 +25,13 @@ public final class AccountService {
 
 	private final AccountStore accountStore;
 	private final AccountProperties properties;
+	private final GameSessionProperties sessionProperties;
 	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-	public AccountService(AccountStore accountStore, AccountProperties properties) {
+	public AccountService(AccountStore accountStore, AccountProperties properties, GameSessionProperties sessionProperties) {
 		this.accountStore = accountStore;
 		this.properties = properties;
+		this.sessionProperties = sessionProperties;
 	}
 
 	public Account register(String rawEmail, String rawPassword) {
@@ -46,7 +49,9 @@ public final class AccountService {
 				passwordEncoder.encode(rawPassword),
 				true,
 				List.of(),
-				Instant.now().toEpochMilli());
+				Instant.now().toEpochMilli(),
+				sessionProperties.allowJoinAfterStart(),
+				sessionProperties.autoAdvanceDelayMs());
 		return accountStore.create(account);
 	}
 
@@ -67,6 +72,16 @@ public final class AccountService {
 		}
 		validatePassword(newPassword);
 		accountStore.update(account.withPasswordHash(passwordEncoder.encode(newPassword)));
+	}
+
+	/** Updates this account's own game defaults (late-join, auto-advance delay). */
+	public void updateGameSettings(String accountId, boolean allowLateJoin, long autoAdvanceDelayMs) {
+		if (autoAdvanceDelayMs < 0 || autoAdvanceDelayMs > 120_000) {
+			throw new AccountRegistrationException("Auto-advance delay must be between 0 and 120000 ms");
+		}
+		Account account = accountStore.findById(accountId)
+				.orElseThrow(() -> new AccountRegistrationException("Account not found"));
+		accountStore.update(account.withGameSettings(allowLateJoin, autoAdvanceDelayMs));
 	}
 
 	public void deleteAccount(String accountId) {

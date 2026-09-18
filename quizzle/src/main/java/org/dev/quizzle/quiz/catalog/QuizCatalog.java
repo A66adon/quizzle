@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -17,32 +18,39 @@ import org.springframework.stereotype.Component;
 
 import org.dev.quizzle.config.QuizCatalogProperties;
 import org.dev.quizzle.quiz.model.QuizDefinition;
-import jakarta.annotation.PostConstruct;
 
+/**
+ * Loads each account's quizzes from its own subdirectory under the configured base directory
+ * (e.g. {@code data/quizzes/<accountId>/}), so accounts never see one another's quizzes. There is
+ * no in-memory cache: quiz files are re-scanned on every call, which keeps the catalog accurate
+ * for the (small, per-user) quiz sets this application manages and lets a future editor write a
+ * file and have it show up immediately.
+ */
 @Component
 public final class QuizCatalog {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(QuizCatalog.class);
+	// Account ids are server-generated UUIDs; this guards against path traversal regardless.
+	private static final Pattern SAFE_ACCOUNT_ID = Pattern.compile("^[A-Za-z0-9_-]{1,64}$");
 
-	private final Path directory;
+	private final Path baseDirectory;
 	private final QuizYamlParser parser;
 	private final QuizDefinitionValidator validator;
-	private volatile QuizCatalogSnapshot snapshot = QuizCatalogSnapshot.empty();
 
 	public QuizCatalog(
 			QuizCatalogProperties properties,
 			QuizYamlParser parser,
 			QuizDefinitionValidator validator) {
-		this.directory = properties.directory().toAbsolutePath().normalize();
+		this.baseDirectory = properties.directory().toAbsolutePath().normalize();
 		this.parser = parser;
 		this.validator = validator;
 	}
 
-	@PostConstruct
-	public void loadAtStartup() {
+	public QuizCatalogSnapshot snapshotFor(String accountId) {
+		Path directory = accountDirectory(accountId);
 		List<LoadedQuiz> quizzes = new ArrayList<>();
 		List<CatalogIssue> issues = new ArrayList<>();
-		List<Path> quizFiles = discoverQuizFiles(issues);
+		List<Path> quizFiles = discoverQuizFiles(directory, issues);
 
 		for (Path quizFile : quizFiles) {
 			String fileName = quizFile.getFileName().toString();
@@ -65,21 +73,23 @@ public final class QuizCatalog {
 			}
 		}
 
-		snapshot = new QuizCatalogSnapshot(Instant.now(), quizzes, issues);
-		LOGGER.info("Quiz catalog ready: {} valid, {} invalid", quizzes.size(), issues.size());
+		return new QuizCatalogSnapshot(Instant.now(), quizzes, issues);
 	}
 
-	public QuizCatalogSnapshot snapshot() {
-		return snapshot;
-	}
-
-	public Optional<LoadedQuiz> findByFileName(String fileName) {
-		return snapshot.quizzes().stream()
+	public Optional<LoadedQuiz> findByFileName(String accountId, String fileName) {
+		return snapshotFor(accountId).quizzes().stream()
 				.filter(loadedQuiz -> loadedQuiz.fileName().equals(fileName))
 				.findFirst();
 	}
 
-	private List<Path> discoverQuizFiles(List<CatalogIssue> issues) {
+	private Path accountDirectory(String accountId) {
+		if (accountId == null || !SAFE_ACCOUNT_ID.matcher(accountId).matches()) {
+			throw new IllegalArgumentException("accountId is invalid");
+		}
+		return baseDirectory.resolve(accountId).normalize();
+	}
+
+	private List<Path> discoverQuizFiles(Path directory, List<CatalogIssue> issues) {
 		try {
 			Files.createDirectories(directory);
 			if (!Files.isDirectory(directory)) {
@@ -107,4 +117,3 @@ public final class QuizCatalog {
 		return fileName.endsWith(".yaml") || fileName.endsWith(".yml");
 	}
 }
-
