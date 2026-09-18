@@ -3,7 +3,7 @@ services:
     build: .
     container_name: quizzle
     environment:
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD before starting}
+      - ALLOWED_EMAIL_DOMAIN=${ALLOWED_EMAIL_DOMAIN:?set ALLOWED_EMAIL_DOMAIN before starting}
       - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:8080}
       - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-false}
     ports:

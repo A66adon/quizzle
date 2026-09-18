@@ -16,6 +16,7 @@ USER quizzle
 ENV SERVER_PORT=8080 \
     QUIZ_FOLDER=/data/quizzes \
     BRANDING_FOLDER=/data/branding \
-    QUIZ_DATABASE_PATH=/data/db/quiz-snapshots.db
+    QUIZ_DATABASE_PATH=/data/db/quiz-snapshots.db \
+    ACCOUNTS_FILE=/data/db/accounts.yml
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

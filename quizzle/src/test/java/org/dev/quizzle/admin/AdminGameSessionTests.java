@@ -25,8 +25,11 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import tools.jackson.databind.ObjectMapper;
 
+import org.dev.quizzle.security.CsrfToken;
+
 @SpringBootTest(properties = {
-		"quiz.admin.password=phase-two-secret",
+		"quiz.account.allowed-domain=test.example",
+		"quiz.account.file=${java.io.tmpdir}/safety-quiz-accounts-${random.uuid}.yml",
 		"quiz.catalog.directory=./quizzes",
 		"quiz.session.public-base-url=https://quiz.example.test/events",
 		"quiz.snapshot.database-path=${java.io.tmpdir}/safety-quiz-sessions-${random.uuid}.db",
@@ -92,10 +95,12 @@ class AdminGameSessionTests {
 
 		mockMvc.perform(post("/admin/api/sessions")
 				.session(adminSession)
+				.header(CsrfToken.HEADER_NAME, CsrfToken.getOrCreate(adminSession))
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isBadRequest());
 		mockMvc.perform(post("/admin/api/sessions")
 				.session(adminSession)
+				.header(CsrfToken.HEADER_NAME, CsrfToken.getOrCreate(adminSession))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"quizFileName\":\"missing.yaml\"}"))
 				.andExpect(status().isNotFound());
@@ -112,13 +117,16 @@ class AdminGameSessionTests {
 		mockMvc.perform(get("/admin/sessions/{codehash}", codehash))
 				.andExpect(status().is3xxRedirection());
 		mockMvc.perform(post("/admin/api/sessions/{codehash}/players/{playerId}/kick",
-				codehash, UUID.randomUUID()).session(adminSession))
+				codehash, UUID.randomUUID())
+				.session(adminSession)
+				.header(CsrfToken.HEADER_NAME, CsrfToken.getOrCreate(adminSession)))
 				.andExpect(status().isNotFound());
 	}
 
 	private String createSession(MockHttpSession adminSession) throws Exception {
 		MvcResult result = mockMvc.perform(post("/admin/api/sessions")
 				.session(adminSession)
+				.header(CsrfToken.HEADER_NAME, CsrfToken.getOrCreate(adminSession))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"quizFileName\":\"safety-basics.yaml\"}"))
 				.andExpect(status().isCreated())
@@ -128,7 +136,22 @@ class AdminGameSessionTests {
 	}
 
 	private MockHttpSession login() throws Exception {
-		MvcResult result = mockMvc.perform(post("/admin/login").param("password", "phase-two-secret"))
+		MockHttpSession session = new MockHttpSession();
+		mockMvc.perform(get("/register").session(session)).andExpect(status().isOk());
+		String csrfToken = CsrfToken.getOrCreate(session);
+
+		mockMvc.perform(post("/register")
+				.session(session)
+				.param("email", "phase-two-account@test.example")
+				.param("password", "phase-two-secret-password")
+				.param("_csrf", csrfToken))
+				.andExpect(status().is3xxRedirection());
+
+		MvcResult result = mockMvc.perform(post("/login")
+				.session(session)
+				.param("email", "phase-two-account@test.example")
+				.param("password", "phase-two-secret-password")
+				.param("_csrf", csrfToken))
 				.andExpect(status().is3xxRedirection())
 				.andReturn();
 		return (MockHttpSession) result.getRequest().getSession(false);

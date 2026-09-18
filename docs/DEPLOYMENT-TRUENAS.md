@@ -48,8 +48,8 @@ services:
       - TZ=Europe/Berlin
       - GRADLE_USER_HOME=/workspace/.gradle
 
-      # Required: the admin login password.
-      - ADMIN_PASSWORD=REPLACE_WITH_A_LONG_PASSWORD
+      # Required: only this email domain may self-register (no shared password anymore).
+      - ALLOWED_EMAIL_DOMAIN=your-company.com
 
       # Must be the URL participants actually open; it goes into the join links and QR codes.
       - PUBLIC_BASE_URL=https://quiz.example.org
@@ -89,7 +89,7 @@ services:
         exec java -jar build/libs/quizzle-0.0.1-SNAPSHOT.jar
 ```
 
-Replace `ADMIN_PASSWORD` and `PUBLIC_BASE_URL` before starting, then install.
+Replace `ALLOWED_EMAIL_DOMAIN` and `PUBLIC_BASE_URL` before starting, then install.
 
 
 The first start downloads the Gradle dependencies and takes a few minutes. Because
@@ -164,7 +164,7 @@ Everything worth keeping lives in the mounted datasets:
 
 | Symptom | Cause |
 | --- | --- |
-| App exits immediately, log says `ADMIN_PASSWORD must be set` | `ADMIN_PASSWORD` is empty in the YAML. |
+| App exits immediately, log says `ALLOWED_EMAIL_DOMAIN must be set` | `ALLOWED_EMAIL_DOMAIN` is empty in the YAML. |
 | App never starts, log ends in a `git clone` error | TrueNAS cannot reach `git.olli.info`, does not trust its certificate, or the repository needs a token. |
 | Catalog is empty | `QUIZ_FOLDER` does not point at the mounted dataset, or it contains no `.yaml` / `.yml` files. |
 | QR code leads nowhere | `PUBLIC_BASE_URL` still points at `localhost` or an internal address. |

@@ -652,6 +652,23 @@ h2 {
 	line-height: 1.45;
 }
 
+.form-success {
+	margin: 1.5rem 0;
+	padding: 0.85rem 1rem;
+	border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border));
+	border-radius: var(--radius-control);
+	color: var(--green);
+	background: color-mix(in srgb, var(--green) 12%, var(--surface));
+	font-size: 0.9rem;
+	line-height: 1.45;
+}
+
+.login-switch {
+	margin-top: 1.5rem;
+	text-align: center;
+	font-size: 0.9rem;
+}
+
 .login-form {
 	display: grid;
 	gap: 0.65rem;

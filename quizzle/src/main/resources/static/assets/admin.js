@@ -63,12 +63,13 @@
 			...options,
 			headers: {
 				Accept: "application/json",
+				"X-XSRF-TOKEN": window.getCsrfToken() || "",
 				...(options.headers || {})
 			}
 		});
 		if (response.status === 401) {
-			window.location.replace("/admin/login");
-			throw new Error("Admin session expired");
+			window.location.replace("/login");
+			throw new Error("Session expired");
 		}
 		if (!response.ok) {
 			const error = new Error(`Request failed with status ${response.status}`);

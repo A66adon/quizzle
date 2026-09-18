@@ -795,11 +795,15 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			credentials: "same-origin",
 			cache: "no-store",
 			...options,
-			headers: { Accept: "application/json", ...(options.headers || {}) }
+			headers: {
+				Accept: "application/json",
+				"X-XSRF-TOKEN": window.getCsrfToken ? (window.getCsrfToken() || "") : "",
+				...(options.headers || {})
+			}
 		});
 		if (response.status === 401) {
-			window.location.replace("/admin/login");
-			throw new Error("Admin session expired");
+			window.location.replace("/login");
+			throw new Error("Session expired");
 		}
 		if (!response.ok) {
 			const error = new Error(`Request failed with status ${response.status}`);

@@ -1,4 +1,4 @@
-package org.dev.quizzle.admin;
+package org.dev.quizzle.account;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -20,15 +20,18 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import org.dev.quizzle.security.CsrfToken;
+
 @SpringBootTest(properties = {
-		"quiz.admin.password=phase-one-secret",
+		"quiz.account.allowed-domain=test.example",
+		"quiz.account.file=${java.io.tmpdir}/safety-quiz-accounts-${random.uuid}.yml",
 		"quiz.catalog.directory=./quizzes",
 		"quiz.session.public-base-url=https://quiz.example.test",
 		"quiz.snapshot.database-path=${java.io.tmpdir}/safety-quiz-admin-${random.uuid}.db",
 		"quiz.snapshot.interval-ms=3600000"
 })
 @AutoConfigureMockMvc
-class AdminAuthenticationTests {
+class AccountAuthenticationTests {
 
 	@Autowired
 	MockMvc mockMvc;
@@ -37,26 +40,46 @@ class AdminAuthenticationTests {
 	void protectsAdminPagesAndDataWithoutASession() throws Exception {
 		mockMvc.perform(get("/admin"))
 				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/admin/login"));
+				.andExpect(redirectedUrl("/login"));
 		mockMvc.perform(get("/admin.html"))
 				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/admin/login"));
+				.andExpect(redirectedUrl("/login"));
 		mockMvc.perform(get("/admin/api/quizzes"))
 				.andExpect(status().isUnauthorized())
 				.andExpect(header().string("Cache-Control", "no-store"));
 	}
 
 	@Test
-	void rejectsAnIncorrectPasswordWithoutReflectingIt() throws Exception {
-		mockMvc.perform(post("/admin/login").param("password", "wrong-and-private"))
+	void rejectsRegistrationOutsideTheAllowedDomain() throws Exception {
+		MockHttpSession session = new MockHttpSession();
+		String token = obtainCsrfToken(session);
+
+		mockMvc.perform(post("/register")
+				.session(session)
+				.param("email", "person@other.example")
+				.param("password", "correct horse battery staple")
+				.param("_csrf", token))
 				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/admin/login?error"))
-				.andExpect(content().string(not(containsString("wrong-and-private"))));
+				.andExpect(header().string("Location", containsString("/register?error=")));
+	}
+
+	@Test
+	void rejectsAnIncorrectPasswordWithoutReflectingIt() throws Exception {
+		MockHttpSession session = registerAccount("wrong-and-private-test@test.example", "correct horse battery staple");
+
+		mockMvc.perform(post("/login")
+				.session(session)
+				.param("email", "wrong-and-private-test@test.example")
+				.param("password", "not-the-password")
+				.param("_csrf", CsrfToken.getOrCreate(session)))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/login?error"))
+				.andExpect(content().string(not(containsString("not-the-password"))));
 	}
 
 	@Test
 	void authenticatedSessionCanReadOnlySafeCatalogData() throws Exception {
-		MockHttpSession session = login();
+		MockHttpSession session = login("phase-one-account@test.example", "correct horse battery staple");
 
 		mockMvc.perform(get("/admin").session(session))
 				.andExpect(status().isOk())
@@ -74,27 +97,52 @@ class AdminAuthenticationTests {
 	}
 
 	@Test
-	void logoutInvalidatesTheAdminSession() throws Exception {
-		MockHttpSession session = login();
+	void logoutInvalidatesTheAccountSession() throws Exception {
+		MockHttpSession session = login("phase-one-logout@test.example", "correct horse battery staple");
 
-		mockMvc.perform(post("/admin/logout").session(session))
+		mockMvc.perform(post("/logout")
+				.session(session)
+				.param("_csrf", CsrfToken.getOrCreate(session)))
 				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/admin/login"))
+				.andExpect(redirectedUrl("/login"))
 				.andExpect(header().string("Clear-Site-Data", "\"cache\""));
 		mockMvc.perform(get("/admin/api/quizzes"))
 				.andExpect(status().isUnauthorized());
 	}
 
-	private MockHttpSession login() throws Exception {
-		MvcResult result = mockMvc.perform(post("/admin/login").param("password", "phase-one-secret"))
+	private String obtainCsrfToken(MockHttpSession session) throws Exception {
+		mockMvc.perform(get("/register").session(session)).andExpect(status().isOk());
+		return CsrfToken.getOrCreate(session);
+	}
+
+	private MockHttpSession registerAccount(String email, String password) throws Exception {
+		MockHttpSession session = new MockHttpSession();
+		String token = obtainCsrfToken(session);
+		mockMvc.perform(post("/register")
+				.session(session)
+				.param("email", email)
+				.param("password", password)
+				.param("_csrf", token))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/login?registered"));
+		return session;
+	}
+
+	private MockHttpSession login(String email, String password) throws Exception {
+		registerAccount(email, password);
+
+		MockHttpSession session = new MockHttpSession();
+		String token = obtainCsrfToken(session);
+		MvcResult result = mockMvc.perform(post("/login")
+				.session(session)
+				.param("email", email)
+				.param("password", password)
+				.param("_csrf", token))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/admin"))
 				.andReturn();
-		MockHttpSession session = (MockHttpSession) result.getRequest().getSession(false);
-		assertNotNull(session);
-		return session;
+		MockHttpSession authenticatedSession = (MockHttpSession) result.getRequest().getSession(false);
+		assertNotNull(authenticatedSession);
+		return authenticatedSession;
 	}
 }
-
-
-

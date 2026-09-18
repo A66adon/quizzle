@@ -29,21 +29,23 @@ from the repository root.
 **PowerShell**
 
 ```powershell
-$env:ADMIN_PASSWORD = 'replace-with-a-long-password'
+$env:ALLOWED_EMAIL_DOMAIN = 'your-company.com'
 docker compose up --build
 ```
 
 **Bash**
 
 ```bash
-ADMIN_PASSWORD='replace-with-a-long-password' docker compose up --build
+ALLOWED_EMAIL_DOMAIN='your-company.com' docker compose up --build
 ```
 
-Open <http://localhost:8080/admin/login>, sign in, choose a quiz, and create a session. Stop the
-stack with <kbd>Ctrl</kbd>+<kbd>C</kbd>, then run `docker compose down` when you no longer need it.
+Open <http://localhost:8080/register>, create an account with a `@your-company.com` email, sign in,
+choose a quiz, and create a session. Stop the stack with <kbd>Ctrl</kbd>+<kbd>C</kbd>, then run
+`docker compose down` when you no longer need it.
 
 > [!IMPORTANT]
-> `ADMIN_PASSWORD` is required. Use a long, unique value and never commit it to the repository.
+> `ALLOWED_EMAIL_DOMAIN` is required. Only email addresses on that domain may self-register; there is
+> no shared password and no administrator role.
 
 ### Run directly with Java
 
@@ -54,7 +56,7 @@ repository-level sample quizzes, branding, and data directory.
 
 ```powershell
 Set-Location .\quizzle
-$env:ADMIN_PASSWORD = 'replace-with-a-long-password'
+$env:ALLOWED_EMAIL_DOMAIN = 'your-company.com'
 $env:QUIZ_FOLDER = '../quizzes'
 $env:BRANDING_FOLDER = '../branding'
 $env:QUIZ_DATABASE_PATH = '../data/quiz-snapshots.db'
@@ -65,7 +67,7 @@ $env:QUIZ_DATABASE_PATH = '../data/quiz-snapshots.db'
 
 ```bash
 cd quizzle
-ADMIN_PASSWORD='replace-with-a-long-password' \
+ALLOWED_EMAIL_DOMAIN='your-company.com' \
 QUIZ_FOLDER='../quizzes' \
 BRANDING_FOLDER='../branding' \
 QUIZ_DATABASE_PATH='../data/quiz-snapshots.db' \
@@ -80,8 +82,9 @@ precedence over `.env`; `.env` takes precedence over built-in defaults.
 
 | Page | Path | Audience |
 | --- | --- | --- |
-| Admin login | `/admin/login` | Quiz administrator |
-| Session overview | `/admin` | Quiz administrator |
+| Register | `/register` | New account holder |
+| Login | `/login` | Returning account holder |
+| Session overview | `/admin` | Signed-in account holder |
 | Presenter | `/admin/sessions/{codehash}` | Shared presentation screen |
 | Participant | `/{codehash}/` | Players joining by link or QR code |
 
@@ -97,7 +100,9 @@ ignored by Git.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `ADMIN_PASSWORD` | — | **Required.** Shared password for the admin area. |
+| `ALLOWED_EMAIL_DOMAIN` | — | **Required.** Only `@domain` addresses may self-register. |
+| `ACCOUNTS_FILE` | `./data/accounts.yml` | Flat-file account store (one record per user). |
+| `ACCOUNT_MIN_PASSWORD_LENGTH` | `8` | Minimum password length for registration/change. |
 | `SERVER_PORT` | `8080` | HTTP listening port. |
 | `PUBLIC_BASE_URL` | `http://localhost:8080` | Base URL used in participant links and QR codes. |
 | `SESSION_COOKIE_SECURE` | `false` | Set to `true` when the public URL uses HTTPS. |
@@ -247,7 +252,7 @@ and Spring MVC coverage. The repository also contains `smoke-test.ps1`, a restar
 test for a preconfigured `quizzle-test` container listening on port `18080`.
 
 > [!NOTE]
-> Run the Gradle tests without Quizzle configuration variables such as `ADMIN_PASSWORD`,
+> Run the Gradle tests without Quizzle configuration variables such as `ALLOWED_EMAIL_DOMAIN`,
 > `QUIZ_FOLDER`, or `BRANDING_FILE` in the process environment. Some tests intentionally verify
 > precedence between process variables, `.env`, and test fixtures.
 
@@ -272,20 +277,21 @@ The image expects three paths under `/data`, all owned by UID 10001:
 | `/data/db` | SQLite snapshot database | read-write, **must be persistent** |
 
 [`docker-compose.yml`](docker-compose.yml) wires exactly that up and publishes port `8080`. Set
-`ADMIN_PASSWORD` in the environment (or an ignored `.env` next to the compose file) before starting:
+`ALLOWED_EMAIL_DOMAIN` in the environment (or an ignored `.env` next to the compose file) before
+starting:
 
 ```bash
-ADMIN_PASSWORD='a-long-password' docker compose up -d --build
+ALLOWED_EMAIL_DOMAIN='your-company.com' docker compose up -d --build
 ```
 
 ### Standalone JAR
 
-Set `ADMIN_PASSWORD`, point `PUBLIC_BASE_URL` at the address participants actually reach, and enable
-`SESSION_COOKIE_SECURE` when serving over HTTPS. Run the JAR from the repository root so the default
-relative paths resolve:
+Set `ALLOWED_EMAIL_DOMAIN`, point `PUBLIC_BASE_URL` at the address participants actually reach, and
+enable `SESSION_COOKIE_SECURE` when serving over HTTPS. Run the JAR from the repository root so the
+default relative paths resolve:
 
 ```bash
-export ADMIN_PASSWORD='a-long-password'
+export ALLOWED_EMAIL_DOMAIN='your-company.com'
 export PUBLIC_BASE_URL='https://quiz.example.org'
 export SESSION_COOKIE_SECURE=true
 export QUIZ_FOLDER=./quizzes
@@ -327,7 +333,7 @@ updates, backups, and troubleshooting, see
 
 | Symptom | Check |
 | --- | --- |
-| Server exits immediately | `ADMIN_PASSWORD` is missing or blank. |
+| Server exits immediately | `ALLOWED_EMAIL_DOMAIN` is missing or blank. |
 | Quiz catalog is empty | `QUIZ_FOLDER` points to the directory containing the YAML files. |
 | QR code opens the wrong host | `PUBLIC_BASE_URL` is not reachable from participant devices. |
 | Participants repeatedly disconnect | The reverse proxy is not forwarding WebSocket upgrades. |
