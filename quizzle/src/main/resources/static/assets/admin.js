@@ -18,6 +18,7 @@
 	const issueCount = document.querySelector("#issue-count");
 	const sessionTemplate = document.querySelector("#session-template");
 	const quizTemplate = document.querySelector("#quiz-template");
+	const addQuizTemplate = document.querySelector("#add-quiz-template");
 	const issueTemplate = document.querySelector("#issue-template");
 	const deleteSessionDialog = document.querySelector("#delete-session-dialog");
 	const deleteSessionName = document.querySelector("#delete-session-name");
@@ -83,7 +84,7 @@
 		const quizzes = Array.isArray(catalog.quizzes) ? catalog.quizzes : [];
 		const issues = Array.isArray(catalog.issues) ? catalog.issues : [];
 
-		quizGrid.replaceChildren(...quizzes.map(createQuizCard));
+		quizGrid.replaceChildren(createAddQuizCard(), ...quizzes.map(createQuizCard));
 		issueList.replaceChildren(...issues.map(createIssueCard));
 
 		quizCount.textContent = String(quizzes.length);
@@ -103,6 +104,20 @@
 		issueCount.textContent = issues.length === 1 ? "1 skipped file" : `${issues.length} skipped files`;
 	}
 
+	function createAddQuizCard() {
+		const card = addQuizTemplate.content.firstElementChild.cloneNode(true);
+		card.setAttribute("aria-label", "Add a new quiz");
+		const openEditor = () => window.location.assign("/editor");
+		card.addEventListener("click", openEditor);
+		card.addEventListener("keydown", event => {
+			if (event.key === "Enter" || event.key === " ") {
+				event.preventDefault();
+				openEditor();
+			}
+		});
+		return card;
+	}
+
 	function createQuizCard(quiz) {
 		const card = quizTemplate.content.firstElementChild.cloneNode(true);
 		card.querySelector(".quiz-title").textContent = quiz.title;
@@ -111,14 +126,21 @@
 		card.querySelector(".question-count").textContent = quiz.questionCount === 1
 			? "1 question"
 			: `${quiz.questionCount} questions`;
-		const action = card.querySelector(".quiz-card-action");
-		action.setAttribute("aria-label", `Create a session for ${quiz.title}`);
-		action.addEventListener("click", () => createSession(quiz.fileName, card, action));
-		const editLink = card.querySelector(".quiz-edit-link");
-		if (editLink) {
-			editLink.href = `/editor?file=${encodeURIComponent(quiz.fileName)}`;
-			editLink.setAttribute("aria-label", `Edit ${quiz.title}`);
-		}
+		card.setAttribute("aria-label", `Edit ${quiz.title}`);
+		const openEditor = () => window.location.assign(`/editor?file=${encodeURIComponent(quiz.fileName)}`);
+		card.addEventListener("click", openEditor);
+		card.addEventListener("keydown", event => {
+			if (event.key === "Enter" || event.key === " ") {
+				event.preventDefault();
+				openEditor();
+			}
+		});
+		const playButton = card.querySelector(".quiz-play-button");
+		playButton.setAttribute("aria-label", `Create a session for ${quiz.title}`);
+		playButton.addEventListener("click", event => {
+			event.stopPropagation();
+			createSession(quiz.fileName, card, playButton);
+		});
 		return card;
 	}
 
@@ -255,6 +277,162 @@
 		card.querySelector(".issue-file").textContent = issue.fileName;
 		card.querySelector(".issue-reason").textContent = issue.reason;
 		return card;
+	}
+
+	// --- Settings panel -------------------------------------------------
+
+	const settingsGear = document.querySelector("#settings-gear");
+	const settingsPanel = document.querySelector("#settings-panel");
+	const settingsError = document.querySelector("#settings-error");
+	const allowLateJoinInput = document.querySelector("#allow-late-join");
+	const autoAdvanceValue = document.querySelector("#auto-advance-value");
+	const autoAdvanceDown = document.querySelector("#auto-advance-down");
+	const autoAdvanceUp = document.querySelector("#auto-advance-up");
+	const currentPasswordInput = document.querySelector("#current-password");
+	const newPasswordInput = document.querySelector("#new-password");
+	const passwordError = document.querySelector("#password-error");
+	const passwordSuccess = document.querySelector("#password-success");
+	const savePasswordButton = document.querySelector("#save-password");
+	const deleteError = document.querySelector("#delete-error");
+	const deleteAccountButton = document.querySelector("#delete-account");
+
+	const AUTO_ADVANCE_PRESETS_SECONDS = [1, 3, 5, 10];
+	let autoAdvanceIndex = 1;
+	let settingsDirty = false;
+	let settingsLoaded = false;
+
+	settingsGear.addEventListener("click", toggleSettingsPanel);
+	autoAdvanceDown.addEventListener("click", () => stepAutoAdvance(-1));
+	autoAdvanceUp.addEventListener("click", () => stepAutoAdvance(1));
+	allowLateJoinInput.addEventListener("change", () => {
+		settingsDirty = true;
+	});
+	savePasswordButton.addEventListener("click", savePassword);
+	deleteAccountButton.addEventListener("click", deleteAccount);
+
+	function toggleSettingsPanel() {
+		if (settingsPanel.hidden) {
+			openSettingsPanel();
+		} else {
+			closeSettingsPanel();
+		}
+	}
+
+	function openSettingsPanel() {
+		settingsPanel.hidden = false;
+		settingsGear.setAttribute("aria-expanded", "true");
+		settingsGear.setAttribute("aria-label", "Close settings");
+		window.requestAnimationFrame(() => settingsPanel.classList.add("is-open"));
+		if (!settingsLoaded) loadSettingsPanel();
+	}
+
+	function closeSettingsPanel() {
+		settingsGear.setAttribute("aria-expanded", "false");
+		settingsGear.setAttribute("aria-label", "Open settings");
+		settingsPanel.classList.remove("is-open");
+		settingsPanel.addEventListener("transitionend", () => {
+			if (!settingsPanel.classList.contains("is-open")) settingsPanel.hidden = true;
+		}, { once: true });
+		if (settingsLoaded && settingsDirty) saveGameDefaults();
+	}
+
+	async function loadSettingsPanel() {
+		try {
+			const settings = await requestJson("/admin/api/account/settings");
+			settingsLoaded = true;
+			allowLateJoinInput.checked = Boolean(settings.allowLateJoin);
+			const seconds = Math.round((settings.autoAdvanceDelayMs || 0) / 1000);
+			autoAdvanceIndex = nearestPresetIndex(seconds);
+			renderAutoAdvance();
+		} catch (error) {
+			showSettingsMessage(settingsError, "Could not load your settings.");
+		}
+	}
+
+	function nearestPresetIndex(seconds) {
+		let best = 0;
+		AUTO_ADVANCE_PRESETS_SECONDS.forEach((preset, index) => {
+			if (Math.abs(preset - seconds) < Math.abs(AUTO_ADVANCE_PRESETS_SECONDS[best] - seconds)) best = index;
+		});
+		return best;
+	}
+
+	function stepAutoAdvance(direction) {
+		autoAdvanceIndex = (autoAdvanceIndex + direction + AUTO_ADVANCE_PRESETS_SECONDS.length)
+			% AUTO_ADVANCE_PRESETS_SECONDS.length;
+		settingsDirty = true;
+		renderAutoAdvance();
+	}
+
+	function renderAutoAdvance() {
+		autoAdvanceValue.textContent = `${AUTO_ADVANCE_PRESETS_SECONDS[autoAdvanceIndex]}s`;
+	}
+
+	async function saveGameDefaults() {
+		settingsDirty = false;
+		try {
+			await requestJson("/admin/api/account/settings", {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					allowLateJoin: allowLateJoinInput.checked,
+					autoAdvanceDelayMs: AUTO_ADVANCE_PRESETS_SECONDS[autoAdvanceIndex] * 1000
+				})
+			});
+		} catch (error) {
+			showSettingsMessage(settingsError, "Settings could not be saved.");
+		}
+	}
+
+	async function savePassword() {
+		hideSettingsMessage(passwordError);
+		hideSettingsMessage(passwordSuccess);
+		if (!newPasswordInput.value || newPasswordInput.value.length < 8) {
+			showSettingsMessage(passwordError, "The new password must be at least 8 characters.");
+			return;
+		}
+		savePasswordButton.disabled = true;
+		try {
+			await requestJson("/admin/api/account/change-password", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					currentPassword: currentPasswordInput.value,
+					newPassword: newPasswordInput.value
+				})
+			});
+			currentPasswordInput.value = "";
+			newPasswordInput.value = "";
+			showSettingsMessage(passwordSuccess, "Password updated.");
+		} catch (error) {
+			showSettingsMessage(passwordError, "The current password is incorrect, or the new password is too short.");
+		} finally {
+			savePasswordButton.disabled = false;
+		}
+	}
+
+	async function deleteAccount() {
+		hideSettingsMessage(deleteError);
+		if (!window.confirm("Delete your account, all of your quizzes, and close any running games? This cannot be undone.")) {
+			return;
+		}
+		deleteAccountButton.disabled = true;
+		try {
+			await requestJson("/admin/api/account", { method: "DELETE" });
+			window.location.assign("/login");
+		} catch (error) {
+			showSettingsMessage(deleteError, "The account could not be deleted.");
+			deleteAccountButton.disabled = false;
+		}
+	}
+
+	function showSettingsMessage(element, text) {
+		element.textContent = text;
+		element.hidden = false;
+	}
+
+	function hideSettingsMessage(element) {
+		element.hidden = true;
 	}
 })();
 

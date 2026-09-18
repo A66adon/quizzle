@@ -84,9 +84,9 @@ precedence over `.env`; `.env` takes precedence over built-in defaults.
 | --- | --- | --- |
 | Register | `/register` | New account holder |
 | Login | `/login` | Returning account holder |
-| Session overview | `/admin` | Signed-in account holder |
-| Quiz editor | `/editor` | Signed-in account holder — create/edit/delete their own quizzes |
-| Settings | `/settings` | Signed-in account holder — late-join toggle, auto-advance delay, change password, delete account |
+| Session overview | `/admin` | Signed-in account holder — home screen; settings live in the gear panel here |
+| Quiz editor | `/editor` | Signed-in account holder — presenter-style edit mode, reached by adding/editing a quiz |
+| Settings | `/settings` | Signed-in account holder — legacy standalone page; the same actions live in the `/admin` gear panel |
 | Presenter | `/admin/sessions/{codehash}` | Shared presentation screen |
 | Participant | `/{codehash}/` | Players joining by link or QR code |
 

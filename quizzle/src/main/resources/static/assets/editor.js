@@ -2,30 +2,71 @@
 	"use strict";
 
 	const params = new URLSearchParams(window.location.search);
-	const editingFileName = params.get("file");
+	let editingFileName = params.get("file");
 
 	const status = document.querySelector("#editor-status");
 	const errorBox = document.querySelector("#editor-error");
-	const successBox = document.querySelector("#editor-success");
-	const form = document.querySelector("#editor-form");
+	const detailsView = document.querySelector("#details-view");
+	const questionView = document.querySelector("#question-view");
 	const titleInput = document.querySelector("#quiz-title");
 	const descriptionInput = document.querySelector("#quiz-description");
-	const authorInput = document.querySelector("#quiz-author");
-	const questionsList = document.querySelector("#questions-list");
-	const addQuestionButton = document.querySelector("#add-question");
-	const saveButton = document.querySelector("#save-quiz");
+	const authorEmailLabel = document.querySelector("#quiz-author-email");
+	const detailsQuestionCount = document.querySelector("#details-question-count");
+	const detailsContinue = document.querySelector("#details-continue");
+	const saveDetailsButton = document.querySelector("#save-details");
 	const deleteButton = document.querySelector("#delete-quiz");
-	const questionTemplate = document.querySelector("#question-template");
-	const answerTemplate = document.querySelector("#answer-template");
 
-	addQuestionButton.addEventListener("click", () => addQuestion());
-	deleteButton.addEventListener("click", deleteQuiz);
-	form.addEventListener("submit", saveQuiz);
+	const questionProgress = document.querySelector("#question-progress");
+	const questionText = document.querySelector("#question-text");
+	const questionPoints = document.querySelector("#question-points");
+	const questionTime = document.querySelector("#question-time");
+	const questionOptions = document.querySelector("#question-options");
+	const backToDetailsButton = document.querySelector("#back-to-details");
+	const reorderButton = document.querySelector("#reorder-button");
+	const removeQuestionButton = document.querySelector("#remove-question");
+	const saveQuizButton = document.querySelector("#save-quiz");
+	const prevQuestionButton = document.querySelector("#prev-question");
+	const nextQuestionButton = document.querySelector("#next-question");
 
-	if (editingFileName) {
-		loadExistingQuiz(editingFileName);
-	} else {
-		addQuestion();
+	const reorderDialog = document.querySelector("#reorder-dialog");
+	const reorderList = document.querySelector("#reorder-list");
+
+	const answerTemplate = document.querySelector("#editor-answer-template");
+	const phantomTemplate = document.querySelector("#editor-phantom-template");
+
+	const MIN_ANSWERS = 2;
+	const MAX_ANSWERS = 6;
+
+	const state = {
+		title: "",
+		description: "",
+		author: "",
+		questions: [],
+		currentIndex: 0
+	};
+	let accountEmail = "";
+	let saveInFlight = false;
+
+	init();
+
+	async function init() {
+		loadAccountEmail();
+		if (editingFileName) {
+			await loadExistingQuiz(editingFileName);
+		} else {
+			state.questions.push(createEmptyQuestion());
+		}
+		showDetailsView();
+	}
+
+	async function loadAccountEmail() {
+		try {
+			const settings = await requestJson("/admin/api/account/settings");
+			accountEmail = settings.email || "";
+			authorEmailLabel.textContent = accountEmail || "your account";
+		} catch (error) {
+			authorEmailLabel.textContent = "your account";
+		}
 	}
 
 	async function loadExistingQuiz(fileName) {
@@ -34,11 +75,11 @@
 		try {
 			const response = await requestJson(`/admin/api/quizzes/${encodeURIComponent(fileName)}`);
 			const quiz = response.quiz;
-			titleInput.value = quiz.title || "";
-			descriptionInput.value = quiz.description || "";
-			authorInput.value = quiz.author || "";
-			questionsList.replaceChildren();
-			(quiz.questions || []).forEach(question => addQuestion(question));
+			state.title = quiz.title || "";
+			state.description = quiz.description || "";
+			state.author = quiz.author || "";
+			state.questions = (quiz.questions || []).map(normalizeQuestion);
+			if (state.questions.length === 0) state.questions.push(createEmptyQuestion());
 			deleteButton.hidden = false;
 			status.hidden = true;
 		} catch (error) {
@@ -47,108 +88,318 @@
 		}
 	}
 
-	function addQuestion(question) {
-		const card = questionTemplate.content.firstElementChild.cloneNode(true);
-		card.querySelector(".question-text").value = question ? question.text || "" : "";
-		card.querySelector(".question-points").value = question ? question.points : 100;
-		card.querySelector(".question-time").value = question ? question.timeSeconds : 20;
-		card.querySelector(".question-multiple").checked = question ? Boolean(question.multiple) : false;
-		card.querySelector(".question-shuffle").checked = question ? question.shuffleAnswers !== false : true;
-		card.dataset.questionId = question && question.id ? question.id : "";
-
-		const answersList = card.querySelector(".answers-list");
-		const answers = question && Array.isArray(question.answers) ? question.answers : [];
-		if (answers.length > 0) {
-			answers.forEach(answer => answersList.append(createAnswerRow(answer)));
-		} else {
-			answersList.append(createAnswerRow(), createAnswerRow());
-		}
-
-		card.querySelector(".add-answer").addEventListener("click", () => {
-			answersList.append(createAnswerRow());
-			renumberQuestions();
-		});
-		card.querySelector(".remove-question").addEventListener("click", () => {
-			card.remove();
-			renumberQuestions();
-		});
-		card.querySelector(".move-question-up").addEventListener("click", () => {
-			const previous = card.previousElementSibling;
-			if (previous) {
-				questionsList.insertBefore(card, previous);
-				renumberQuestions();
-			}
-		});
-		card.querySelector(".move-question-down").addEventListener("click", () => {
-			const next = card.nextElementSibling;
-			if (next) {
-				questionsList.insertBefore(next, card);
-				renumberQuestions();
-			}
-		});
-
-		questionsList.append(card);
-		renumberQuestions();
-		return card;
-	}
-
-	function createAnswerRow(answer) {
-		const row = answerTemplate.content.firstElementChild.cloneNode(true);
-		row.querySelector(".answer-text").value = answer ? answer.text || "" : "";
-		row.querySelector(".answer-correct").checked = answer ? Boolean(answer.correct) : false;
-		row.dataset.answerId = answer && answer.id ? answer.id : "";
-		row.querySelector(".remove-answer").addEventListener("click", () => {
-			const list = row.parentElement;
-			if (list.children.length > 1) {
-				row.remove();
-			}
-		});
-		return row;
-	}
-
-	function renumberQuestions() {
-		questionsList.querySelectorAll(".question-card").forEach((card, index) => {
-			card.querySelector(".question-index").textContent = `Question ${index + 1}`;
-		});
-	}
-
-	function collectQuiz() {
-		const questionCards = Array.from(questionsList.querySelectorAll(".question-card"));
-		const questions = questionCards.map((card, questionIndex) => {
-			const answerRows = Array.from(card.querySelectorAll(".answer-row"));
-			const answers = answerRows.map((row, answerIndex) => ({
-				id: row.dataset.answerId || `a${questionIndex + 1}-${answerIndex + 1}`,
-				text: row.querySelector(".answer-text").value.trim(),
-				correct: row.querySelector(".answer-correct").checked
-			}));
-			return {
-				id: card.dataset.questionId || `q${questionIndex + 1}`,
-				text: card.querySelector(".question-text").value.trim(),
-				points: Number(card.querySelector(".question-points").value) || 0,
-				timeSeconds: Number(card.querySelector(".question-time").value) || 0,
-				multiple: card.querySelector(".question-multiple").checked,
-				shuffleAnswers: card.querySelector(".question-shuffle").checked,
-				answers
-			};
-		});
+	function normalizeQuestion(question) {
 		return {
-			title: titleInput.value.trim(),
-			description: descriptionInput.value.trim(),
-			author: authorInput.value.trim(),
-			questions
+			id: question.id || "",
+			text: question.text || "",
+			points: Number(question.points) || 100,
+			timeSeconds: Number(question.timeSeconds) || 20,
+			shuffleAnswers: question.shuffleAnswers !== false,
+			answers: (Array.isArray(question.answers) ? question.answers : []).map(answer => ({
+				id: answer.id || "",
+				text: answer.text || "",
+				correct: Boolean(answer.correct)
+			}))
 		};
 	}
 
-	async function saveQuiz(event) {
-		event.preventDefault();
-		hideMessages();
-		if (questionsList.children.length === 0) {
-			showError("Add at least one question before saving.");
-			return;
+	function createEmptyQuestion() {
+		return {
+			id: "",
+			text: "",
+			points: 100,
+			timeSeconds: 20,
+			shuffleAnswers: true,
+			answers: [
+				{ id: "", text: "", correct: false },
+				{ id: "", text: "", correct: false }
+			]
+		};
+	}
+
+	// --- Details view ---------------------------------------------------
+
+	titleInput.addEventListener("input", () => {
+		state.title = titleInput.value;
+	});
+	descriptionInput.addEventListener("input", () => {
+		state.description = descriptionInput.value;
+	});
+	detailsContinue.addEventListener("click", () => {
+		autoSave();
+		showQuestionView();
+	});
+	saveDetailsButton.addEventListener("click", () => saveQuiz({ redirect: false }));
+	deleteButton.addEventListener("click", deleteQuiz);
+	backToDetailsButton.addEventListener("click", () => {
+		autoSave();
+		showDetailsView();
+	});
+
+	function showDetailsView() {
+		titleInput.value = state.title;
+		descriptionInput.value = state.description;
+		detailsQuestionCount.textContent = String(state.questions.length);
+		questionView.hidden = true;
+		detailsView.hidden = false;
+	}
+
+	// --- Question view --------------------------------------------------
+
+	questionText.addEventListener("input", () => {
+		currentQuestion().text = questionText.value;
+	});
+	questionPoints.addEventListener("input", () => {
+		currentQuestion().points = Number(questionPoints.value) || 0;
+	});
+	questionTime.addEventListener("input", () => {
+		currentQuestion().timeSeconds = Number(questionTime.value) || 0;
+	});
+
+	prevQuestionButton.addEventListener("click", () => {
+		if (state.currentIndex === 0) return;
+		state.currentIndex -= 1;
+		autoSave();
+		renderQuestion();
+	});
+
+	nextQuestionButton.addEventListener("click", () => {
+		if (state.currentIndex >= state.questions.length - 1) {
+			state.questions.push(createEmptyQuestion());
+			state.currentIndex = state.questions.length - 1;
+		} else {
+			state.currentIndex += 1;
 		}
-		const quiz = collectQuiz();
-		saveButton.disabled = true;
+		autoSave();
+		renderQuestion();
+	});
+
+	removeQuestionButton.addEventListener("click", () => {
+		state.questions.splice(state.currentIndex, 1);
+		if (state.questions.length === 0) state.questions.push(createEmptyQuestion());
+		state.currentIndex = Math.min(state.currentIndex, state.questions.length - 1);
+		autoSave();
+		renderQuestion();
+	});
+
+	saveQuizButton.addEventListener("click", () => saveQuiz({ redirect: false }));
+
+	function currentQuestion() {
+		return state.questions[state.currentIndex];
+	}
+
+	function showQuestionView() {
+		detailsView.hidden = true;
+		questionView.hidden = false;
+		renderQuestion();
+	}
+
+	function renderQuestion() {
+		const question = currentQuestion();
+		questionProgress.textContent = `Question ${state.currentIndex + 1} of ${state.questions.length}`;
+		questionText.value = question.text;
+		questionPoints.value = question.points;
+		questionTime.value = question.timeSeconds;
+		prevQuestionButton.disabled = state.currentIndex === 0;
+		nextQuestionButton.textContent = state.currentIndex >= state.questions.length - 1
+			? "Add question"
+			: "Next question";
+		renderAnswers(question);
+	}
+
+	function renderAnswers(question, focusLastReal) {
+		questionOptions.replaceChildren();
+		question.answers.forEach((answer, index) => {
+			questionOptions.append(createAnswerTile(question, answer, index));
+		});
+		if (question.answers.length < MAX_ANSWERS) {
+			questionOptions.append(createPhantomTile(question));
+		}
+		if (focusLastReal) {
+			const tiles = questionOptions.querySelectorAll(".editor-option:not(.editor-phantom) .editor-answer-input");
+			const last = tiles[tiles.length - 1];
+			if (last) {
+				last.focus();
+				last.setSelectionRange(last.value.length, last.value.length);
+			}
+		}
+	}
+
+	function createAnswerTile(question, answer, index) {
+		const tile = answerTemplate.content.firstElementChild.cloneNode(true);
+		const marker = tile.querySelector(".editor-correct-toggle");
+		const input = tile.querySelector(".editor-answer-input");
+		const removeButton = tile.querySelector(".editor-remove-answer");
+		input.value = answer.text;
+		updateMarker(marker, answer.correct);
+		marker.addEventListener("click", () => {
+			answer.correct = !answer.correct;
+			updateMarker(marker, answer.correct);
+		});
+		input.addEventListener("input", () => {
+			answer.text = input.value;
+		});
+		removeButton.hidden = question.answers.length <= MIN_ANSWERS;
+		removeButton.addEventListener("click", () => {
+			if (question.answers.length <= MIN_ANSWERS) return;
+			question.answers.splice(index, 1);
+			renderAnswers(question);
+		});
+		return tile;
+	}
+
+	function updateMarker(marker, correct) {
+		marker.classList.toggle("is-correct", correct);
+		marker.setAttribute("aria-pressed", String(correct));
+		marker.setAttribute("aria-label", correct ? "Answer is correct" : "Mark answer as correct");
+	}
+
+	function createPhantomTile(question) {
+		const tile = phantomTemplate.content.firstElementChild.cloneNode(true);
+		const input = tile.querySelector(".editor-phantom-input");
+		input.addEventListener("input", () => {
+			if (!input.value) return;
+			question.answers.push({ id: "", text: input.value, correct: false });
+			renderAnswers(question, true);
+		});
+		return tile;
+	}
+
+	// --- Reorder dialog -------------------------------------------------
+
+	reorderButton.addEventListener("click", openReorderDialog);
+
+	function openReorderDialog() {
+		renderReorderList();
+		reorderDialog.showModal();
+	}
+
+	function renderReorderList() {
+		reorderList.replaceChildren();
+		state.questions.forEach((question, index) => {
+			const item = document.createElement("li");
+			item.className = "reorder-item";
+			item.draggable = true;
+			item.dataset.index = String(index);
+
+			const row = document.createElement("button");
+			row.type = "button";
+			row.className = "reorder-row";
+			const snippet = question.text.trim();
+			row.innerHTML = "";
+			const number = document.createElement("span");
+			number.className = "reorder-number";
+			number.textContent = `${index + 1}.`;
+			const text = document.createElement("span");
+			text.className = "reorder-snippet";
+			text.textContent = snippet.length > 60 ? `${snippet.slice(0, 60)}…` : (snippet || "(empty question)");
+			row.append(number, text);
+			row.addEventListener("click", () => {
+				item.querySelector(".reorder-preview")?.classList.toggle("is-open");
+			});
+
+			const preview = document.createElement("div");
+			preview.className = "reorder-preview";
+			const previewInner = document.createElement("div");
+			previewInner.className = "reorder-preview-inner";
+			const previewText = document.createElement("p");
+			previewText.className = "reorder-preview-text";
+			previewText.textContent = question.text || "(empty question)";
+			const previewAnswers = document.createElement("ul");
+			question.answers.forEach(answer => {
+				const li = document.createElement("li");
+				li.textContent = `${answer.correct ? "✓ " : ""}${answer.text || "(empty answer)"}`;
+				if (answer.correct) li.className = "is-correct";
+				previewAnswers.append(li);
+			});
+			previewInner.append(previewText, previewAnswers);
+			preview.append(previewInner);
+
+			item.append(row, preview);
+
+			item.addEventListener("dragstart", event => {
+				event.dataTransfer.effectAllowed = "move";
+				event.dataTransfer.setData("text/plain", String(index));
+				item.classList.add("is-dragging");
+			});
+			item.addEventListener("dragend", () => {
+				item.classList.remove("is-dragging");
+				reorderList.querySelectorAll(".reorder-item").forEach(el => el.classList.remove("drag-over"));
+			});
+			item.addEventListener("dragover", event => {
+				event.preventDefault();
+				event.dataTransfer.dropEffect = "move";
+				item.classList.add("drag-over");
+			});
+			item.addEventListener("dragleave", () => item.classList.remove("drag-over"));
+			item.addEventListener("drop", event => {
+				event.preventDefault();
+				const from = Number(event.dataTransfer.getData("text/plain"));
+				const to = Number(item.dataset.index);
+				if (!Number.isInteger(from) || from === to) return;
+				const [moved] = state.questions.splice(from, 1);
+				state.questions.splice(to, 0, moved);
+				autoSave();
+				renderReorderList();
+				renderQuestion();
+			});
+
+			reorderList.append(item);
+		});
+	}
+
+	// --- Persistence ----------------------------------------------------
+
+	function collectQuiz() {
+		return {
+			title: state.title.trim(),
+			description: state.description.trim(),
+			author: accountEmail || state.author,
+			questions: state.questions.map((question, questionIndex) => {
+				const answers = question.answers.map((answer, answerIndex) => ({
+					id: answer.id || `a${questionIndex + 1}-${answerIndex + 1}`,
+					text: answer.text.trim(),
+					correct: answer.correct
+				}));
+				return {
+					id: question.id || `q${questionIndex + 1}`,
+					text: question.text.trim(),
+					points: Number(question.points) || 0,
+					timeSeconds: Number(question.timeSeconds) || 0,
+					multiple: answers.filter(answer => answer.correct).length > 1,
+					shuffleAnswers: question.shuffleAnswers !== false,
+					answers
+				};
+			})
+		};
+	}
+
+	function isValidEnough() {
+		if (!state.title.trim()) return false;
+		return state.questions.every(question =>
+			question.text.trim()
+			&& question.answers.length >= MIN_ANSWERS
+			&& question.answers.every(answer => answer.text.trim())
+			&& question.answers.some(answer => answer.correct)
+			&& Number(question.points) > 0
+			&& Number(question.timeSeconds) > 0
+		);
+	}
+
+	async function autoSave() {
+		if (!isValidEnough()) return;
 		try {
+			await persistQuiz();
+		} catch (error) {
+			// Auto-save is best-effort; validation issues surface on manual save.
+		}
+	}
+
+	async function persistQuiz() {
+		if (saveInFlight) return;
+		saveInFlight = true;
+		try {
+			const quiz = collectQuiz();
 			const response = editingFileName
 				? await requestJson(`/admin/api/quizzes/${encodeURIComponent(editingFileName)}`, {
 					method: "PUT",
@@ -160,13 +411,38 @@
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify(quiz)
 				});
-			successBox.textContent = "Quiz saved. Redirecting…";
-			successBox.hidden = false;
-			window.setTimeout(() => window.location.assign(`/editor?file=${encodeURIComponent(response.fileName)}`), 600);
-		} catch (error) {
-			showError(error.message || "The quiz could not be saved. Check the fields above and try again.");
+			if (!editingFileName && response && response.fileName) {
+				editingFileName = response.fileName;
+				deleteButton.hidden = false;
+				window.history.replaceState(null, "", `/editor?file=${encodeURIComponent(editingFileName)}`);
+			}
+			return response;
 		} finally {
-			saveButton.disabled = false;
+			saveInFlight = false;
+		}
+	}
+
+	async function saveQuiz() {
+		hideError();
+		if (!isValidEnough()) {
+			showError("Give the quiz a title and make sure every question has text, at least 2 answers, and one correct answer.");
+			return;
+		}
+		saveQuizButton.disabled = true;
+		saveDetailsButton.disabled = true;
+		try {
+			await persistQuiz();
+			status.textContent = "Quiz saved.";
+			delete status.dataset.error;
+			status.hidden = false;
+			window.setTimeout(() => {
+				status.hidden = true;
+			}, 2500);
+		} catch (error) {
+			showError(error.message || "The quiz could not be saved. Check the fields and try again.");
+		} finally {
+			saveQuizButton.disabled = false;
+			saveDetailsButton.disabled = false;
 		}
 	}
 
@@ -186,9 +462,8 @@
 		errorBox.hidden = false;
 	}
 
-	function hideMessages() {
+	function hideError() {
 		errorBox.hidden = true;
-		successBox.hidden = true;
 	}
 
 	async function requestJson(url, options = {}) {

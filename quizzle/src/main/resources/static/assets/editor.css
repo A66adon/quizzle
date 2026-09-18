@@ -4,25 +4,6 @@
 	gap: 1rem;
 }
 
-	display: flex;
-	align-items: center;
-	gap: 1.25rem;
-	margin-inline: auto 1rem;
-}
-
-.header-nav a {
-	color: var(--muted-color, inherit);
-	text-decoration: none;
-	font-weight: 600;
-	font-size: 0.9rem;
-}
-
-.header-nav a[aria-current="page"] {
-	color: inherit;
-	text-decoration: underline;
-	text-underline-offset: 0.25rem;
-}
-
 .editor-form {
 	display: flex;
 	flex-direction: column;
@@ -58,10 +39,6 @@
 	gap: 0.5rem;
 }
 
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-	gap: 0.75rem 1.5rem;
-}
 
 .checkbox-label {
 	display: flex;
@@ -102,4 +79,206 @@
 
 .danger-text-button {
 	color: var(--danger-color, #c0392b);
+}
+
+/* --- Presenter-style editor ----------------------------------------- */
+
+.editor-details-card label {
+	font-weight: 600;
+}
+
+.editor-question-text {
+	width: min(100%, 64rem);
+	margin: 1rem auto 0;
+	border: 0;
+	background: transparent;
+	resize: vertical;
+	font: inherit;
+	text-align: center;
+}
+
+.editor-question-text:focus {
+	outline: 2px dashed color-mix(in srgb, var(--primary) 45%, transparent);
+	outline-offset: 0.35rem;
+	border-radius: var(--radius-control);
+}
+
+.editor-metric input {
+	width: 4.5rem;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-weight: 800;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.editor-metric input:focus {
+	outline: 2px dashed color-mix(in srgb, var(--primary) 45%, transparent);
+	outline-offset: 2px;
+	border-radius: 0.25rem;
+}
+
+.editor-option {
+	cursor: default;
+}
+
+.editor-option .editor-answer-input {
+	width: 100%;
+	border: 0;
+	background: transparent;
+	color: #fff;
+	font: inherit;
+	font-weight: 800;
+	text-align: center;
+}
+
+.editor-option .editor-answer-input::placeholder {
+	color: rgba(255, 255, 255, 0.65);
+}
+
+.editor-option .editor-answer-input:focus {
+	outline: 2px dashed rgba(255, 255, 255, 0.7);
+	outline-offset: 2px;
+	border-radius: 0.35rem;
+}
+
+.editor-correct-toggle {
+	border: 0;
+	cursor: pointer;
+}
+
+.editor-correct-toggle.is-correct::after {
+	content: "\2713";
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	font-size: 1.4rem;
+	font-weight: 900;
+}
+
+.editor-option .option-marker {
+	position: relative;
+}
+
+.editor-remove-answer {
+	display: grid;
+	place-items: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	border: 0;
+	border-radius: 0.8rem;
+	color: #fff;
+	background: color-mix(in srgb, #000 18%, transparent);
+	cursor: pointer;
+	font-size: 1rem;
+}
+
+.editor-phantom {
+	background: transparent;
+	border: 2px dashed var(--border);
+	box-shadow: none;
+	color: var(--muted);
+}
+
+.editor-phantom .option-marker {
+	background: color-mix(in srgb, var(--muted) 20%, transparent);
+}
+
+.editor-phantom .editor-answer-input {
+	color: var(--muted);
+}
+
+.editor-phantom .editor-answer-input::placeholder {
+	color: var(--muted);
+}
+
+/* --- Reorder dialog -------------------------------------------------- */
+
+.reorder-dialog {
+	width: min(100% - 2rem, 34rem);
+}
+
+.reorder-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	max-height: 55vh;
+	margin: 1rem 0;
+	padding: 0;
+	overflow-y: auto;
+	list-style: none;
+}
+
+.reorder-item {
+	border: 1px solid var(--border);
+	border-radius: var(--radius-control);
+	background: var(--surface-raised);
+}
+
+.reorder-item.drag-over {
+	border-color: var(--primary);
+}
+
+.reorder-item.is-dragging {
+	opacity: 0.5;
+}
+
+.reorder-row {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	width: 100%;
+	padding: 0.6rem 0.8rem;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: grab;
+}
+
+.reorder-number {
+	font-weight: 800;
+	color: var(--primary);
+}
+
+.reorder-snippet {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.reorder-preview {
+	display: grid;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows 200ms ease;
+}
+
+.reorder-preview.is-open {
+	grid-template-rows: 1fr;
+}
+
+.reorder-preview-inner {
+	min-height: 0;
+	overflow: hidden;
+}
+
+.reorder-preview-text {
+	margin: 0 0.8rem;
+	font-size: 0.85rem;
+}
+
+.reorder-preview ul {
+	margin: 0.25rem 0.8rem 0.7rem;
+	padding-left: 1.2rem;
+	font-size: 0.8rem;
+	color: var(--muted);
+}
+
+.reorder-preview li.is-correct {
+	color: var(--primary);
+	font-weight: 700;
 }

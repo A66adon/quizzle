@@ -32,12 +32,10 @@
 			<span class="brand-mark" data-brand-mark aria-hidden="true"></span>
 			<span data-brand-name></span>
 		</a>
-		<nav class="header-nav" aria-label="Sections">
-			<a href="/admin" aria-current="page">Sessions</a>
-			<a href="/editor">Editor</a>
-			<a href="/settings">Settings</a>
-		</nav>
 		<div class="header-actions">
+			<button type="button" id="settings-gear" class="theme-toggle settings-gear" aria-expanded="false" aria-controls="settings-panel" aria-label="Open settings">
+				<span aria-hidden="true">⚙</span>
+			</button>
 			<button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
 				<span class="theme-toggle-icon" aria-hidden="true"></span>
 			</button>
@@ -48,6 +46,45 @@
 	</header>
 
 	<main class="page-shell">
+		<section id="settings-panel" class="settings-panel" aria-labelledby="settings-panel-title" hidden>
+			<div class="settings-panel-inner">
+				<h2 id="settings-panel-title" class="eyebrow">Settings</h2>
+				<p class="form-error" id="settings-error" role="alert" hidden></p>
+
+				<label class="checkbox-label settings-row">
+					<input type="checkbox" id="allow-late-join">
+					Allow players to join after a game has started
+				</label>
+
+				<div class="settings-row settings-preset-row">
+					<span id="auto-advance-label">Auto-advance after revealing an answer</span>
+					<div class="preset-stepper" role="group" aria-labelledby="auto-advance-label">
+						<button type="button" id="auto-advance-down" class="text-button" aria-label="Shorter auto-advance delay">◀</button>
+						<strong id="auto-advance-value" aria-live="polite">3s</strong>
+						<button type="button" id="auto-advance-up" class="text-button" aria-label="Longer auto-advance delay">▶</button>
+					</div>
+				</div>
+
+				<div class="settings-row settings-password">
+					<h3>Change password</h3>
+					<p class="form-error" id="password-error" role="alert" hidden></p>
+					<p class="form-success" id="password-success" role="status" hidden></p>
+					<label for="current-password">Current password</label>
+					<input type="password" id="current-password" autocomplete="current-password">
+					<label for="new-password">New password</label>
+					<input type="password" id="new-password" autocomplete="new-password" minlength="8">
+					<div class="editor-actions">
+						<button type="button" id="save-password" class="text-button">Update password</button>
+					</div>
+				</div>
+
+				<div class="settings-row">
+					<p class="form-error" id="delete-error" role="alert" hidden></p>
+					<button type="button" id="delete-account" class="danger-button">Delete account</button>
+				</div>
+			</div>
+		</section>
+
 		<section class="page-heading" aria-labelledby="catalog-title">
 			<div>
 				<h1 id="catalog-title">Administration</h1>
@@ -79,7 +116,6 @@
 					<p id="loaded-at" class="catalog-loaded-at small muted"></p>
 				</div>
 				<div class="quiz-heading-actions">
-					<a href="/editor" class="text-button">+ New quiz</a>
 					<div class="summary-pill" aria-live="polite">
 						<strong id="quiz-count">—</strong>
 						<span>ready</span>
@@ -119,17 +155,24 @@
 	</dialog>
 
 	<template id="quiz-template">
-		<article class="quiz-card">
-			<button class="quiz-card-action" type="button"></button>
+		<article class="quiz-card" tabindex="0" role="link">
 			<div class="quiz-card-topline">
 				<span class="question-count"></span>
-				<a class="quiz-edit-link text-button" href="#">Edit</a>
+				<button class="quiz-play-button text-button" type="button">Play</button>
 			</div>
 			<h3 class="quiz-title"></h3>
 			<p class="quiz-description"></p>
 			<div class="quiz-meta">
 				<span class="quiz-author"></span>
 			</div>
+		</article>
+	</template>
+
+	<template id="add-quiz-template">
+		<article class="quiz-card add-quiz-card" tabindex="0" role="link">
+			<span class="add-quiz-plus" aria-hidden="true">+</span>
+			<h3 class="quiz-title">Add quiz</h3>
+			<p class="quiz-description">Create a new quiz in the editor.</p>
 		</article>
 	</template>
 
