@@ -49,22 +49,32 @@
 
 		<section id="details-view" class="view" aria-labelledby="details-heading" hidden>
 			<div class="lobby-layout">
-				<article class="join-card editor-details-card">
-					<p class="eyebrow">Quiz details</p>
-					<label for="quiz-title">Title</label>
-					<input id="quiz-title" type="text" maxlength="160" required>
-					<label for="quiz-description">Description</label>
-					<textarea id="quiz-description" maxlength="2000" rows="3" required></textarea>
-					<p class="muted small">Author: <span id="quiz-author-email">your account</span></p>
+				<article class="join-card editor-qr-card">
+					<p class="eyebrow">Present</p>
+					<div class="editor-qr-placeholder">
+						<img class="editor-qr-sample" src="/assets/sample-qr.svg" width="208" height="208"
+							alt="Sample QR code (preview only)">
+					</div>
+					<p class="muted small">Sample code. Play this quiz from the admin page and the real join QR code will appear here.</p>
 				</article>
 
 				<div class="lobby-main">
-					<p class="eyebrow">Editor</p>
-					<h1 id="details-heading">Quiz details</h1>
-					<p class="muted">Name your quiz, then step through the questions exactly as players will see them.</p>
+					<p class="eyebrow">Quiz details</p>
+					<h1 id="details-heading" class="visually-hidden">Quiz details</h1>
+					<label class="visually-hidden" for="quiz-title">Title</label>
+					<textarea id="quiz-title" class="editor-title-input" maxlength="160" rows="1" required
+						placeholder="Name your quiz…"></textarea>
+					<label class="visually-hidden" for="quiz-description">Description</label>
+					<textarea id="quiz-description" class="editor-description-input" maxlength="2000" rows="1" required
+						placeholder="What is this quiz about?"></textarea>
+					<p class="muted small">Author: <span id="quiz-author-email">You</span></p>
 					<div class="lobby-metrics">
-						<div class="summary-pill"><strong id="details-question-count">0</strong><span>questions</span></div>
+						<button id="details-question-count-button" class="summary-pill question-count-button" type="button"
+							aria-expanded="false" aria-controls="question-jump-list">
+							<strong id="details-question-count">0</strong><span>questions</span>
+						</button>
 					</div>
+					<ol id="question-jump-list" class="question-jump-list" hidden></ol>
 				</div>
 			</div>
 
@@ -81,26 +91,26 @@
 				<span id="question-progress" class="eyebrow"></span>
 				<div class="live-metrics">
 					<div class="summary-pill editor-metric">
-						<input id="question-points" type="number" min="1" max="100000" step="1" aria-label="Points">
+							<input id="question-points" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" aria-label="Points">
 						<span>points</span>
 					</div>
 					<div class="summary-pill editor-metric">
-						<input id="question-time" type="number" min="1" max="600" step="1" aria-label="Time limit in seconds">
+							<input id="question-time" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" aria-label="Time limit in seconds">
 						<span>seconds</span>
 					</div>
 				</div>
 			</div>
 			<textarea id="question-text" class="stage-title editor-question-text" maxlength="500" rows="2"
 				placeholder="Type the question…" aria-label="Question text"></textarea>
-			<p class="muted stage-subtitle">Click a marker to toggle whether an answer is correct. Several answers may be correct.</p>
+			<p class="muted stage-subtitle">Click an answer to mark it as correct. Several answers may be correct.</p>
 			<div id="question-options" class="option-grid"></div>
 			<div class="control-bar">
 				<button id="back-to-details" class="ghost-button" type="button">Quiz details</button>
 				<button id="reorder-button" class="ghost-button" type="button">Reorder</button>
 				<button id="remove-question" class="ghost-button abort-button" type="button">Remove question</button>
 				<button id="save-quiz" class="ghost-button" type="button">Save</button>
-				<button id="prev-question" class="ghost-button" type="button">← Previous</button>
-				<button id="next-question" class="primary-button push-right" type="button">Next question</button>
+				<button id="prev-question" class="primary-button push-right" type="button">← Previous</button>
+				<button id="next-question" class="primary-button" type="button">Next question</button>
 			</div>
 		</section>
 	</main>
@@ -118,17 +128,17 @@
 	</dialog>
 
 	<template id="editor-answer-template">
-		<div class="option-tile editor-option">
-			<button class="option-marker editor-correct-toggle" type="button" aria-pressed="false" aria-label="Mark answer as correct"></button>
+		<div class="option-tile editor-option" role="button" tabindex="0" aria-pressed="false">
+			<span class="option-marker" aria-hidden="true"></span>
 			<input class="editor-answer-input" type="text" maxlength="300" placeholder="Answer text">
 			<button class="editor-remove-answer" type="button" aria-label="Remove answer">✕</button>
 		</div>
 	</template>
 
 	<template id="editor-phantom-template">
-		<div class="option-tile editor-option editor-phantom">
+		<div class="option-tile editor-option editor-phantom" role="button" tabindex="0">
 			<span class="option-marker" aria-hidden="true"></span>
-			<input class="editor-answer-input editor-phantom-input" type="text" maxlength="300" placeholder="+ Add answer">
+			<span class="editor-phantom-label">+ Add answer</span>
 			<span aria-hidden="true"></span>
 		</div>
 	</template>

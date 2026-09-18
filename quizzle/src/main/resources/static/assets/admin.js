@@ -27,6 +27,7 @@
 	const confirmDeleteSession = document.querySelector("#confirm-delete-session");
 	const MIN_SESSION_TITLE_FONT_PX = 13;
 	let sessions = [];
+	let accountEmail = "";
 	let pendingDeleteSession = null;
 	let titleFitFrame = null;
 
@@ -44,10 +45,12 @@
 
 	async function loadAdminData() {
 		try {
-			const [catalog, loadedSessions] = await Promise.all([
+			const [catalog, loadedSessions, settings] = await Promise.all([
 				requestJson("/admin/api/quizzes"),
-				requestJson("/admin/api/sessions")
+				requestJson("/admin/api/sessions"),
+				requestJson("/admin/api/account/settings").catch(() => null)
 			]);
+			accountEmail = settings && settings.email ? String(settings.email).toLowerCase() : "";
 			sessions = Array.isArray(loadedSessions) ? loadedSessions : [];
 			renderCatalog(catalog);
 			renderSessions();
@@ -122,24 +125,34 @@
 		const card = quizTemplate.content.firstElementChild.cloneNode(true);
 		card.querySelector(".quiz-title").textContent = quiz.title;
 		card.querySelector(".quiz-description").textContent = quiz.description;
-		card.querySelector(".quiz-author").textContent = `By ${quiz.author}`;
+		card.querySelector(".quiz-author").textContent =
+			accountEmail && String(quiz.author || "").toLowerCase() === accountEmail
+				? "By You"
+				: `By ${quiz.author}`;
 		card.querySelector(".question-count").textContent = quiz.questionCount === 1
 			? "1 question"
 			: `${quiz.questionCount} questions`;
-		card.setAttribute("aria-label", `Edit ${quiz.title}`);
-		const openEditor = () => window.location.assign(`/editor?file=${encodeURIComponent(quiz.fileName)}`);
-		card.addEventListener("click", openEditor);
+		card.setAttribute("aria-label", `Play ${quiz.title}`);
+		let playInFlight = false;
+		const play = () => {
+			if (playInFlight) return;
+			playInFlight = true;
+			createSession(quiz.fileName, card, editButton).finally(() => {
+				playInFlight = false;
+			});
+		};
+		card.addEventListener("click", play);
 		card.addEventListener("keydown", event => {
 			if (event.key === "Enter" || event.key === " ") {
 				event.preventDefault();
-				openEditor();
+				play();
 			}
 		});
-		const playButton = card.querySelector(".quiz-play-button");
-		playButton.setAttribute("aria-label", `Create a session for ${quiz.title}`);
-		playButton.addEventListener("click", event => {
+		const editButton = card.querySelector(".quiz-edit-button");
+		editButton.setAttribute("aria-label", `Edit ${quiz.title}`);
+		editButton.addEventListener("click", event => {
 			event.stopPropagation();
-			createSession(quiz.fileName, card, playButton);
+			window.location.assign(`/editor?file=${encodeURIComponent(quiz.fileName)}`);
 		});
 		return card;
 	}
@@ -302,6 +315,17 @@
 	let settingsLoaded = false;
 
 	settingsGear.addEventListener("click", toggleSettingsPanel);
+	document.addEventListener("pointerdown", event => {
+		if (settingsPanel.hidden) return;
+		if (event.target.closest(".settings-wrap")) return;
+		closeSettingsPanel();
+	});
+	document.addEventListener("keydown", event => {
+		if (event.key === "Escape" && !settingsPanel.hidden) {
+			closeSettingsPanel();
+			settingsGear.focus();
+		}
+	});
 	autoAdvanceDown.addEventListener("click", () => stepAutoAdvance(-1));
 	autoAdvanceUp.addEventListener("click", () => stepAutoAdvance(1));
 	allowLateJoinInput.addEventListener("change", () => {

@@ -12,6 +12,8 @@
 	const descriptionInput = document.querySelector("#quiz-description");
 	const authorEmailLabel = document.querySelector("#quiz-author-email");
 	const detailsQuestionCount = document.querySelector("#details-question-count");
+	const questionCountButton = document.querySelector("#details-question-count-button");
+	const questionJumpList = document.querySelector("#question-jump-list");
 	const detailsContinue = document.querySelector("#details-continue");
 	const saveDetailsButton = document.querySelector("#save-details");
 	const deleteButton = document.querySelector("#delete-quiz");
@@ -63,10 +65,16 @@
 		try {
 			const settings = await requestJson("/admin/api/account/settings");
 			accountEmail = settings.email || "";
-			authorEmailLabel.textContent = accountEmail || "your account";
 		} catch (error) {
-			authorEmailLabel.textContent = "your account";
+			accountEmail = "";
 		}
+		renderAuthor();
+	}
+
+	function renderAuthor() {
+		const isOwnQuiz = !state.author
+			|| (accountEmail && state.author.toLowerCase() === accountEmail.toLowerCase());
+		authorEmailLabel.textContent = isOwnQuiz ? "You" : state.author;
 	}
 
 	async function loadExistingQuiz(fileName) {
@@ -92,7 +100,7 @@
 		return {
 			id: question.id || "",
 			text: question.text || "",
-			points: Number(question.points) || 100,
+			points: Number(question.points) || 1000,
 			timeSeconds: Number(question.timeSeconds) || 20,
 			shuffleAnswers: question.shuffleAnswers !== false,
 			answers: (Array.isArray(question.answers) ? question.answers : []).map(answer => ({
@@ -107,7 +115,7 @@
 		return {
 			id: "",
 			text: "",
-			points: 100,
+			points: 1000,
 			timeSeconds: 20,
 			shuffleAnswers: true,
 			answers: [
@@ -121,10 +129,48 @@
 
 	titleInput.addEventListener("input", () => {
 		state.title = titleInput.value;
+		autosizeField(titleInput);
 	});
 	descriptionInput.addEventListener("input", () => {
 		state.description = descriptionInput.value;
+		autosizeField(descriptionInput);
 	});
+	questionCountButton.addEventListener("click", () => {
+		const opening = questionJumpList.hidden;
+		questionJumpList.hidden = !opening;
+		questionCountButton.setAttribute("aria-expanded", String(opening));
+		if (opening) renderQuestionJumpList();
+	});
+
+	function autosizeField(field) {
+		field.style.height = "auto";
+		field.style.height = `${field.scrollHeight}px`;
+	}
+
+	function renderQuestionJumpList() {
+		questionJumpList.replaceChildren(...state.questions.map((question, index) => {
+			const item = document.createElement("li");
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = "question-jump-item";
+			const number = document.createElement("span");
+			number.className = "question-jump-number";
+			number.textContent = `${index + 1}.`;
+			const text = document.createElement("span");
+			text.className = "question-jump-snippet";
+			text.textContent = question.text.trim() || "(empty question)";
+			button.append(number, text);
+			button.addEventListener("click", () => {
+				state.currentIndex = index;
+				autoSave();
+				questionJumpList.hidden = true;
+				questionCountButton.setAttribute("aria-expanded", "false");
+				showQuestionView();
+			});
+			item.append(button);
+			return item;
+		}));
+	}
 	detailsContinue.addEventListener("click", () => {
 		autoSave();
 		showQuestionView();
@@ -140,8 +186,15 @@
 		titleInput.value = state.title;
 		descriptionInput.value = state.description;
 		detailsQuestionCount.textContent = String(state.questions.length);
+		renderAuthor();
+		questionJumpList.hidden = true;
+		questionCountButton.setAttribute("aria-expanded", "false");
 		questionView.hidden = true;
 		detailsView.hidden = false;
+		window.requestAnimationFrame(() => {
+			autosizeField(titleInput);
+			autosizeField(descriptionInput);
+		});
 	}
 
 	// --- Question view --------------------------------------------------
@@ -150,9 +203,11 @@
 		currentQuestion().text = questionText.value;
 	});
 	questionPoints.addEventListener("input", () => {
+		questionPoints.value = questionPoints.value.replace(/\D/g, "");
 		currentQuestion().points = Number(questionPoints.value) || 0;
 	});
 	questionTime.addEventListener("input", () => {
+		questionTime.value = questionTime.value.replace(/\D/g, "");
 		currentQuestion().timeSeconds = Number(questionTime.value) || 0;
 	});
 
@@ -227,14 +282,24 @@
 
 	function createAnswerTile(question, answer, index) {
 		const tile = answerTemplate.content.firstElementChild.cloneNode(true);
-		const marker = tile.querySelector(".editor-correct-toggle");
 		const input = tile.querySelector(".editor-answer-input");
 		const removeButton = tile.querySelector(".editor-remove-answer");
 		input.value = answer.text;
-		updateMarker(marker, answer.correct);
-		marker.addEventListener("click", () => {
+		updateTile(tile, answer.correct);
+		const toggleCorrect = () => {
 			answer.correct = !answer.correct;
-			updateMarker(marker, answer.correct);
+			updateTile(tile, answer.correct);
+		};
+		tile.addEventListener("click", event => {
+			if (event.target.closest(".editor-answer-input, .editor-remove-answer")) return;
+			toggleCorrect();
+		});
+		tile.addEventListener("keydown", event => {
+			if (event.target !== tile) return;
+			if (event.key === "Enter" || event.key === " ") {
+				event.preventDefault();
+				toggleCorrect();
+			}
 		});
 		input.addEventListener("input", () => {
 			answer.text = input.value;
@@ -248,19 +313,24 @@
 		return tile;
 	}
 
-	function updateMarker(marker, correct) {
-		marker.classList.toggle("is-correct", correct);
-		marker.setAttribute("aria-pressed", String(correct));
-		marker.setAttribute("aria-label", correct ? "Answer is correct" : "Mark answer as correct");
+	function updateTile(tile, correct) {
+		tile.classList.toggle("is-correct", correct);
+		tile.setAttribute("aria-pressed", String(correct));
+		tile.setAttribute("aria-label", correct ? "Correct answer" : "Mark answer as correct");
 	}
 
 	function createPhantomTile(question) {
 		const tile = phantomTemplate.content.firstElementChild.cloneNode(true);
-		const input = tile.querySelector(".editor-phantom-input");
-		input.addEventListener("input", () => {
-			if (!input.value) return;
-			question.answers.push({ id: "", text: input.value, correct: false });
+		const addAnswer = () => {
+			question.answers.push({ id: "", text: "", correct: false });
 			renderAnswers(question, true);
+		};
+		tile.addEventListener("click", addAnswer);
+		tile.addEventListener("keydown", event => {
+			if (event.key === "Enter" || event.key === " ") {
+				event.preventDefault();
+				addAnswer();
+			}
 		});
 		return tile;
 	}

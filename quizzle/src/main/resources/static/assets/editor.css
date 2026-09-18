@@ -83,24 +83,104 @@
 
 /* --- Presenter-style editor ----------------------------------------- */
 
-.editor-details-card label {
-	font-weight: 600;
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* The details view mirrors the presenter lobby: QR card on the left, editable
+   title and description standing in for the lobby heading on the right. */
+.editor-qr-card {
+	text-align: center;
+}
+
+.editor-qr-placeholder {
+	display: grid;
+	place-items: center;
+	width: 100%;
+	max-width: 16rem;
+	margin: 0 auto 1.5rem;
+	padding: 0.75rem;
+	border: 2px dashed var(--border);
+	border-radius: var(--radius-control);
+	background: var(--surface);
+}
+
+.editor-qr-sample {
+	display: block;
+	width: 100%;
+	height: auto;
+	border-radius: calc(var(--radius-control) - 0.25rem);
+}
+
+.editor-title-input,
+.editor-description-input {
+	width: 100%;
+	border: 1px solid transparent;
+	border-radius: var(--radius-control);
+	color: var(--heading);
+	background: transparent;
+	font: inherit;
+	resize: none;
+	overflow: hidden;
+	transition: border-color 160ms ease, background 160ms ease;
+}
+
+.editor-title-input {
+	font-size: clamp(1.9rem, 4.5vw, 3rem);
+	font-weight: 800;
+	line-height: 1.1;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+}
+
+.editor-description-input {
+	color: var(--muted);
+	font-size: 1.05rem;
+	line-height: 1.5;
+}
+
+.editor-title-input:hover,
+.editor-description-input:hover {
+	border-color: var(--border);
+}
+
+.editor-title-input:focus,
+.editor-description-input:focus {
+	outline: none;
+	border-color: var(--primary);
+	background: var(--surface);
 }
 
 .editor-question-text {
 	width: min(100%, 64rem);
 	margin: 1rem auto 0;
-	border: 0;
-	background: transparent;
-	resize: vertical;
+	padding: 0.9rem 1.1rem;
+	border: 1px solid var(--control-border, var(--border));
+	border-radius: var(--radius-card);
+	background: var(--surface-raised);
+	box-shadow: var(--shadow-control);
+	resize: none;
 	font: inherit;
 	text-align: center;
+	transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.editor-question-text:hover {
+	border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
 }
 
 .editor-question-text:focus {
-	outline: 2px dashed color-mix(in srgb, var(--primary) 45%, transparent);
-	outline-offset: 0.35rem;
-	border-radius: var(--radius-control);
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
 .editor-metric input {
@@ -112,6 +192,70 @@
 	font-weight: 800;
 	text-align: right;
 	font-variant-numeric: tabular-nums;
+	appearance: textfield;
+	-moz-appearance: textfield;
+}
+
+.editor-metric input::-webkit-outer-spin-button,
+.editor-metric input::-webkit-inner-spin-button {
+	margin: 0;
+	appearance: none;
+	-webkit-appearance: none;
+}
+
+/* Question-count pill doubles as a button opening the jump list. */
+.question-count-button {
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+	transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.question-count-button:hover {
+	transform: translateY(-1px);
+	box-shadow: var(--shadow-card);
+}
+
+.question-jump-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	width: min(100%, 30rem);
+	margin: 0.25rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.question-jump-item {
+	display: flex;
+	align-items: baseline;
+	gap: 0.6rem;
+	width: 100%;
+	padding: 0.55rem 0.75rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-control);
+	background: var(--surface-raised);
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+	transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.question-jump-item:hover {
+	border-color: var(--primary);
+	transform: translateX(2px);
+}
+
+.question-jump-number {
+	font-weight: 800;
+	color: var(--primary);
+}
+
+.question-jump-snippet {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .editor-metric input:focus {
@@ -120,8 +264,31 @@
 	border-radius: 0.25rem;
 }
 
+/* Answer tiles behave like the participant's multiple-choice tiles: the whole
+   tile toggles the correct state, shown as a selection ring instead of a checkmark. */
 .editor-option {
-	cursor: default;
+	border: 3px solid transparent;
+	cursor: pointer;
+	transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.editor-option:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 6px 16px rgba(13, 23, 42, 0.16);
+}
+
+.editor-option:focus-visible {
+	outline: 3px solid var(--accent);
+	outline-offset: 3px;
+}
+
+.editor-option.is-correct {
+	border-color: #fff;
+	box-shadow: 0 0 0 4px var(--primary), 0 10px 24px rgba(4, 0, 102, 0.25);
+}
+
+.editor-option.is-correct:hover {
+	transform: translateY(-2px);
 }
 
 .editor-option .editor-answer-input {
@@ -132,6 +299,7 @@
 	font: inherit;
 	font-weight: 800;
 	text-align: center;
+	cursor: text;
 }
 
 .editor-option .editor-answer-input::placeholder {
@@ -142,25 +310,6 @@
 	outline: 2px dashed rgba(255, 255, 255, 0.7);
 	outline-offset: 2px;
 	border-radius: 0.35rem;
-}
-
-.editor-correct-toggle {
-	border: 0;
-	cursor: pointer;
-}
-
-.editor-correct-toggle.is-correct::after {
-	content: "\2713";
-	position: absolute;
-	inset: 0;
-	display: grid;
-	place-items: center;
-	font-size: 1.4rem;
-	font-weight: 900;
-}
-
-.editor-option .option-marker {
-	position: relative;
 }
 
 .editor-remove-answer {
@@ -183,16 +332,19 @@
 	color: var(--muted);
 }
 
+.editor-phantom:hover {
+	border-color: var(--primary);
+	box-shadow: none;
+	color: var(--primary);
+}
+
 .editor-phantom .option-marker {
 	background: color-mix(in srgb, var(--muted) 20%, transparent);
 }
 
-.editor-phantom .editor-answer-input {
-	color: var(--muted);
-}
-
-.editor-phantom .editor-answer-input::placeholder {
-	color: var(--muted);
+.editor-phantom .editor-phantom-label {
+	font-weight: 800;
+	text-align: center;
 }
 
 /* --- Reorder dialog -------------------------------------------------- */
