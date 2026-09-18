@@ -29,12 +29,12 @@ public final class AccountAuthController {
 
 	@PostMapping("/register")
 	public String register(
-			@RequestParam(name = "email", defaultValue = "") String email,
+			@RequestParam(name = "username", defaultValue = "") String username,
 			@RequestParam(name = "password", defaultValue = "") String password,
 			HttpServletResponse response) {
 		response.setHeader("Cache-Control", "no-store");
 		try {
-			accountService.register(email, password);
+			accountService.register(username, password);
 		} catch (AccountRegistrationException exception) {
 			return "redirect:/register?error=" + encode(exception.getMessage());
 		}
@@ -52,12 +52,12 @@ public final class AccountAuthController {
 
 	@PostMapping("/login")
 	public String login(
-			@RequestParam(name = "email", defaultValue = "") String email,
+			@RequestParam(name = "username", defaultValue = "") String username,
 			@RequestParam(name = "password", defaultValue = "") String password,
 			HttpServletRequest request,
 			HttpServletResponse response) {
 		response.setHeader("Cache-Control", "no-store");
-		var account = accountService.authenticate(email, password);
+		var account = accountService.authenticate(username, password);
 		if (account.isEmpty()) {
 			return "redirect:/login?error";
 		}

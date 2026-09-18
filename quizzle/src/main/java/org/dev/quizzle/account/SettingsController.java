@@ -121,7 +121,7 @@ public final class SettingsController {
 		}
 	}
 
-	public record SettingsResponse(String email, boolean allowLateJoin, long autoAdvanceDelayMs) {
+	public record SettingsResponse(String username, boolean allowLateJoin, long autoAdvanceDelayMs) {
 		static SettingsResponse from(Account account) {
 			return new SettingsResponse(account.email(), account.allowLateJoin(), account.autoAdvanceDelayMs());
 		}

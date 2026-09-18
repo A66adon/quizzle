@@ -16,7 +16,7 @@
 		})();
 	</script>
 	<link rel="icon" href="/assets/branding-mark">
-	<link rel="preload" href="/assets/vendor/inter/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+	<link rel="preload" href="/assets/vendor/archivo/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 	<link rel="stylesheet" href="/assets/branding.css">
 	<link rel="stylesheet" href="/assets/theme.css">
 	<link rel="stylesheet" href="/assets/admin.css">
@@ -34,13 +34,13 @@
 			<div class="brand-mark" data-brand-mark aria-hidden="true"></div>
 			<h1 class="brand-name"><span data-brand-name></span></h1>
 			<h2 id="register-title">Create your account</h2>
-			<p class="muted" id="register-hint">Only company email addresses may register.</p>
+			<p class="muted" id="register-hint">Pick a unique username and a password.</p>
 
 			<p class="form-error" id="register-error" role="alert" hidden></p>
 
 			<form action="/register" method="post" class="login-form">
-				<label for="email">Company email</label>
-				<input id="email" name="email" type="email" autocomplete="username" required autofocus>
+				<label for="username">Username</label>
+				<input id="username" name="username" type="text" autocomplete="username" minlength="3" maxlength="40" required autofocus>
 				<label for="password">Password</label>
 				<input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
 				<button type="submit" class="primary-button">Create account</button>

@@ -2,7 +2,6 @@ package org.dev.quizzle.account;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -14,14 +13,13 @@ import org.dev.quizzle.config.AccountProperties;
 import org.dev.quizzle.config.GameSessionProperties;
 
 /**
- * Registration and authentication for {@link Account}s. The allowed-domain check and the
- * {@code verified} flag are intentionally simple placeholders: a later phase can replace
- * "verified defaults to true" with a real email-verification step without touching callers.
+ * Registration and authentication for {@link Account}s. Accounts are identified by a unique
+ * username (stored in the {@code email} field of the account record for storage compatibility).
  */
 @Service
 public final class AccountService {
 
-	private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@([^@\\s]+)$");
+	private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9._-]{3,40}$");
 
 	private final AccountStore accountStore;
 	private final AccountProperties properties;
@@ -34,18 +32,18 @@ public final class AccountService {
 		this.sessionProperties = sessionProperties;
 	}
 
-	public Account register(String rawEmail, String rawPassword) {
-		String email = AccountStore.normalizeEmail(rawEmail);
-		validateEmail(email);
+	public Account register(String rawUsername, String rawPassword) {
+		String username = AccountStore.normalizeEmail(rawUsername);
+		validateUsername(username);
 		validatePassword(rawPassword);
 
-		if (accountStore.findByEmail(email).isPresent()) {
-			throw new AccountRegistrationException("An account with this email already exists");
+		if (accountStore.findByEmail(username).isPresent()) {
+			throw new AccountRegistrationException("This username is already taken");
 		}
 
 		Account account = new Account(
 				UUID.randomUUID().toString(),
-				email,
+				username,
 				passwordEncoder.encode(rawPassword),
 				true,
 				List.of(),
@@ -55,12 +53,12 @@ public final class AccountService {
 		return accountStore.create(account);
 	}
 
-	public Optional<Account> authenticate(String rawEmail, String rawPassword) {
-		String email = AccountStore.normalizeEmail(rawEmail);
+	public Optional<Account> authenticate(String rawUsername, String rawPassword) {
+		String username = AccountStore.normalizeEmail(rawUsername);
 		if (rawPassword == null || rawPassword.isEmpty()) {
 			return Optional.empty();
 		}
-		return accountStore.findByEmail(email)
+		return accountStore.findByEmail(username)
 				.filter(account -> passwordEncoder.matches(rawPassword, account.passwordHash()));
 	}
 
@@ -92,15 +90,10 @@ public final class AccountService {
 		return accountStore.findById(accountId);
 	}
 
-	private void validateEmail(String email) {
-		var matcher = EMAIL_PATTERN.matcher(email);
-		if (!matcher.matches()) {
-			throw new AccountRegistrationException("Enter a valid email address");
-		}
-		String domain = matcher.group(1).toLowerCase(Locale.ROOT);
-		if (!domain.equals(properties.allowedDomain())) {
+	private void validateUsername(String username) {
+		if (!USERNAME_PATTERN.matcher(username).matches()) {
 			throw new AccountRegistrationException(
-					"Only @" + properties.allowedDomain() + " email addresses may register");
+					"Usernames must be 3-40 characters of letters, digits, dots, dashes, or underscores");
 		}
 	}
 

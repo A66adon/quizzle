@@ -23,7 +23,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.dev.quizzle.security.CsrfToken;
 
 @SpringBootTest(properties = {
-		"quiz.account.allowed-domain=test.example",
 		"quiz.account.file=${java.io.tmpdir}/safety-quiz-accounts-${random.uuid}.yml",
 		"quiz.catalog.directory=./quizzes",
 		"quiz.session.public-base-url=https://quiz.example.test",
@@ -50,13 +49,28 @@ class AccountAuthenticationTests {
 	}
 
 	@Test
-	void rejectsRegistrationOutsideTheAllowedDomain() throws Exception {
+	void rejectsRegistrationWithAnInvalidUsername() throws Exception {
 		MockHttpSession session = new MockHttpSession();
 		String token = obtainCsrfToken(session);
 
 		mockMvc.perform(post("/register")
 				.session(session)
-				.param("email", "person@other.example")
+				.param("username", "no spaces allowed")
+				.param("password", "correct horse battery staple")
+				.param("_csrf", token))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(header().string("Location", containsString("/register?error=")));
+	}
+
+	@Test
+	void rejectsADuplicateUsername() throws Exception {
+		registerAccount("taken-name", "correct horse battery staple");
+		MockHttpSession session = new MockHttpSession();
+		String token = obtainCsrfToken(session);
+
+		mockMvc.perform(post("/register")
+				.session(session)
+				.param("username", "taken-name")
 				.param("password", "correct horse battery staple")
 				.param("_csrf", token))
 				.andExpect(status().is3xxRedirection())
@@ -65,11 +79,11 @@ class AccountAuthenticationTests {
 
 	@Test
 	void rejectsAnIncorrectPasswordWithoutReflectingIt() throws Exception {
-		MockHttpSession session = registerAccount("wrong-and-private-test@test.example", "correct horse battery staple");
+		MockHttpSession session = registerAccount("wrong-and-private-test", "correct horse battery staple");
 
 		mockMvc.perform(post("/login")
 				.session(session)
-				.param("email", "wrong-and-private-test@test.example")
+				.param("username", "wrong-and-private-test")
 				.param("password", "not-the-password")
 				.param("_csrf", CsrfToken.getOrCreate(session)))
 				.andExpect(status().is3xxRedirection())
@@ -79,7 +93,7 @@ class AccountAuthenticationTests {
 
 	@Test
 	void authenticatedSessionCanReadOnlySafeCatalogData() throws Exception {
-		MockHttpSession session = login("phase-one-account@test.example", "correct horse battery staple");
+		MockHttpSession session = login("phase-one-account", "correct horse battery staple");
 
 		mockMvc.perform(get("/admin").session(session))
 				.andExpect(status().isOk())
@@ -98,7 +112,7 @@ class AccountAuthenticationTests {
 
 	@Test
 	void logoutInvalidatesTheAccountSession() throws Exception {
-		MockHttpSession session = login("phase-one-logout@test.example", "correct horse battery staple");
+		MockHttpSession session = login("phase-one-logout", "correct horse battery staple");
 
 		mockMvc.perform(post("/logout")
 				.session(session)
@@ -115,12 +129,12 @@ class AccountAuthenticationTests {
 		return CsrfToken.getOrCreate(session);
 	}
 
-	private MockHttpSession registerAccount(String email, String password) throws Exception {
+	private MockHttpSession registerAccount(String username, String password) throws Exception {
 		MockHttpSession session = new MockHttpSession();
 		String token = obtainCsrfToken(session);
 		mockMvc.perform(post("/register")
 				.session(session)
-				.param("email", email)
+				.param("username", username)
 				.param("password", password)
 				.param("_csrf", token))
 				.andExpect(status().is3xxRedirection())
@@ -128,14 +142,14 @@ class AccountAuthenticationTests {
 		return session;
 	}
 
-	private MockHttpSession login(String email, String password) throws Exception {
-		registerAccount(email, password);
+	private MockHttpSession login(String username, String password) throws Exception {
+		registerAccount(username, password);
 
 		MockHttpSession session = new MockHttpSession();
 		String token = obtainCsrfToken(session);
 		MvcResult result = mockMvc.perform(post("/login")
 				.session(session)
-				.param("email", email)
+				.param("username", username)
 				.param("password", password)
 				.param("_csrf", token))
 				.andExpect(status().is3xxRedirection())

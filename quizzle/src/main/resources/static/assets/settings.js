@@ -26,7 +26,7 @@
 	async function loadSettings() {
 		try {
 			const settings = await requestJson("/admin/api/account/settings");
-			emailLabel.textContent = settings.email;
+			emailLabel.textContent = settings.username;
 			allowLateJoinInput.checked = Boolean(settings.allowLateJoin);
 			autoAdvanceInput.value = Math.round(settings.autoAdvanceDelayMs / 1000);
 		} catch (error) {

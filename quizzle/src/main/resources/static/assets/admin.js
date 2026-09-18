@@ -50,7 +50,7 @@
 				requestJson("/admin/api/sessions"),
 				requestJson("/admin/api/account/settings").catch(() => null)
 			]);
-			accountEmail = settings && settings.email ? String(settings.email).toLowerCase() : "";
+			accountEmail = settings && settings.username ? String(settings.username).toLowerCase() : "";
 			sessions = Array.isArray(loadedSessions) ? loadedSessions : [];
 			renderCatalog(catalog);
 			renderSessions();
@@ -331,7 +331,10 @@
 	allowLateJoinInput.addEventListener("change", () => {
 		settingsDirty = true;
 	});
-	savePasswordButton.addEventListener("click", savePassword);
+	document.querySelector("#password-form").addEventListener("submit", event => {
+		event.preventDefault();
+		savePassword();
+	});
 	deleteAccountButton.addEventListener("click", deleteAccount);
 
 	function toggleSettingsPanel() {
@@ -342,21 +345,27 @@
 		}
 	}
 
+	let settingsCloseTimer = null;
+	let settingsOpenFrame = null;
+
 	function openSettingsPanel() {
+		window.clearTimeout(settingsCloseTimer);
 		settingsPanel.hidden = false;
 		settingsGear.setAttribute("aria-expanded", "true");
 		settingsGear.setAttribute("aria-label", "Close settings");
-		window.requestAnimationFrame(() => settingsPanel.classList.add("is-open"));
+		settingsOpenFrame = window.requestAnimationFrame(() => settingsPanel.classList.add("is-open"));
 		if (!settingsLoaded) loadSettingsPanel();
 	}
 
 	function closeSettingsPanel() {
+		window.cancelAnimationFrame(settingsOpenFrame);
 		settingsGear.setAttribute("aria-expanded", "false");
 		settingsGear.setAttribute("aria-label", "Open settings");
 		settingsPanel.classList.remove("is-open");
-		settingsPanel.addEventListener("transitionend", () => {
+		window.clearTimeout(settingsCloseTimer);
+		settingsCloseTimer = window.setTimeout(() => {
 			if (!settingsPanel.classList.contains("is-open")) settingsPanel.hidden = true;
-		}, { once: true });
+		}, 300);
 		if (settingsLoaded && settingsDirty) saveGameDefaults();
 	}
 

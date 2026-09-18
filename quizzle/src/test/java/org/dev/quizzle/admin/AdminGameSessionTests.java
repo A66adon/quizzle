@@ -28,7 +28,6 @@ import tools.jackson.databind.ObjectMapper;
 import org.dev.quizzle.security.CsrfToken;
 
 @SpringBootTest(properties = {
-		"quiz.account.allowed-domain=test.example",
 		"quiz.account.file=${java.io.tmpdir}/safety-quiz-accounts-${random.uuid}.yml",
 		"quiz.catalog.directory=./quizzes",
 		"quiz.session.public-base-url=https://quiz.example.test/events",
@@ -142,14 +141,14 @@ class AdminGameSessionTests {
 
 		mockMvc.perform(post("/register")
 				.session(session)
-				.param("email", "phase-two-account@test.example")
+				.param("username", "phase-two-account")
 				.param("password", "phase-two-secret-password")
 				.param("_csrf", csrfToken))
 				.andExpect(status().is3xxRedirection());
 
 		MvcResult result = mockMvc.perform(post("/login")
 				.session(session)
-				.param("email", "phase-two-account@test.example")
+				.param("username", "phase-two-account")
 				.param("password", "phase-two-secret-password")
 				.param("_csrf", csrfToken))
 				.andExpect(status().is3xxRedirection())

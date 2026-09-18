@@ -16,7 +16,7 @@
 		})();
 	</script>
 	<link rel="icon" href="/assets/branding-mark">
-	<link rel="preload" href="/assets/vendor/inter/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+	<link rel="preload" href="/assets/vendor/archivo/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 	<link rel="stylesheet" href="/assets/branding.css">
 	<link rel="stylesheet" href="/assets/theme.css">
 	<link rel="stylesheet" href="/assets/admin.css">
@@ -58,7 +58,7 @@
 							</div>
 						</div>
 
-						<div class="settings-row settings-password">
+						<form class="settings-row settings-password" id="password-form">
 							<h3>Change password</h3>
 							<p class="form-error" id="password-error" role="alert" hidden></p>
 							<p class="form-success" id="password-success" role="status" hidden></p>
@@ -66,8 +66,8 @@
 							<input type="password" id="current-password" autocomplete="current-password">
 							<label for="new-password">New password</label>
 							<input type="password" id="new-password" autocomplete="new-password" minlength="8">
-							<button type="button" id="save-password" class="primary-button settings-action">Update password</button>
-						</div>
+							<button type="submit" id="save-password" class="primary-button settings-action">Update password</button>
+						</form>
 
 						<div class="settings-row">
 							<p class="form-error" id="delete-error" role="alert" hidden></p>

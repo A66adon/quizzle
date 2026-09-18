@@ -16,7 +16,7 @@
 		})();
 	</script>
 	<link rel="icon" href="/assets/branding-mark">
-	<link rel="preload" href="/assets/vendor/inter/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+	<link rel="preload" href="/assets/vendor/archivo/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 	<link rel="stylesheet" href="/assets/branding.css">
 	<link rel="stylesheet" href="/assets/theme.css">
 	<link rel="stylesheet" href="/assets/admin.css">
@@ -34,18 +34,18 @@
 			<div class="brand-mark" data-brand-mark aria-hidden="true"></div>
 			<h1 class="brand-name"><span data-brand-name></span></h1>
 			<h2 id="login-title">Sign in</h2>
-			<p class="muted">Use your company email to manage your quizzes.</p>
+			<p class="muted">Sign in with your username to manage your quizzes.</p>
 
 			<p class="form-success" id="login-registered" role="status" hidden>
 				Account created. You can sign in now.
 			</p>
 			<p class="form-error" id="login-error" role="alert" hidden>
-				The email or password is incorrect. Please try again.
+				The username or password is incorrect. Please try again.
 			</p>
 
 			<form action="/login" method="post" class="login-form">
-				<label for="email">Company email</label>
-				<input id="email" name="email" type="email" autocomplete="username" required autofocus>
+				<label for="username">Username</label>
+				<input id="username" name="username" type="text" autocomplete="username" required autofocus>
 				<label for="password">Password</label>
 				<input id="password" name="password" type="password" autocomplete="current-password" required>
 				<button type="submit" class="primary-button">Sign in</button>

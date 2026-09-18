@@ -64,7 +64,7 @@
 	async function loadAccountEmail() {
 		try {
 			const settings = await requestJson("/admin/api/account/settings");
-			accountEmail = settings.email || "";
+			accountEmail = settings.username || "";
 		} catch (error) {
 			accountEmail = "";
 		}
@@ -534,6 +534,51 @@
 
 	function hideError() {
 		errorBox.hidden = true;
+	}
+
+	// Leaving the editor (brand link, tab close) must not silently drop a valid quiz.
+	// Existing quizzes keep the all-or-nothing rule so a half-finished edit never
+	// overwrites good data; a brand-new quiz stores at least its finished questions.
+	window.addEventListener("pagehide", () => {
+		const payload = quizForLeave();
+		if (!payload) return;
+		try {
+			fetch(editingFileName
+					? `/admin/api/quizzes/${encodeURIComponent(editingFileName)}`
+					: "/admin/api/quizzes", {
+				method: editingFileName ? "PUT" : "POST",
+				credentials: "same-origin",
+				keepalive: true,
+				headers: {
+					"Content-Type": "application/json",
+					"X-XSRF-TOKEN": window.getCsrfToken() || ""
+				},
+				body: JSON.stringify(payload)
+			});
+		} catch (error) {
+			// Best effort: the page is already going away.
+		}
+	});
+
+	function quizForLeave() {
+		if (editingFileName) {
+			return isValidEnough() ? collectQuiz() : null;
+		}
+		if (!state.title.trim()) return null;
+		const finished = state.questions.filter(question =>
+			question.text.trim()
+			&& question.answers.length >= MIN_ANSWERS
+			&& question.answers.every(answer => answer.text.trim())
+			&& question.answers.some(answer => answer.correct)
+			&& Number(question.points) > 0
+			&& Number(question.timeSeconds) > 0
+		);
+		if (finished.length === 0) return null;
+		const kept = state.questions;
+		state.questions = finished;
+		const quiz = collectQuiz();
+		state.questions = kept;
+		return quiz;
 	}
 
 	async function requestJson(url, options = {}) {
