@@ -260,11 +260,25 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		if (lifecycleCommandPending || !autoAdvanceEnabled
 				|| !["RESULTS", "LEADERBOARD"].includes(session?.state)) return;
 		const expectedState = session.state;
+		// The configured delay is meant as reading time, so it only starts once the reveal or the
+		// rank shuffle has finished playing instead of running underneath it.
 		autoAdvanceTimer = window.setTimeout(() => {
 			autoAdvanceTimer = null;
 			if (!autoAdvanceEnabled || session?.state !== expectedState) return;
 			sendCommand("NEXT");
-		}, autoAdvanceDelayMs);
+		}, animationSettleMs() + autoAdvanceDelayMs);
+	}
+
+	// How long the animation belonging to the current state still needs before the screen is calm.
+	function animationSettleMs() {
+		if (session?.state === "RESULTS") {
+			const optionCount = session.results?.options?.length || 0;
+			return COLUMN_STAGGER_MS * Math.max(0, optionCount - 1) + COLUMN_GROW_MS + 250;
+		}
+		if (session?.state === "LEADERBOARD") {
+			return LEADERBOARD_FLIP_DELAY_MS + LEADERBOARD_FLIP_DURATION_MS;
+		}
+		return 0;
 	}
 
 	function clearAutoAdvance() {

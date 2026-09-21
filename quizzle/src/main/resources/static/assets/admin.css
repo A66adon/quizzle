@@ -510,6 +510,11 @@ h2 {
 
 .quiz-edit-button {
 	margin-left: auto;
+	border: 1px solid var(--control-border);
+}
+
+.quiz-edit-button:hover {
+	border-color: color-mix(in srgb, var(--primary) 55%, var(--control-border));
 }
 
 .add-quiz-card {
@@ -621,6 +626,55 @@ h2 {
 	min-width: 2.5rem;
 	text-align: center;
 	font-variant-numeric: tabular-nums;
+}
+
+/* One short pulse marks the value actually changing, so the control reads as having
+   responded rather than as text that silently swapped. */
+@keyframes value-pulse {
+	from {
+		transform: scale(1);
+	}
+
+	40% {
+		transform: scale(1.16);
+	}
+
+	to {
+		transform: scale(1);
+	}
+}
+
+@keyframes field-pulse {
+	from {
+		border-color: var(--primary);
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 35%, transparent);
+	}
+
+	40% {
+		border-color: var(--primary);
+		box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 22%, transparent);
+	}
+
+	to {
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent);
+	}
+}
+
+.preset-stepper strong.value-changed {
+	display: inline-block;
+	color: var(--primary);
+	animation: value-pulse 260ms var(--ease-sweep, ease-out) both;
+}
+
+input.value-changed {
+	animation: field-pulse 280ms var(--ease-sweep, ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.preset-stepper strong.value-changed,
+	input.value-changed {
+		animation-duration: 1ms;
+	}
 }
 
 .settings-password {
@@ -1007,6 +1061,20 @@ h2 {
 }
 
 @media (max-width: 620px) {
+	/* The panel is anchored to the gear, which can sit close enough to the viewport edge that an
+	   absolutely positioned panel spills off-screen. Below phone width it is pinned to the
+	   viewport instead, with admin.js supplying the gear's bottom edge as the top offset. */
+	.settings-panel {
+		position: fixed;
+		top: var(--settings-panel-top, 4.9rem);
+		right: 1rem;
+		left: auto;
+		width: min(19rem, calc(100vw - 2rem));
+		max-width: calc(100vw - 2rem);
+		max-height: calc(100dvh - var(--settings-panel-top, 4.9rem) - 1rem);
+		overflow-y: auto;
+	}
+
 	.session-grid,
 	.quiz-grid {
 		grid-template-columns: minmax(0, 1fr);

@@ -5,13 +5,13 @@
 	const allowLateJoinInput = document.querySelector("#allow-late-join");
 	const autoAdvanceInput = document.querySelector("#auto-advance-delay");
 	const settingsError = document.querySelector("#settings-error");
-	const settingsSuccess = document.querySelector("#settings-success");
 	const saveSettingsButton = document.querySelector("#save-settings");
 
+	const passwordForm = document.querySelector("#password-form");
+	const passwordUsernameInput = document.querySelector("#password-username");
 	const currentPasswordInput = document.querySelector("#current-password");
 	const newPasswordInput = document.querySelector("#new-password");
 	const passwordError = document.querySelector("#password-error");
-	const passwordSuccess = document.querySelector("#password-success");
 	const savePasswordButton = document.querySelector("#save-password");
 
 	const deleteError = document.querySelector("#delete-error");
@@ -20,13 +20,18 @@
 	loadSettings();
 
 	saveSettingsButton.addEventListener("click", saveSettings);
-	savePasswordButton.addEventListener("click", savePassword);
+	autoAdvanceInput.addEventListener("change", () => pulse(autoAdvanceInput));
+	passwordForm.addEventListener("submit", event => {
+		event.preventDefault();
+		savePassword();
+	});
 	deleteAccountButton.addEventListener("click", deleteAccount);
 
 	async function loadSettings() {
 		try {
 			const settings = await requestJson("/admin/api/account/settings");
 			emailLabel.textContent = settings.username;
+			passwordUsernameInput.value = settings.username || "";
 			allowLateJoinInput.checked = Boolean(settings.allowLateJoin);
 			autoAdvanceInput.value = Math.round(settings.autoAdvanceDelayMs / 1000);
 		} catch (error) {
@@ -34,9 +39,16 @@
 		}
 	}
 
+	// One short pulse so a changed or freshly saved delay reads as having landed.
+	function pulse(element) {
+		element.classList.remove("value-changed");
+		void element.offsetWidth;
+		element.classList.add("value-changed");
+		element.addEventListener("animationend", () => element.classList.remove("value-changed"), { once: true });
+	}
+
 	async function saveSettings() {
 		hideMessage(settingsError);
-		hideMessage(settingsSuccess);
 		const seconds = Number(autoAdvanceInput.value);
 		if (!Number.isFinite(seconds) || seconds < 0 || seconds > 120) {
 			showMessage(settingsError, "Auto-advance delay must be between 0 and 120 seconds.");
@@ -52,7 +64,8 @@
 					autoAdvanceDelayMs: Math.round(seconds * 1000)
 				})
 			});
-			showMessage(settingsSuccess, "Settings saved.");
+			pulse(autoAdvanceInput);
+			if (window.showToast) window.showToast("Settings saved.");
 		} catch (error) {
 			showMessage(settingsError, "Settings could not be saved.");
 		} finally {
@@ -62,7 +75,6 @@
 
 	async function savePassword() {
 		hideMessage(passwordError);
-		hideMessage(passwordSuccess);
 		if (!newPasswordInput.value || newPasswordInput.value.length < 8) {
 			showMessage(passwordError, "The new password must be at least 8 characters.");
 			return;
@@ -79,7 +91,7 @@
 			});
 			currentPasswordInput.value = "";
 			newPasswordInput.value = "";
-			showMessage(passwordSuccess, "Password updated.");
+			if (window.showToast) window.showToast("Password updated.");
 		} catch (error) {
 			showMessage(passwordError, "The current password is incorrect, or the new password is too short.");
 		} finally {

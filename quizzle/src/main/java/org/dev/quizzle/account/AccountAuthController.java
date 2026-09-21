@@ -31,14 +31,25 @@ public final class AccountAuthController {
 	public String register(
 			@RequestParam(name = "username", defaultValue = "") String username,
 			@RequestParam(name = "password", defaultValue = "") String password,
+			HttpServletRequest request,
 			HttpServletResponse response) {
 		response.setHeader("Cache-Control", "no-store");
+		Account account;
 		try {
-			accountService.register(username, password);
+			account = accountService.register(username, password);
 		} catch (AccountRegistrationException exception) {
 			return "redirect:/register?error=" + encode(exception.getMessage());
 		}
-		return "redirect:/login?registered";
+
+		// A fresh account is signed straight in, so the first thing a new presenter sees is their
+		// own admin page instead of a second login form.
+		HttpSession existingSession = request.getSession(false);
+		if (existingSession != null) {
+			existingSession.invalidate();
+		}
+		HttpSession session = request.getSession(true);
+		AccountSession.authenticate(session, account.id());
+		return "redirect:/admin?welcome";
 	}
 
 	@GetMapping("/login")

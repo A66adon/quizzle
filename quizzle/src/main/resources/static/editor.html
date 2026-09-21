@@ -16,7 +16,6 @@
 		})();
 	</script>
 	<link rel="icon" href="/assets/branding-mark">
-	<link rel="preload" href="/assets/vendor/archivo/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 	<link rel="stylesheet" href="/assets/branding.css">
 	<link rel="stylesheet" href="/assets/theme.css">
 	<link rel="stylesheet" href="/assets/admin.css">
@@ -25,6 +24,7 @@
 	<script type="module" src="/assets/branding.js"></script>
 	<script type="module" src="/assets/theme.js"></script>
 	<script src="/assets/csrf.js"></script>
+	<script src="/assets/toast.js" defer></script>
 	<script src="/assets/editor.js" defer></script>
 </head>
 <body class="presenter-body">
@@ -43,10 +43,7 @@
 		</div>
 	</header>
 
-	<main class="presenter-shell">
-		<p id="editor-status" class="status-card" role="status" hidden></p>
-		<p id="editor-error" class="form-error" role="alert" hidden></p>
-
+	<main class="presenter-shell editor-shell">
 		<section id="details-view" class="view" aria-labelledby="details-heading" hidden>
 			<div class="lobby-layout">
 				<article class="join-card editor-qr-card">
@@ -70,13 +67,16 @@
 					<p class="muted small">Author: <span id="quiz-author-email">You</span></p>
 					<div class="lobby-metrics">
 						<button id="details-question-count-button" class="summary-pill question-count-button" type="button"
-							aria-expanded="false" aria-controls="question-jump-list">
+							aria-controls="question-jump-list">
 							<strong id="details-question-count">0</strong><span>questions</span>
 						</button>
 					</div>
-					<ol id="question-jump-list" class="question-jump-list" hidden></ol>
+					<ol id="question-jump-list" class="question-jump-grid"></ol>
 				</div>
 			</div>
+
+			<p id="details-status" class="status-card editor-message" role="status" hidden></p>
+			<p id="details-error" class="form-error editor-message" role="alert" hidden></p>
 
 			<div class="control-bar">
 				<a class="ghost-button" href="/admin">Back to sessions</a>
@@ -104,13 +104,23 @@
 				placeholder="Type the question…" aria-label="Question text"></textarea>
 			<p class="muted stage-subtitle">Click an answer to mark it as correct. Several answers may be correct.</p>
 			<div id="question-options" class="option-grid"></div>
-			<div class="control-bar">
-				<button id="back-to-details" class="ghost-button" type="button">Quiz details</button>
+			<p id="question-status" class="status-card editor-message" role="status" hidden></p>
+			<p id="question-error" class="form-error editor-message" role="alert" hidden></p>
+			<div class="control-bar editor-question-bar">
+				<button id="back-to-details" class="ghost-button" type="button">
+					<span class="label-wide">Quiz details</span><span class="label-narrow">Details</span>
+				</button>
 				<button id="reorder-button" class="ghost-button" type="button">Reorder</button>
-				<button id="remove-question" class="ghost-button abort-button" type="button">Remove question</button>
+				<button id="remove-question" class="ghost-button abort-button" type="button">
+					<span class="label-wide">Remove question</span><span class="label-narrow">Remove</span>
+				</button>
 				<button id="save-quiz" class="ghost-button" type="button">Save</button>
-				<button id="prev-question" class="primary-button push-right" type="button">← Previous</button>
-				<button id="next-question" class="primary-button" type="button">Next question</button>
+				<button id="prev-question" class="primary-button push-right" type="button">
+					<span class="label-wide">← Previous</span><span class="label-narrow">‹ Prev</span>
+				</button>
+				<button id="next-question" class="primary-button" type="button">
+					<span class="label-wide">Next question</span><span class="label-narrow">Next</span>
+				</button>
 			</div>
 		</section>
 	</main>
@@ -123,6 +133,36 @@
 			<ol id="reorder-list" class="reorder-list"></ol>
 			<div class="dialog-actions">
 				<button class="ghost-button" type="submit" value="done">Done</button>
+			</div>
+		</form>
+	</dialog>
+
+	<dialog id="delete-quiz-dialog" class="confirm-dialog delete-session-dialog" aria-labelledby="delete-quiz-title">
+		<form method="dialog">
+			<p class="eyebrow">Delete quiz</p>
+			<h2 id="delete-quiz-title">Delete this quiz?</h2>
+			<p class="delete-session-copy">
+				<strong id="delete-quiz-name"></strong>
+				<span>The quiz file is removed for good and this cannot be undone.</span>
+			</p>
+			<p id="delete-quiz-error" class="form-error" role="alert" hidden></p>
+			<div class="delete-dialog-actions">
+				<button id="cancel-delete-quiz" class="text-button" type="button" autofocus>Keep quiz</button>
+				<button id="confirm-delete-quiz" class="dialog-delete-button" type="button">Delete quiz</button>
+			</div>
+		</form>
+	</dialog>
+
+	<dialog id="leave-dialog" class="confirm-dialog delete-session-dialog" aria-labelledby="leave-title">
+		<form method="dialog">
+			<p class="eyebrow">Unsaved changes</p>
+			<h2 id="leave-title">Leave without saving?</h2>
+			<p class="delete-session-copy">
+				<span>This quiz has changes that were not saved yet. They are lost if you leave now.</span>
+			</p>
+			<div class="delete-dialog-actions">
+				<button id="stay-here" class="text-button" type="button" autofocus>Stay</button>
+				<button id="leave-without-saving" class="dialog-delete-button" type="button">Leave without saving</button>
 			</div>
 		</form>
 	</dialog>

@@ -10,7 +10,6 @@
 	const sessionCountLabel = document.querySelector("#session-count-label");
 	const quizSection = document.querySelector("#quiz-section");
 	const quizGrid = document.querySelector("#quiz-grid");
-	const quizEmpty = document.querySelector("#quiz-empty");
 	const quizCount = document.querySelector("#quiz-count");
 	const loadedAt = document.querySelector("#loaded-at");
 	const issueSection = document.querySelector("#issue-section");
@@ -25,15 +24,29 @@
 	const deleteSessionError = document.querySelector("#delete-session-error");
 	const cancelDeleteSession = document.querySelector("#cancel-delete-session");
 	const confirmDeleteSession = document.querySelector("#confirm-delete-session");
+	const emptyQuizDialog = document.querySelector("#empty-quiz-dialog");
+	const emptyQuizName = document.querySelector("#empty-quiz-name");
+	const cancelEmptyQuiz = document.querySelector("#cancel-empty-quiz");
+	const editEmptyQuiz = document.querySelector("#edit-empty-quiz");
 	const MIN_SESSION_TITLE_FONT_PX = 13;
 	let sessions = [];
 	let accountEmail = "";
 	let pendingDeleteSession = null;
+	let pendingEmptyQuizFile = null;
 	let titleFitFrame = null;
 
+	announceWelcome();
 	loadAdminData();
 	confirmDeleteSession.addEventListener("click", deletePendingSession);
 	cancelDeleteSession.addEventListener("click", () => deleteSessionDialog.close("cancel"));
+	cancelEmptyQuiz.addEventListener("click", () => emptyQuizDialog.close("cancel"));
+	editEmptyQuiz.addEventListener("click", () => {
+		if (!pendingEmptyQuizFile) return;
+		window.location.assign(`/editor?file=${encodeURIComponent(pendingEmptyQuizFile)}`);
+	});
+	emptyQuizDialog.addEventListener("close", () => {
+		pendingEmptyQuizFile = null;
+	});
 	deleteSessionDialog.addEventListener("close", () => {
 		pendingDeleteSession = null;
 		deleteSessionError.hidden = true;
@@ -42,6 +55,15 @@
 		if (confirmDeleteSession.disabled) event.preventDefault();
 	});
 	window.addEventListener("resize", scheduleSessionTitleFit);
+
+	// Registration signs the new account straight in, so the confirmation lands here.
+	function announceWelcome() {
+		const currentUrl = new URL(window.location.href);
+		if (!currentUrl.searchParams.has("welcome")) return;
+		currentUrl.searchParams.delete("welcome");
+		history.replaceState(null, "", `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
+		if (window.showToast) window.showToast("Account created.");
+	}
 
 	async function loadAdminData() {
 		try {
@@ -91,7 +113,6 @@
 		issueList.replaceChildren(...issues.map(createIssueCard));
 
 		quizCount.textContent = String(quizzes.length);
-		quizEmpty.hidden = quizzes.length !== 0;
 		quizSection.hidden = false;
 		status.hidden = true;
 
@@ -133,8 +154,16 @@
 			? "1 question"
 			: `${quiz.questionCount} questions`;
 		card.setAttribute("aria-label", `Play ${quiz.title}`);
+		const isPlayable = Number(quiz.questionCount) > 0;
 		let playInFlight = false;
 		const play = () => {
+			// A quiz without questions has nothing to present, so it explains itself instead.
+			if (!isPlayable) {
+				pendingEmptyQuizFile = quiz.fileName;
+				emptyQuizName.textContent = quiz.title;
+				emptyQuizDialog.showModal();
+				return;
+			}
 			if (playInFlight) return;
 			playInFlight = true;
 			createSession(quiz.fileName, card, editButton).finally(() => {
@@ -303,8 +332,8 @@
 	const autoAdvanceUp = document.querySelector("#auto-advance-up");
 	const currentPasswordInput = document.querySelector("#current-password");
 	const newPasswordInput = document.querySelector("#new-password");
+	const passwordUsernameInput = document.querySelector("#password-username");
 	const passwordError = document.querySelector("#password-error");
-	const passwordSuccess = document.querySelector("#password-success");
 	const savePasswordButton = document.querySelector("#save-password");
 	const deleteError = document.querySelector("#delete-error");
 	const deleteAccountButton = document.querySelector("#delete-account");
@@ -351,6 +380,11 @@
 	function openSettingsPanel() {
 		window.clearTimeout(settingsCloseTimer);
 		settingsPanel.hidden = false;
+		// Below phone width the panel is pinned to the viewport, so it needs the gear's own
+		// bottom edge as its top offset to stay attached without running off-screen.
+		settingsPanel.style.setProperty(
+			"--settings-panel-top",
+			`${Math.round(settingsGear.getBoundingClientRect().bottom + 8)}px`);
 		settingsGear.setAttribute("aria-expanded", "true");
 		settingsGear.setAttribute("aria-label", "Close settings");
 		settingsOpenFrame = window.requestAnimationFrame(() => settingsPanel.classList.add("is-open"));
@@ -373,6 +407,7 @@
 		try {
 			const settings = await requestJson("/admin/api/account/settings");
 			settingsLoaded = true;
+			passwordUsernameInput.value = settings.username || "";
 			allowLateJoinInput.checked = Boolean(settings.allowLateJoin);
 			const seconds = Math.round((settings.autoAdvanceDelayMs || 0) / 1000);
 			autoAdvanceIndex = nearestPresetIndex(seconds);
@@ -395,10 +430,19 @@
 			% AUTO_ADVANCE_PRESETS_SECONDS.length;
 		settingsDirty = true;
 		renderAutoAdvance();
+		pulse(autoAdvanceValue);
 	}
 
 	function renderAutoAdvance() {
 		autoAdvanceValue.textContent = `${AUTO_ADVANCE_PRESETS_SECONDS[autoAdvanceIndex]}s`;
+	}
+
+	// One short pulse so the stepped value reads as a control that answered the press.
+	function pulse(element) {
+		element.classList.remove("value-changed");
+		void element.offsetWidth;
+		element.classList.add("value-changed");
+		element.addEventListener("animationend", () => element.classList.remove("value-changed"), { once: true });
 	}
 
 	async function saveGameDefaults() {
@@ -419,7 +463,6 @@
 
 	async function savePassword() {
 		hideSettingsMessage(passwordError);
-		hideSettingsMessage(passwordSuccess);
 		if (!newPasswordInput.value || newPasswordInput.value.length < 8) {
 			showSettingsMessage(passwordError, "The new password must be at least 8 characters.");
 			return;
@@ -436,7 +479,7 @@
 			});
 			currentPasswordInput.value = "";
 			newPasswordInput.value = "";
-			showSettingsMessage(passwordSuccess, "Password updated.");
+			if (window.showToast) window.showToast("Password updated.");
 		} catch (error) {
 			showSettingsMessage(passwordError, "The current password is incorrect, or the new password is too short.");
 		} finally {

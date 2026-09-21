@@ -429,6 +429,46 @@ textarea {
 }
 
 /*
+ * Shared success toast. Matches the .form-success treatment already used on the login and
+ * settings surfaces so every "it worked" confirmation in the app reads the same way.
+ */
+.toast {
+	position: fixed;
+	z-index: 60;
+	inset-block-end: 1.25rem;
+	inset-inline: 1rem;
+	width: fit-content;
+	max-width: min(24rem, calc(100vw - 2rem));
+	margin-inline: auto;
+	padding: 0.85rem 1.15rem;
+	border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border));
+	border-radius: var(--radius-control);
+	background: color-mix(in srgb, var(--green) 12%, var(--surface));
+	box-shadow: var(--shadow-card);
+	font-size: 0.9rem;
+	font-weight: 750;
+	line-height: 1.45;
+	opacity: 0;
+	transform: translateY(var(--travel));
+	transition: opacity var(--dur-state) var(--ease-sweep), transform var(--dur-state) var(--ease-sweep);
+	pointer-events: none;
+}
+
+.toast-success {
+	color: var(--green);
+}
+
+.toast.is-visible {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.toast.is-leaving {
+	opacity: 0;
+	transition-timing-function: var(--ease-exit);
+}
+
+/*
  * Reduced motion removes travel, not meaning.
  *
  * Zeroing --travel and --wipe collapses every sweep in the app to a plain cross-fade, so the

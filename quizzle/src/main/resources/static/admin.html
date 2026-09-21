@@ -16,7 +16,6 @@
 		})();
 	</script>
 	<link rel="icon" href="/assets/branding-mark">
-	<link rel="preload" href="/assets/vendor/archivo/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 	<link rel="stylesheet" href="/assets/branding.css">
 	<link rel="stylesheet" href="/assets/theme.css">
 	<link rel="stylesheet" href="/assets/admin.css">
@@ -24,6 +23,7 @@
 	<script type="module" src="/assets/branding.js"></script>
 	<script type="module" src="/assets/theme.js"></script>
 	<script src="/assets/csrf.js"></script>
+	<script src="/assets/toast.js" defer></script>
 	<script src="/assets/admin.js" defer></script>
 </head>
 <body>
@@ -61,7 +61,9 @@
 						<form class="settings-row settings-password" id="password-form">
 							<h3>Change password</h3>
 							<p class="form-error" id="password-error" role="alert" hidden></p>
-							<p class="form-success" id="password-success" role="status" hidden></p>
+							<label class="visually-hidden" for="password-username">Username</label>
+							<input class="visually-hidden" type="text" id="password-username" name="username"
+								autocomplete="username" tabindex="-1" readonly>
 							<label for="current-password">Current password</label>
 							<input type="password" id="current-password" autocomplete="current-password">
 							<label for="new-password">New password</label>
@@ -124,9 +126,6 @@
 				</div>
 			</div>
 			<div id="quiz-grid" class="quiz-grid"></div>
-			<p id="quiz-empty" class="empty-card" hidden>
-				No quizzes were found. Add a <code>.yaml</code> or <code>.yml</code> file and restart the server.
-			</p>
 		</section>
 
 		<section id="issue-section" class="issue-section" aria-labelledby="issue-heading" hidden>
@@ -151,6 +150,21 @@
 			<div class="delete-dialog-actions">
 				<button id="cancel-delete-session" class="text-button" type="button" autofocus>Keep session</button>
 				<button id="confirm-delete-session" class="dialog-delete-button" type="button">Delete session</button>
+			</div>
+		</form>
+	</dialog>
+
+	<dialog id="empty-quiz-dialog" class="confirm-dialog delete-session-dialog" aria-labelledby="empty-quiz-title">
+		<form method="dialog">
+			<p class="eyebrow">Nothing to play</p>
+			<h2 id="empty-quiz-title">This quiz has no questions</h2>
+			<p class="delete-session-copy">
+				<strong id="empty-quiz-name"></strong>
+				<span>This quiz has no questions yet, so it can't be played. Add at least one question first.</span>
+			</p>
+			<div class="delete-dialog-actions">
+				<button id="cancel-empty-quiz" class="text-button" type="button" autofocus>Close</button>
+				<button id="edit-empty-quiz" class="primary-button" type="button">Add questions</button>
 			</div>
 		</form>
 	</dialog>

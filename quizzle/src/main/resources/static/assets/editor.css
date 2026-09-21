@@ -216,14 +216,33 @@
 	box-shadow: var(--shadow-card);
 }
 
-.question-jump-list {
-	display: flex;
-	flex-direction: column;
-	gap: 0.35rem;
-	width: min(100%, 30rem);
-	margin: 0.25rem 0 0;
+.question-jump-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.5rem;
+	width: 100%;
+	margin: 0.75rem 0 0;
 	padding: 0;
 	list-style: none;
+}
+
+.question-jump-card {
+	display: block;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-control);
+	background: var(--surface-raised);
+	transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.question-jump-card.drag-over {
+	border-color: var(--primary);
+	box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.question-jump-card.is-dragging {
+	opacity: 0.55;
+	transform: scale(1.02);
+	box-shadow: var(--shadow-card);
 }
 
 .question-jump-item {
@@ -232,19 +251,18 @@
 	gap: 0.6rem;
 	width: 100%;
 	padding: 0.55rem 0.75rem;
-	border: 1px solid var(--border);
-	border-radius: var(--radius-control);
-	background: var(--surface-raised);
+	border: 0;
+	border-radius: inherit;
+	background: transparent;
 	color: inherit;
 	font: inherit;
 	text-align: left;
-	cursor: pointer;
-	transition: border-color 160ms ease, transform 160ms ease;
+	cursor: grab;
+	transition: color 160ms ease;
 }
 
-.question-jump-item:hover {
+.question-jump-card:hover {
 	border-color: var(--primary);
-	transform: translateX(2px);
 }
 
 .question-jump-number {
@@ -256,6 +274,27 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+@media (max-width: 1000px) {
+	.question-jump-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 620px) {
+	.question-jump-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.question-jump-card,
+	.question-jump-card.is-dragging,
+	.reorder-item.is-dragging {
+		transition-duration: 1ms;
+		transform: none;
+	}
 }
 
 .editor-metric input:focus {
@@ -368,14 +407,18 @@
 	border: 1px solid var(--border);
 	border-radius: var(--radius-control);
 	background: var(--surface-raised);
+	transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
 
 .reorder-item.drag-over {
 	border-color: var(--primary);
+	box-shadow: inset 3px 0 0 var(--primary);
 }
 
 .reorder-item.is-dragging {
-	opacity: 0.5;
+	opacity: 0.55;
+	transform: scale(1.02);
+	box-shadow: var(--shadow-card);
 }
 
 .reorder-row {
@@ -433,4 +476,78 @@
 .reorder-preview li.is-correct {
 	color: var(--primary);
 	font-weight: 700;
+}
+
+/* --- Editor messages, invalid fields, and narrow-screen control bar ---- */
+
+/* Messages sit directly above the view's own control bar. The bar is pushed to the bottom of
+   the shell, so a message appearing only consumes the free space below the content instead of
+   shifting anything above it. */
+.editor-message {
+	margin: 0 0 0.75rem;
+}
+
+/* The green channel is reserved for confirmations; neutral status text (loading) stays plain. */
+.editor-message[data-success="true"] {
+	border-color: color-mix(in srgb, var(--green) 28%, var(--border));
+	color: var(--green);
+	background: color-mix(in srgb, var(--green) 12%, var(--surface));
+}
+
+/* The first offending control on a failed save is called out until it is touched again. */
+.field-invalid,
+.editor-option.field-invalid,
+.editor-question-text.field-invalid {
+	border-color: var(--danger) !important;
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 25%, transparent);
+}
+
+.password-form {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+}
+
+/* The question editor keeps its actions on a single row at phone widths: the shorter label of
+   each button pair is real text, so what is read out always matches what is shown. */
+.editor-question-bar .label-narrow {
+	display: none;
+}
+
+@media (max-width: 700px) {
+	/* The overlay scrollbar (theme.css) is fixed against the viewport edge, so the editor shell
+	   keeps a wider gutter than the presenter stage to stop it sitting on top of the content. */
+	.editor-shell {
+		width: min(100% - 3rem, 1320px);
+	}
+
+	.editor-question-bar {
+		flex-wrap: nowrap;
+		gap: 0.4rem;
+	}
+
+	.editor-question-bar .ghost-button,
+	.editor-question-bar .primary-button {
+		min-width: 0;
+		flex: 0 1 auto;
+		padding: 0.5rem 0.55rem;
+		font-size: 0.78rem;
+		white-space: nowrap;
+	}
+
+	.editor-question-bar .label-wide {
+		display: none;
+	}
+
+	.editor-question-bar .label-narrow {
+		display: inline;
+	}
+}
+
+/* presenter.css stretches control-bar primaries to full width below 900px for the projected
+   presenter stage. The editor's question bar manages its own fit, so it opts out. */
+@media (max-width: 900px) {
+	.editor-question-bar .primary-button {
+		min-width: 0;
+	}
 }
