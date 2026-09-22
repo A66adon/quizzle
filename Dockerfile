@@ -7,10 +7,11 @@ RUN gradle --no-daemon bootJar
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /build/build/libs/quizzle-0.0.1-SNAPSHOT.jar app.jar
-RUN mkdir -p /data/quizzes /data/branding /data/db
+COPY ./branding /branding
+RUN mkdir -p /data/quizzes /data/db
 ENV SERVER_PORT=8080 \
     QUIZ_FOLDER=/data/quizzes \
-    BRANDING_FOLDER=/data/branding \
+    BRANDING_FOLDER=/branding \
     QUIZ_DATABASE_PATH=/data/db/quiz-snapshots.db \
     ACCOUNTS_FILE=/data/db/accounts.yml
 EXPOSE 8080
