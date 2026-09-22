@@ -260,11 +260,25 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 		if (lifecycleCommandPending || !autoAdvanceEnabled
 				|| !["RESULTS", "LEADERBOARD"].includes(session?.state)) return;
 		const expectedState = session.state;
+		// The configured delay is meant as reading time, so it only starts once the reveal or the
+		// rank shuffle has finished playing instead of running underneath it.
 		autoAdvanceTimer = window.setTimeout(() => {
 			autoAdvanceTimer = null;
 			if (!autoAdvanceEnabled || session?.state !== expectedState) return;
 			sendCommand("NEXT");
-		}, autoAdvanceDelayMs);
+		}, animationSettleMs() + autoAdvanceDelayMs);
+	}
+
+	// How long the animation belonging to the current state still needs before the screen is calm.
+	function animationSettleMs() {
+		if (session?.state === "RESULTS") {
+			const optionCount = session.results?.options?.length || 0;
+			return COLUMN_STAGGER_MS * Math.max(0, optionCount - 1) + COLUMN_GROW_MS + 250;
+		}
+		if (session?.state === "LEADERBOARD") {
+			return LEADERBOARD_FLIP_DELAY_MS + LEADERBOARD_FLIP_DURATION_MS;
+		}
+		return 0;
 	}
 
 	function clearAutoAdvance() {
@@ -795,11 +809,15 @@ import { launchConfetti, stopConfetti } from "./confetti.js";
 			credentials: "same-origin",
 			cache: "no-store",
 			...options,
-			headers: { Accept: "application/json", ...(options.headers || {}) }
+			headers: {
+				Accept: "application/json",
+				"X-XSRF-TOKEN": window.getCsrfToken ? (window.getCsrfToken() || "") : "",
+				...(options.headers || {})
+			}
 		});
 		if (response.status === 401) {
-			window.location.replace("/admin/login");
-			throw new Error("Admin session expired");
+			window.location.replace("/login");
+			throw new Error("Session expired");
 		}
 		if (!response.ok) {
 			const error = new Error(`Request failed with status ${response.status}`);

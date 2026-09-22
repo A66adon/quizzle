@@ -1,7 +1,7 @@
 /* The color palette lives in /assets/branding.css, which is generated from the branding folder. */
 :root {
 	color-scheme: light;
-	font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-family: Archivo, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	color: var(--text);
 	background: var(--background);
 	font-synthesis: none;
@@ -500,7 +500,235 @@ h2 {
 }
 
 .quiz-card > .quiz-card-topline {
-	justify-content: flex-end;
+	justify-content: flex-start;
+	gap: 0.75rem;
+}
+
+.quiz-card {
+	cursor: pointer;
+}
+
+.quiz-edit-button {
+	margin-left: auto;
+	border: 1px solid var(--control-border);
+}
+
+.quiz-edit-button:hover {
+	border-color: color-mix(in srgb, var(--primary) 55%, var(--control-border));
+}
+
+.add-quiz-card {
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	border-style: dashed;
+	border-top-style: solid;
+	text-align: center;
+}
+
+.add-quiz-plus {
+	color: var(--primary);
+	font-size: 2.5rem;
+	font-weight: 800;
+	line-height: 1;
+}
+
+.settings-gear {
+	font-size: 1.05rem;
+}
+
+.settings-wrap {
+	position: relative;
+}
+
+.settings-panel {
+	position: absolute;
+	top: calc(100% + 0.6rem);
+	right: 0;
+	z-index: 30;
+	width: min(19rem, calc(100vw - 2rem));
+	overflow: hidden;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-panel);
+	background: var(--surface-raised);
+	box-shadow: var(--shadow-card), 0 18px 40px rgba(13, 23, 42, 0.18);
+	transform: translateY(-0.4rem) scale(0.98);
+	transform-origin: top right;
+	opacity: 0;
+	transition: transform 200ms ease, opacity 200ms ease;
+}
+
+.settings-panel.is-open {
+	animation: settings-drop 260ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes settings-drop {
+	from {
+		opacity: 0;
+		transform: translateY(-0.6rem) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.settings-panel-heading {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+}
+
+.settings-panel-gear {
+	display: inline-grid;
+	place-items: center;
+	width: 1.6rem;
+	height: 1.6rem;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-control);
+	background: var(--surface);
+	font-size: 0.9rem;
+}
+
+.settings-panel-inner {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	padding: 0.9rem;
+}
+
+.settings-row {
+	padding: 0.7rem 0.8rem;
+	border: 1px solid var(--border-color, rgba(127, 127, 127, 0.3));
+	border-radius: var(--radius-card);
+	background: var(--surface-color, transparent);
+}
+
+.settings-row h3 {
+	margin: 0 0 0.5rem;
+}
+
+.settings-preset-row {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0.6rem;
+}
+
+.preset-stepper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.6rem;
+}
+
+.preset-stepper strong {
+	min-width: 2.5rem;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+}
+
+/* One short pulse marks the value actually changing, so the control reads as having
+   responded rather than as text that silently swapped. */
+@keyframes value-pulse {
+	from {
+		transform: scale(1);
+	}
+
+	40% {
+		transform: scale(1.16);
+	}
+
+	to {
+		transform: scale(1);
+	}
+}
+
+@keyframes field-pulse {
+	from {
+		border-color: var(--primary);
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 35%, transparent);
+	}
+
+	40% {
+		border-color: var(--primary);
+		box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 22%, transparent);
+	}
+
+	to {
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent);
+	}
+}
+
+.preset-stepper strong.value-changed {
+	display: inline-block;
+	color: var(--primary);
+	animation: value-pulse 260ms var(--ease-sweep, ease-out) both;
+}
+
+input.value-changed {
+	animation: field-pulse 280ms var(--ease-sweep, ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.preset-stepper strong.value-changed,
+	input.value-changed {
+		animation-duration: 1ms;
+	}
+}
+
+.settings-password {
+	display: flex;
+	flex-direction: column;
+	gap: 0.45rem;
+}
+
+.settings-password input {
+	width: 100%;
+	min-height: 2.6rem;
+	padding: 0.55rem 0.75rem;
+	border: 1px solid var(--control-border, var(--border));
+	border-radius: var(--radius-control);
+	color: var(--text);
+	background: var(--surface);
+	transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.settings-password input:hover,
+.settings-password input:focus {
+	border-color: var(--primary);
+}
+
+.settings-action {
+	width: 100%;
+	min-height: 2.75rem;
+	margin-top: 0.35rem;
+	padding: 0.6rem 1rem;
+	border: 0;
+	border-radius: var(--radius-control);
+	font-weight: 800;
+	cursor: pointer;
+	transition: transform 160ms ease, filter 160ms ease;
+}
+
+.settings-action:hover:not(:disabled) {
+	transform: translateY(-1px);
+	filter: brightness(1.06);
+}
+
+.settings-action:disabled {
+	cursor: wait;
+	opacity: 0.62;
+}
+
+#save-password.settings-action {
+	color: var(--on-primary, #fff);
+	background: var(--primary);
+}
+
+.settings-delete-action {
+	color: var(--on-danger, #fff);
+	background: var(--danger);
 }
 
 .ready-chip {
@@ -650,6 +878,23 @@ h2 {
 	background: var(--danger-soft);
 	font-size: 0.9rem;
 	line-height: 1.45;
+}
+
+.form-success {
+	margin: 1.5rem 0;
+	padding: 0.85rem 1rem;
+	border: 1px solid color-mix(in srgb, var(--green) 28%, var(--border));
+	border-radius: var(--radius-control);
+	color: var(--green);
+	background: color-mix(in srgb, var(--green) 12%, var(--surface));
+	font-size: 0.9rem;
+	line-height: 1.45;
+}
+
+.login-switch {
+	margin-top: 1.5rem;
+	text-align: center;
+	font-size: 0.9rem;
 }
 
 .login-form {
@@ -816,6 +1061,20 @@ h2 {
 }
 
 @media (max-width: 620px) {
+	/* The panel is anchored to the gear, which can sit close enough to the viewport edge that an
+	   absolutely positioned panel spills off-screen. Below phone width it is pinned to the
+	   viewport instead, with admin.js supplying the gear's bottom edge as the top offset. */
+	.settings-panel {
+		position: fixed;
+		top: var(--settings-panel-top, 4.9rem);
+		right: 1rem;
+		left: auto;
+		width: min(19rem, calc(100vw - 2rem));
+		max-width: calc(100vw - 2rem);
+		max-height: calc(100dvh - var(--settings-panel-top, 4.9rem) - 1rem);
+		overflow-y: auto;
+	}
+
 	.session-grid,
 	.quiz-grid {
 		grid-template-columns: minmax(0, 1fr);

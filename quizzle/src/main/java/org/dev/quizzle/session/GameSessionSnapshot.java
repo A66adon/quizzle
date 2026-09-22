@@ -9,6 +9,7 @@ import org.dev.quizzle.quiz.model.QuizDefinition;
 
 public record GameSessionSnapshot(
 		String codehash,
+		String ownerAccountId,
 		String quizFileName,
 		QuizDefinition quiz,
 		GameState state,
@@ -23,6 +24,7 @@ public record GameSessionSnapshot(
 
 	public GameSessionSnapshot {
 		Objects.requireNonNull(codehash, "codehash is required");
+		Objects.requireNonNull(ownerAccountId, "ownerAccountId is required");
 		Objects.requireNonNull(quizFileName, "quizFileName is required");
 		Objects.requireNonNull(quiz, "quiz is required");
 		Objects.requireNonNull(state, "state is required");
@@ -49,11 +51,13 @@ public record GameSessionSnapshot(
 
 	public static GameSessionSnapshot create(
 			String codehash,
+			String ownerAccountId,
 			String quizFileName,
 			QuizDefinition quiz,
 			long nowEpochMs) {
 		return new GameSessionSnapshot(
 				codehash,
+				ownerAccountId,
 				quizFileName,
 				quiz,
 				GameState.LOBBY,
@@ -70,6 +74,7 @@ public record GameSessionSnapshot(
 	public GameSessionSnapshot withTransition(GameStateMachine.Transition transition, long nowEpochMs) {
 		return new GameSessionSnapshot(
 				codehash,
+				ownerAccountId,
 				quizFileName,
 				quiz,
 				transition.state(),
@@ -86,6 +91,7 @@ public record GameSessionSnapshot(
 	public GameSessionSnapshot withPlayers(List<PlayerSnapshot> updatedPlayers, long nowEpochMs) {
 		return new GameSessionSnapshot(
 				codehash,
+				ownerAccountId,
 				quizFileName,
 				quiz,
 				state,
@@ -103,6 +109,7 @@ public record GameSessionSnapshot(
 	public GameSessionSnapshot withLeaderboardEnabled(boolean enabled, long nowEpochMs) {
 		return new GameSessionSnapshot(
 				codehash,
+				ownerAccountId,
 				quizFileName,
 				quiz,
 				state,
@@ -124,6 +131,7 @@ public record GameSessionSnapshot(
 		updatedAnswers.add(acceptedAnswer);
 		return new GameSessionSnapshot(
 				codehash,
+				ownerAccountId,
 				quizFileName,
 				quiz,
 				state,
@@ -149,6 +157,7 @@ public record GameSessionSnapshot(
 		}
 		return new GameSessionSnapshot(
 				codehash,
+				ownerAccountId,
 				quizFileName,
 				quiz,
 				state,

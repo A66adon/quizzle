@@ -167,3 +167,5 @@ out/
 .gortex
 /docs/adr/
 /.impeccable/
+/docs/
+!/docs/DEPLOYMENT-TRUENAS.md

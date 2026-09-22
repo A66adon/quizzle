@@ -29,9 +29,8 @@ public final class QuizDefinitionValidator {
 		validateRequiredText(quiz.description(), "description", limits.maxDescriptionLength(), errors);
 		validateRequiredText(quiz.author(), "author", limits.maxAuthorLength(), errors);
 
-		if (quiz.questions().isEmpty()) {
-			addError(errors, "questions must contain at least one question");
-		}
+		// A quiz without questions is a valid work in progress: it saves and lists, and the admin
+		// page refuses to start a game for it rather than the editor refusing to store it.
 		if (quiz.questions().size() > limits.maxQuestions()) {
 			addError(errors, "questions contains " + quiz.questions().size()
 					+ " entries; maximum is " + limits.maxQuestions());

@@ -1,4 +1,4 @@
-package org.dev.quizzle.admin;
+package org.dev.quizzle.account;
 
 import java.io.IOException;
 
@@ -9,7 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Component
-public final class AdminSessionInterceptor implements HandlerInterceptor {
+public final class AccountSessionInterceptor implements HandlerInterceptor {
 
 	@Override
 	public boolean preHandle(
@@ -17,7 +17,7 @@ public final class AdminSessionInterceptor implements HandlerInterceptor {
 			HttpServletResponse response,
 			Object handler) throws IOException {
 		response.setHeader("Cache-Control", "no-store");
-		if (AdminSession.isAuthenticated(request.getSession(false))) {
+		if (AccountSession.isAuthenticated(request.getSession(false))) {
 			return true;
 		}
 
@@ -25,9 +25,8 @@ public final class AdminSessionInterceptor implements HandlerInterceptor {
 		if (applicationPath.startsWith("/admin/api/")) {
 			response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
 		} else {
-			response.sendRedirect(request.getContextPath() + "/admin/login");
+			response.sendRedirect(request.getContextPath() + "/login");
 		}
 		return false;
 	}
 }
-

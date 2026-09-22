@@ -24,7 +24,7 @@ class DotEnvEnvironmentPostProcessorTests {
 	void loadsDotEnvValuesWhileKeepingSystemPropertiesHigherPriority() throws IOException {
 		Files.writeString(temporaryDirectory.resolve(".env"), """
 				# Local configuration
-				ADMIN_PASSWORD="quoted local secret"
+				ALLOWED_EMAIL_DOMAIN="quoted local secret"
 				export QUIZ_FOLDER='./custom quizzes'
 				DOT_ENV_PRECEDENCE=from-file
 				""", StandardCharsets.UTF_8);
@@ -38,7 +38,7 @@ class DotEnvEnvironmentPostProcessorTests {
 
 			new DotEnvEnvironmentPostProcessor().postProcessEnvironment(environment, null);
 
-			assertEquals("quoted local secret", environment.getProperty("ADMIN_PASSWORD"));
+			assertEquals("quoted local secret", environment.getProperty("ALLOWED_EMAIL_DOMAIN"));
 			assertEquals("./custom quizzes", environment.getProperty("QUIZ_FOLDER"));
 			assertEquals("from-system", environment.getProperty("DOT_ENV_PRECEDENCE"));
 		} finally {
@@ -53,7 +53,7 @@ class DotEnvEnvironmentPostProcessorTests {
 		String privateValue = "must-never-appear-in-an-error";
 		Files.writeString(
 				temporaryDirectory.resolve(".env"),
-				"ADMIN_PASSWORD=\"" + privateValue,
+				"ALLOWED_EMAIL_DOMAIN=\"" + privateValue,
 				StandardCharsets.UTF_8);
 
 		String originalUserDirectory = System.getProperty("user.dir");

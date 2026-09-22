@@ -1,0 +1,171 @@
+title: "Lustiges Faktenquiz"
+description: "Ein unterhaltsames Quiz mit kuriosen Fakten und Schätzfragen."
+author: "Copilot"
+
+questions:
+  - id: "kangaroo"
+    text: "Welches Tier kann nicht rückwärts laufen?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "a"
+        text: "Känguru"
+        correct: true
+      - id: "b"
+        text: "Zebra"
+        correct: false
+      - id: "c"
+        text: "Nilpferd"
+        correct: false
+
+  - id: "octopus-hearts"
+    text: "Wie viele Herzen hat ein Oktopus?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "a"
+        text: "1"
+        correct: false
+      - id: "b"
+        text: "2"
+        correct: false
+      - id: "c"
+        text: "3"
+        correct: true
+
+  - id: "queue-stander"
+    text: "Welcher dieser Berufe existiert tatsächlich?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "a"
+        text: "Professioneller Warteschlangen-Steher"
+        correct: true
+      - id: "b"
+        text: "Sockenarchitekt"
+        correct: false
+      - id: "c"
+        text: "Regenbogenpolierer"
+        correct: false
+
+  - id: "banana"
+    text: "Wie lange kann eine Bananenschale ungefähr zum Verrotten benötigen?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "a"
+        text: "2 Tage"
+        correct: false
+      - id: "b"
+        text: "Einige Monate"
+        correct: true
+      - id: "c"
+        text: "10 Jahre"
+        correct: false
+
+  - id: "coconut"
+    text: "Was ist statistisch wahrscheinlicher?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "a"
+        text: "Von einem Hai gebissen zu werden"
+        correct: false
+      - id: "b"
+        text: "Von einer fallenden Kokosnuss getroffen zu werden"
+        correct: true
+
+  - id: "horse"
+    text: "Welches Tier kann im Stehen schlafen?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "a"
+        text: "Pferd"
+        correct: true
+      - id: "b"
+        text: "Pinguin"
+        correct: false
+      - id: "c"
+        text: "Eichhörnchen"
+        correct: false
+
+  - id: "flag"
+    text: "Welches Land hat keine rechteckige Nationalflagge?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "a"
+        text: "Japan"
+        correct: false
+      - id: "b"
+        text: "Nepal"
+        correct: true
+      - id: "c"
+        text: "Island"
+        correct: false
+
+  - id: "bones"
+    text: "Wie viele Knochen hat ein erwachsener Mensch ungefähr?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "a"
+        text: "106"
+        correct: false
+      - id: "b"
+        text: "206"
+        correct: true
+      - id: "c"
+        text: "306"
+        correct: false
+
+  - id: "invention"
+    text: "Was wurde zuerst erfunden?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "a"
+        text: "Fahrrad"
+        correct: false
+      - id: "b"
+        text: "Konservendose"
+        correct: true
+      - id: "c"
+        text: "Streichholz"
+        correct: false
+
+  - id: "wombat"
+    text: "Welche dieser Aussagen ist wahr?"
+    points: 1000
+    timeSeconds: 20
+    multiple: false
+    shuffle_answers: true
+    answers:
+      - id: "a"
+        text: "Goldfische haben nur 3 Sekunden Gedächtnis"
+        correct: false
+      - id: "b"
+        text: "Menschen nutzen nur 10 % ihres Gehirns"
+        correct: false
+      - id: "c"
+        text: "Wombats produzieren würfelförmigen Kot"
+        correct: true

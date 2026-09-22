@@ -23,6 +23,7 @@ dependencies {
 	implementation 'com.google.zxing:core:3.5.4'
 	implementation 'org.xerial:sqlite-jdbc:3.53.2.1'
 	implementation 'org.yaml:snakeyaml'
+	implementation 'org.springframework.security:spring-security-crypto'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
