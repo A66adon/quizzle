@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en" data-theme-scope="presenter">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title data-page-title="Quiz editor">Quiz editor</title>
+	<script>
+		(function () {
+			var s = document.documentElement.dataset.themeScope || "app";
+			var v = localStorage.getItem("quizzle-theme-" + s);
+			var t = (v === "dark" || v === "light")
+				? v
+				: (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+			document.documentElement.dataset.theme = t;
+		})();
+	</script>
+	<link rel="icon" href="/assets/branding-mark">
+	<link rel="stylesheet" href="/assets/branding.css">
+	<link rel="stylesheet" href="/assets/theme.css">
+	<link rel="stylesheet" href="/assets/admin.css">
+	<link rel="stylesheet" href="/assets/presenter.css">
+	<link rel="stylesheet" href="/assets/editor.css">
+	<script type="module" src="/assets/branding.js"></script>
+	<script type="module" src="/assets/theme.js"></script>
+	<script src="/assets/csrf.js"></script>
+	<script src="/assets/toast.js" defer></script>
+	<script src="/assets/editor.js" defer></script>
+</head>
+<body class="presenter-body">
+	<header class="site-header">
+		<a class="brand" href="/admin" aria-label="Back to quiz sessions">
+			<span class="brand-mark" data-brand-mark aria-hidden="true"></span>
+			<span data-brand-name></span>
+		</a>
+		<div class="header-actions">
+			<button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
+				<span class="theme-toggle-icon" aria-hidden="true"></span>
+			</button>
+			<form action="/logout" method="post">
+				<button class="text-button header-sign-out" type="submit">Sign out</button>
+			</form>
+		</div>
+	</header>
+
+	<main class="presenter-shell editor-shell">
+		<section id="details-view" class="view" aria-labelledby="details-heading" hidden>
+			<div class="lobby-layout">
+				<article class="join-card editor-qr-card">
+					<p class="eyebrow">Present</p>
+					<div class="editor-qr-placeholder">
+						<img class="editor-qr-sample" src="/assets/sample-qr.svg" width="208" height="208"
+							alt="Sample QR code (preview only)">
+					</div>
+					<p class="muted small">Sample code. Play this quiz from the admin page and the real join QR code will appear here.</p>
+				</article>
+
+				<div class="lobby-main">
+					<p class="eyebrow">Quiz details</p>
+					<h1 id="details-heading" class="visually-hidden">Quiz details</h1>
+					<label class="visually-hidden" for="quiz-title">Title</label>
+					<textarea id="quiz-title" class="editor-title-input" maxlength="160" rows="1" required
+						placeholder="Name your quiz…"></textarea>
+					<label class="visually-hidden" for="quiz-description">Description</label>
+					<textarea id="quiz-description" class="editor-description-input" maxlength="2000" rows="1" required
+						placeholder="What is this quiz about?"></textarea>
+					<p class="muted small">Author: <span id="quiz-author-email">You</span></p>
+					<div class="lobby-metrics">
+						<button id="details-question-count-button" class="summary-pill question-count-button" type="button"
+							aria-controls="question-jump-list">
+							<strong id="details-question-count">0</strong><span>questions</span>
+						</button>
+					</div>
+					<ol id="question-jump-list" class="question-jump-grid"></ol>
+				</div>
+			</div>
+
+			<p id="details-status" class="status-card editor-message" role="status" hidden></p>
+			<p id="details-error" class="form-error editor-message" role="alert" hidden></p>
+
+			<div class="control-bar">
+				<a class="ghost-button" href="/admin">Back to sessions</a>
+				<button id="delete-quiz" class="ghost-button abort-button" type="button" hidden>Delete quiz</button>
+				<button id="save-details" class="ghost-button" type="button">Save</button>
+				<button id="details-continue" class="primary-button push-right" type="button">Edit questions</button>
+			</div>
+		</section>
+
+		<section id="question-view" class="view" aria-labelledby="question-text" hidden>
+			<div class="question-topline">
+				<span id="question-progress" class="eyebrow"></span>
+				<div class="live-metrics">
+					<div class="summary-pill editor-metric">
+							<input id="question-points" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" aria-label="Points">
+						<span>points</span>
+					</div>
+					<div class="summary-pill editor-metric">
+							<input id="question-time" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" aria-label="Time limit in seconds">
+						<span>seconds</span>
+					</div>
+				</div>
+			</div>
+			<textarea id="question-text" class="stage-title editor-question-text" maxlength="500" rows="2"
+				placeholder="Type the question…" aria-label="Question text"></textarea>
+			<p class="muted stage-subtitle">Click an answer to mark it as correct. Several answers may be correct.</p>
+			<div id="question-options" class="option-grid"></div>
+			<p id="question-status" class="status-card editor-message" role="status" hidden></p>
+			<p id="question-error" class="form-error editor-message" role="alert" hidden></p>
+			<div class="control-bar editor-question-bar">
+				<button id="back-to-details" class="ghost-button" type="button">
+					<span class="label-wide">Quiz details</span><span class="label-narrow">Details</span>
+				</button>
+				<button id="reorder-button" class="ghost-button" type="button">Reorder</button>
+				<button id="remove-question" class="ghost-button abort-button" type="button">
+					<span class="label-wide">Remove question</span><span class="label-narrow">Remove</span>
+				</button>
+				<button id="save-quiz" class="ghost-button" type="button">Save</button>
+				<button id="prev-question" class="primary-button push-right" type="button">
+					<span class="label-wide">← Previous</span><span class="label-narrow">‹ Prev</span>
+				</button>
+				<button id="next-question" class="primary-button" type="button">
+					<span class="label-wide">Next question</span><span class="label-narrow">Next</span>
+				</button>
+			</div>
+		</section>
+	</main>
+
+	<dialog id="reorder-dialog" class="confirm-dialog reorder-dialog" aria-labelledby="reorder-title">
+		<form method="dialog">
+			<p class="eyebrow">Reorder questions</p>
+			<h2 id="reorder-title">Drag to change the order</h2>
+			<p class="muted small">Click a question to preview it. The new order is saved automatically.</p>
+			<ol id="reorder-list" class="reorder-list"></ol>
+			<div class="dialog-actions">
+				<button class="ghost-button" type="submit" value="done">Done</button>
+			</div>
+		</form>
+	</dialog>
+
+	<dialog id="delete-quiz-dialog" class="confirm-dialog delete-session-dialog" aria-labelledby="delete-quiz-title">
+		<form method="dialog">
+			<p class="eyebrow">Delete quiz</p>
+			<h2 id="delete-quiz-title">Delete this quiz?</h2>
+			<p class="delete-session-copy">
+				<strong id="delete-quiz-name"></strong>
+				<span>The quiz file is removed for good and this cannot be undone.</span>
+			</p>
+			<p id="delete-quiz-error" class="form-error" role="alert" hidden></p>
+			<div class="delete-dialog-actions">
+				<button id="cancel-delete-quiz" class="text-button" type="button" autofocus>Keep quiz</button>
+				<button id="confirm-delete-quiz" class="dialog-delete-button" type="button">Delete quiz</button>
+			</div>
+		</form>
+	</dialog>
+
+	<dialog id="leave-dialog" class="confirm-dialog delete-session-dialog" aria-labelledby="leave-title">
+		<form method="dialog">
+			<p class="eyebrow">Unsaved changes</p>
+			<h2 id="leave-title">Leave without saving?</h2>
+			<p class="delete-session-copy">
+				<span>This quiz has changes that were not saved yet. They are lost if you leave now.</span>
+			</p>
+			<div class="delete-dialog-actions">
+				<button id="stay-here" class="text-button" type="button" autofocus>Stay</button>
+				<button id="leave-without-saving" class="dialog-delete-button" type="button">Leave without saving</button>
+			</div>
+		</form>
+	</dialog>
+
+	<template id="editor-answer-template">
+		<div class="option-tile editor-option" role="button" tabindex="0" aria-pressed="false">
+			<span class="option-marker" aria-hidden="true"></span>
+			<input class="editor-answer-input" type="text" maxlength="300" placeholder="Answer text">
+			<button class="editor-remove-answer" type="button" aria-label="Remove answer">✕</button>
+		</div>
+	</template>
+
+	<template id="editor-phantom-template">
+		<div class="option-tile editor-option editor-phantom" role="button" tabindex="0">
+			<span class="option-marker" aria-hidden="true"></span>
+			<span class="editor-phantom-label">+ Add answer</span>
+			<span aria-hidden="true"></span>
+		</div>
+	</template>
+</body>
+</html>

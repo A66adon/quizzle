@@ -16,12 +16,14 @@
 		})();
 	</script>
 	<link rel="icon" href="/assets/branding-mark">
-	<link rel="preload" href="/assets/vendor/inter/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 	<link rel="stylesheet" href="/assets/branding.css">
 	<link rel="stylesheet" href="/assets/theme.css">
 	<link rel="stylesheet" href="/assets/admin.css">
+	<link rel="stylesheet" href="/assets/editor.css">
 	<script type="module" src="/assets/branding.js"></script>
 	<script type="module" src="/assets/theme.js"></script>
+	<script src="/assets/csrf.js"></script>
+	<script src="/assets/toast.js" defer></script>
 	<script src="/assets/admin.js" defer></script>
 </head>
 <body>
@@ -31,10 +33,55 @@
 			<span data-brand-name></span>
 		</a>
 		<div class="header-actions">
+			<div class="settings-wrap">
+				<button type="button" id="settings-gear" class="theme-toggle settings-gear" aria-expanded="false" aria-controls="settings-panel" aria-label="Open settings">
+					<span aria-hidden="true">⚙</span>
+				</button>
+				<section id="settings-panel" class="settings-panel" aria-labelledby="settings-panel-title" hidden>
+					<div class="settings-panel-inner">
+						<h2 id="settings-panel-title" class="eyebrow settings-panel-heading">
+							<span class="settings-panel-gear" aria-hidden="true">⚙</span>Settings
+						</h2>
+						<p class="form-error" id="settings-error" role="alert" hidden></p>
+
+						<label class="checkbox-label settings-row">
+							<input type="checkbox" id="allow-late-join">
+							Allow late joiners
+						</label>
+
+						<div class="settings-row settings-preset-row">
+							<span id="auto-advance-label">Auto advance delay</span>
+							<div class="preset-stepper" role="group" aria-labelledby="auto-advance-label">
+								<button type="button" id="auto-advance-down" class="text-button" aria-label="Shorter auto advance delay">◀</button>
+								<strong id="auto-advance-value" aria-live="polite">3s</strong>
+								<button type="button" id="auto-advance-up" class="text-button" aria-label="Longer auto advance delay">▶</button>
+							</div>
+						</div>
+
+						<form class="settings-row settings-password" id="password-form">
+							<h3>Change password</h3>
+							<p class="form-error" id="password-error" role="alert" hidden></p>
+							<label class="visually-hidden" for="password-username">Username</label>
+							<input class="visually-hidden" type="text" id="password-username" name="username"
+								autocomplete="username" tabindex="-1" readonly>
+							<label for="current-password">Current password</label>
+							<input type="password" id="current-password" autocomplete="current-password">
+							<label for="new-password">New password</label>
+							<input type="password" id="new-password" autocomplete="new-password" minlength="8">
+							<button type="submit" id="save-password" class="primary-button settings-action">Update password</button>
+						</form>
+
+						<div class="settings-row">
+							<p class="form-error" id="delete-error" role="alert" hidden></p>
+							<button type="button" id="delete-account" class="settings-action settings-delete-action">Delete account</button>
+						</div>
+					</div>
+				</section>
+			</div>
 			<button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
 				<span class="theme-toggle-icon" aria-hidden="true"></span>
 			</button>
-			<form action="/admin/logout" method="post">
+			<form action="/logout" method="post">
 				<button class="text-button header-sign-out" type="submit">Sign out</button>
 			</form>
 		</div>
@@ -71,15 +118,14 @@
 					<h2 id="quiz-heading">Quizzes</h2>
 					<p id="loaded-at" class="catalog-loaded-at small muted"></p>
 				</div>
-				<div class="summary-pill" aria-live="polite">
-					<strong id="quiz-count">—</strong>
-					<span>ready</span>
+				<div class="quiz-heading-actions">
+					<div class="summary-pill" aria-live="polite">
+						<strong id="quiz-count">—</strong>
+						<span>ready</span>
+					</div>
 				</div>
 			</div>
 			<div id="quiz-grid" class="quiz-grid"></div>
-			<p id="quiz-empty" class="empty-card" hidden>
-				No quizzes were found. Add a <code>.yaml</code> or <code>.yml</code> file and restart the server.
-			</p>
 		</section>
 
 		<section id="issue-section" class="issue-section" aria-labelledby="issue-heading" hidden>
@@ -108,17 +154,40 @@
 		</form>
 	</dialog>
 
+	<dialog id="empty-quiz-dialog" class="confirm-dialog delete-session-dialog" aria-labelledby="empty-quiz-title">
+		<form method="dialog">
+			<p class="eyebrow">Nothing to play</p>
+			<h2 id="empty-quiz-title">This quiz has no questions</h2>
+			<p class="delete-session-copy">
+				<strong id="empty-quiz-name"></strong>
+				<span>This quiz has no questions yet, so it can't be played. Add at least one question first.</span>
+			</p>
+			<div class="delete-dialog-actions">
+				<button id="cancel-empty-quiz" class="text-button" type="button" autofocus>Close</button>
+				<button id="edit-empty-quiz" class="primary-button" type="button">Add questions</button>
+			</div>
+		</form>
+	</dialog>
+
 	<template id="quiz-template">
-		<article class="quiz-card">
-			<button class="quiz-card-action" type="button"></button>
+		<article class="quiz-card" tabindex="0" role="link">
 			<div class="quiz-card-topline">
 				<span class="question-count"></span>
+				<button class="quiz-edit-button text-button" type="button">Edit</button>
 			</div>
 			<h3 class="quiz-title"></h3>
 			<p class="quiz-description"></p>
 			<div class="quiz-meta">
 				<span class="quiz-author"></span>
 			</div>
+		</article>
+	</template>
+
+	<template id="add-quiz-template">
+		<article class="quiz-card add-quiz-card" tabindex="0" role="link">
+			<span class="add-quiz-plus" aria-hidden="true">+</span>
+			<h3 class="quiz-title">Add quiz</h3>
+			<p class="quiz-description">Create a new quiz in the editor.</p>
 		</article>
 	</template>
 

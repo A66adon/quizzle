@@ -44,7 +44,7 @@ public final class ParticipantEntryController {
 		return sessionRegistry.find(codehash)
 				.map(snapshot -> ResponseEntity.ok()
 						.cacheControl(CacheControl.noStore())
-						.body(new StatusResponse(sessionRegistry.isJoinOpen(snapshot.state()))))
+						.body(new StatusResponse(sessionRegistry.isJoinOpen(snapshot))))
 				.orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
 	}
 

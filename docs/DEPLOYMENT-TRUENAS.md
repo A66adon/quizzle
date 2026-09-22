@@ -17,12 +17,15 @@ Create these directories (for example as datasets under an existing pool):
 
 ```
 /mnt/FastData/Apps/Quizzle/workspace    # git checkout and Gradle cache
-/mnt/FastData/Apps/Quizzle/quizzes      # your quiz YAML files
+/mnt/FastData/Apps/Quizzle/quizzes      # base folder; one subfolder per account id
 /mnt/FastData/Apps/Quizzle/branding     # optional branding.yaml
 /mnt/FastData/Apps/Quizzle/db           # SQLite session snapshots
 ```
 
-Copy at least one quiz YAML into `quizzes/`. The format is described in the
+Register an account through `/register` first to learn its account id (visible in
+`data/accounts.yml`, or via the browser once logged in), then either use the
+in-app **Editor** (`/editor`) to build a quiz visually, or copy at least one quiz
+YAML into `quizzes/<accountId>/` by hand. The format is described in the
 [README](../README.md#create-a-quiz); you can start from
 [`quizzes/safety-basics.yaml`](../quizzes/safety-basics.yaml).
 
@@ -48,8 +51,8 @@ services:
       - TZ=Europe/Berlin
       - GRADLE_USER_HOME=/workspace/.gradle
 
-      # Required: the admin login password.
-      - ADMIN_PASSWORD=REPLACE_WITH_A_LONG_PASSWORD
+      # Required: only this email domain may self-register (no shared password anymore).
+      - ALLOWED_EMAIL_DOMAIN=your-company.com
 
       # Must be the URL participants actually open; it goes into the join links and QR codes.
       - PUBLIC_BASE_URL=https://quiz.example.org
@@ -89,7 +92,7 @@ services:
         exec java -jar build/libs/quizzle-0.0.1-SNAPSHOT.jar
 ```
 
-Replace `ADMIN_PASSWORD` and `PUBLIC_BASE_URL` before starting, then install.
+Replace `ALLOWED_EMAIL_DOMAIN` and `PUBLIC_BASE_URL` before starting, then install.
 
 
 The first start downloads the Gradle dependencies and takes a few minutes. Because
@@ -133,7 +136,8 @@ otherwise the QR code sends participants to an address they cannot reach. Keep
 ## 4. Verify
 
 1. Open `https://quiz.example.org/admin/login` and sign in.
-2. The quiz catalog must list the files from `/data/quizzes`. Broken files appear as skipped with
+2. The quiz catalog must list the files from `/data/quizzes/<accountId>`. Broken files appear as
+   skipped with
    their validation error.
 3. Create a session, open the presenter view and scan the QR code with a phone.
 4. Restart the app in TrueNAS – the session must still be there afterwards, and the phone must
@@ -164,9 +168,9 @@ Everything worth keeping lives in the mounted datasets:
 
 | Symptom | Cause |
 | --- | --- |
-| App exits immediately, log says `ADMIN_PASSWORD must be set` | `ADMIN_PASSWORD` is empty in the YAML. |
+| App exits immediately, log says `ALLOWED_EMAIL_DOMAIN must be set` | `ALLOWED_EMAIL_DOMAIN` is empty in the YAML. |
 | App never starts, log ends in a `git clone` error | TrueNAS cannot reach `git.olli.info`, does not trust its certificate, or the repository needs a token. |
-| Catalog is empty | `QUIZ_FOLDER` does not point at the mounted dataset, or it contains no `.yaml` / `.yml` files. |
+| Catalog is empty | `QUIZ_FOLDER` does not point at the mounted dataset, or `QUIZ_FOLDER/<accountId>/` contains no `.yaml` / `.yml` files. |
 | QR code leads nowhere | `PUBLIC_BASE_URL` still points at `localhost` or an internal address. |
 | Participants show "Connection lost" in a loop | The reverse proxy does not forward WebSocket upgrades. |
 | Presenter view shows "Live (polling)" | The reverse proxy buffers or blocks `text/event-stream`; the view keeps working through polling, but fix the proxy for instant updates. |

@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import org.dev.quizzle.account.AccountService;
 import org.dev.quizzle.config.GameSessionProperties;
 import org.dev.quizzle.persistence.SqliteSnapshotRepository;
 import org.dev.quizzle.quiz.catalog.LoadedQuiz;
@@ -47,18 +48,21 @@ public final class GameSessionRegistry {
 	private final GameStateMachine stateMachine;
 	private final AnswerGradingService gradingService;
 	private final SqliteSnapshotRepository snapshotRepository;
+	private final AccountService accountService;
 
 	public GameSessionRegistry(
 			GameSessionProperties properties,
 			QuizCatalog quizCatalog,
 			GameStateMachine stateMachine,
-			SqliteSnapshotRepository snapshotRepository) {
+			SqliteSnapshotRepository snapshotRepository,
+			AccountService accountService) {
 		this.codehashLength = properties.codehashLength();
 		this.allowJoinAfterStart = properties.allowJoinAfterStart();
 		this.quizCatalog = quizCatalog;
 		this.stateMachine = stateMachine;
 		this.gradingService = new AnswerGradingService();
 		this.snapshotRepository = snapshotRepository;
+		this.accountService = accountService;
 	}
 
 	@PostConstruct
@@ -81,8 +85,8 @@ public final class GameSessionRegistry {
 		LOGGER.info("Session registry ready: {} restored", restoredCount);
 	}
 
-	public GameSessionSnapshot create(String quizFileName) {
-		LoadedQuiz loadedQuiz = quizCatalog.findByFileName(quizFileName)
+	public GameSessionSnapshot create(String ownerAccountId, String quizFileName) {
+		LoadedQuiz loadedQuiz = quizCatalog.findByFileName(ownerAccountId, quizFileName)
 				.orElseThrow(() -> new QuizNotFoundException(quizFileName));
 		QuizDefinition quiz = withShuffledAnswers(loadedQuiz.quiz());
 
@@ -90,7 +94,7 @@ public final class GameSessionRegistry {
 			String codehash = generateCodehash();
 			long nowEpochMs = System.currentTimeMillis();
 			GameSessionSnapshot snapshot = GameSessionSnapshot.create(
-					codehash, loadedQuiz.fileName(), quiz, nowEpochMs);
+					codehash, ownerAccountId, loadedQuiz.fileName(), quiz, nowEpochMs);
 			GameSessionAggregate aggregate = new GameSessionAggregate(snapshot);
 			if (sessions.putIfAbsent(codehash, aggregate) != null) {
 				continue;
@@ -254,7 +258,7 @@ public final class GameSessionRegistry {
 		UUID playerId = UUID.randomUUID();
 		UUID reconnectToken = UUID.randomUUID();
 		GameSessionSnapshot updated = aggregate.update(current -> {
-			if (!isJoinOpen(current.state())) {
+			if (!isJoinOpen(current)) {
 				throw new JoinNotAllowedException(current.state());
 			}
 			List<PlayerSnapshot> players = new ArrayList<>(current.players());
@@ -273,8 +277,18 @@ public final class GameSessionRegistry {
 		return new PlayerConnection(updated, findPlayerByToken(updated, reconnectToken));
 	}
 
-	public boolean isJoinOpen(GameState state) {
-		return state != GameState.CLOSED && (state == GameState.LOBBY || allowJoinAfterStart);
+	public boolean isJoinOpen(GameSessionSnapshot snapshot) {
+		GameState state = snapshot.state();
+		if (state == GameState.CLOSED) {
+			return false;
+		}
+		if (state == GameState.LOBBY) {
+			return true;
+		}
+		boolean allowLateJoin = accountService.findById(snapshot.ownerAccountId())
+				.map(account -> account.allowLateJoin())
+				.orElse(allowJoinAfterStart);
+		return allowLateJoin;
 	}
 
 	public PlayerConnection reconnectPlayer(String codehash, UUID reconnectToken) {
@@ -386,11 +400,33 @@ public final class GameSessionRegistry {
 		return aggregate == null ? Optional.empty() : Optional.of(aggregate.snapshot());
 	}
 
+	// Used by owner-only admin endpoints so one account can never look up another's session by codehash.
+	public Optional<GameSessionSnapshot> findOwned(String codehash, String ownerAccountId) {
+		return find(codehash).filter(snapshot -> snapshot.ownerAccountId().equals(ownerAccountId));
+	}
+
 	public List<GameSessionSnapshot> list() {
 		return sessions.values().stream()
 				.map(GameSessionAggregate::snapshot)
 				.sorted(Comparator.comparingLong(GameSessionSnapshot::createdAtEpochMs).reversed())
 				.toList();
+	}
+
+	public List<GameSessionSnapshot> list(String ownerAccountId) {
+		return list().stream()
+				.filter(snapshot -> snapshot.ownerAccountId().equals(ownerAccountId))
+				.toList();
+	}
+
+	/** Force-closes every live game owned by this account (used when the account is deleted). */
+	public void closeAllOwnedBy(String ownerAccountId) {
+		for (String codehash : list(ownerAccountId).stream().map(GameSessionSnapshot::codehash).toList()) {
+			try {
+				transition(codehash, GameCommand.ABORT);
+			} catch (SessionNotFoundException | InvalidGameTransitionException ignored) {
+				// Already closed or gone by the time we got here; nothing left to do.
+			}
+		}
 	}
 
 	@Scheduled(fixedDelayString = "${quiz.snapshot.interval-ms}")
