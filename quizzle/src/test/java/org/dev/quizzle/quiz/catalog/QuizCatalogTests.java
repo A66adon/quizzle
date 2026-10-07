@@ -1,82 +1,42 @@
 package org.dev.quizzle.quiz.catalog;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Map;
-import java.util.stream.Collectors;
-
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
+import java.sql.ResultSet;
+import java.util.List;
+import java.util.UUID;
+import org.dev.quizzle.admin.AdminCatalogResponse;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
-import org.dev.quizzle.config.QuizCatalogProperties;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import tools.jackson.databind.ObjectMapper;
 
 class QuizCatalogTests {
-
-	private static final String ACCOUNT_ID = "catalog-account";
-
-	@TempDir
-	Path temporaryDirectory;
-
 	@Test
-	void keepsWorkingQuizzesWhenOtherFilesAreBroken() throws IOException {
-		Path accountDirectory = Files.createDirectories(temporaryDirectory.resolve(ACCOUNT_ID));
-		Files.writeString(accountDirectory.resolve("working.YML"), QuizTestFixtures.validYaml(), StandardCharsets.UTF_8);
-		Files.writeString(
-				accountDirectory.resolve("invalid.yaml"),
-				QuizTestFixtures.validYaml().replace("correct: true", "correct: false"),
-				StandardCharsets.UTF_8);
-		Files.writeString(accountDirectory.resolve("malformed.yaml"), "title: [", StandardCharsets.UTF_8);
-		Files.writeString(accountDirectory.resolve("notes.txt"), "not a quiz", StandardCharsets.UTF_8);
-
-		QuizCatalog catalog = createCatalog(temporaryDirectory);
-		QuizCatalogSnapshot snapshot = assertDoesNotThrow(() -> catalog.snapshotFor(ACCOUNT_ID));
-		assertEquals(1, snapshot.quizzes().size());
-		assertEquals("working.YML", snapshot.quizzes().getFirst().fileName());
-		assertEquals(2, snapshot.issues().size());
-		Map<String, String> issuesByFile = snapshot.issues().stream()
-				.collect(Collectors.toMap(CatalogIssue::fileName, CatalogIssue::reason));
-		assertTrue(issuesByFile.get("invalid.yaml").contains("at least one correct answer"));
-		assertTrue(issuesByFile.get("malformed.yaml").startsWith("Malformed YAML"));
-	}
-
-	@Test
-	void createsAMissingQuizDirectory() {
-		Path missingDirectory = temporaryDirectory.resolve("new-quizzes");
-		QuizCatalog catalog = createCatalog(missingDirectory);
-
-		QuizCatalogSnapshot snapshot = assertDoesNotThrow(() -> catalog.snapshotFor(ACCOUNT_ID));
-
-		assertTrue(Files.isDirectory(missingDirectory.resolve(ACCOUNT_ID)));
-		assertTrue(snapshot.quizzes().isEmpty());
-		assertTrue(snapshot.issues().isEmpty());
-	}
-
-	@Test
-	void onlyLoadsQuizzesOwnedByTheRequestedAccount() throws IOException {
-		Path accountDirectory = Files.createDirectories(temporaryDirectory.resolve(ACCOUNT_ID));
-		Files.writeString(accountDirectory.resolve("owned.yaml"), QuizTestFixtures.validYaml());
-		Files.writeString(temporaryDirectory.resolve("shared.yaml"), QuizTestFixtures.validYaml());
-		Path otherDirectory = Files.createDirectories(temporaryDirectory.resolve("other-account"));
-		Files.writeString(otherDirectory.resolve("private.yaml"), QuizTestFixtures.validYaml());
-		QuizCatalog catalog = createCatalog(temporaryDirectory);
-
-		assertEquals(1, catalog.snapshotFor(ACCOUNT_ID).quizzes().size());
-		assertTrue(catalog.findByFileName(ACCOUNT_ID, "owned.yaml").isPresent());
-		assertTrue(catalog.findByFileName(ACCOUNT_ID, "private.yaml").isEmpty());
-		assertTrue(catalog.findByFileName(ACCOUNT_ID, "shared.yaml").isEmpty());
-		assertTrue(catalog.findByFileName("other-account", "owned.yaml").isEmpty());
-	}
-
-	private QuizCatalog createCatalog(Path directory) {
-		return new QuizCatalog(
-				new QuizCatalogProperties(directory),
-				new QuizYamlParser(QuizTestFixtures.limits()),
-				new QuizDefinitionValidator(QuizTestFixtures.limits()));
+	@SuppressWarnings("unchecked")
+	void listsOnlyMetadataWithoutDeserializingContent() throws Exception {
+		JdbcTemplate jdbc = mock(JdbcTemplate.class);
+		ObjectMapper mapper = mock(ObjectMapper.class);
+		UUID owner = UUID.randomUUID();
+		when(jdbc.query(anyString(), any(RowMapper.class), eq(owner))).thenAnswer(call -> {
+			String sql = call.getArgument(0);
+			assertFalse(sql.contains("content"));
+			assertTrue(sql.contains("WHERE owner_account_id=?"));
+			ResultSet row = mock(ResultSet.class);
+			when(row.getString("slug")).thenReturn("safety.yaml");
+			when(row.getString("title")).thenReturn("Safety");
+			when(row.getString("description")).thenReturn("Description");
+			when(row.getString("author")).thenReturn("Author");
+			when(row.getInt("question_count")).thenReturn(2);
+			when(row.getLong("version")).thenReturn(3L);
+			RowMapper<LoadedQuiz> rowMapper = call.getArgument(1);
+			return List.of(rowMapper.mapRow(row, 0));
+		});
+		var snapshot = new QuizCatalog(jdbc, mapper).snapshotFor(owner.toString());
+		assertNull(snapshot.quizzes().getFirst().quiz());
+		assertEquals(3, snapshot.quizzes().getFirst().version());
+		assertEquals(2, AdminCatalogResponse.from(snapshot).quizzes().getFirst().questionCount());
+		verifyNoInteractions(mapper);
 	}
 }

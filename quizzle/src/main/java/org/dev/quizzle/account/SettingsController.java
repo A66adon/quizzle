@@ -1,13 +1,5 @@
 package org.dev.quizzle.account;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +11,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import org.dev.quizzle.config.QuizCatalogProperties;
 import org.dev.quizzle.session.GameSessionRegistry;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -35,15 +26,12 @@ public final class SettingsController {
 
 	private final AccountService accountService;
 	private final GameSessionRegistry sessionRegistry;
-	private final Path quizBaseDirectory;
 
 	public SettingsController(
 			AccountService accountService,
-			GameSessionRegistry sessionRegistry,
-			QuizCatalogProperties quizCatalogProperties) {
+			GameSessionRegistry sessionRegistry) {
 		this.accountService = accountService;
 		this.sessionRegistry = sessionRegistry;
-		this.quizBaseDirectory = quizCatalogProperties.directory().toAbsolutePath().normalize();
 	}
 
 	@GetMapping("/settings")
@@ -85,7 +73,6 @@ public final class SettingsController {
 	public void deleteAccount(HttpSession session, HttpServletResponse response) {
 		String accountId = AccountSession.currentAccountId(session);
 		sessionRegistry.closeAllOwnedBy(accountId);
-		deleteQuizFolder(accountId);
 		accountService.deleteAccount(accountId);
 		session.invalidate();
 		response.setHeader("Clear-Site-Data", "\"cache\"");
@@ -97,33 +84,11 @@ public final class SettingsController {
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 	}
 
-	private void deleteQuizFolder(String accountId) {
-		Path directory = quizBaseDirectory.resolve(accountId).normalize();
-		if (!directory.startsWith(quizBaseDirectory) || !Files.isDirectory(directory)) {
-			return;
-		}
-		try {
-			Files.walkFileTree(directory, new SimpleFileVisitor<>() {
-				@Override
-				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-					Files.delete(file);
-					return FileVisitResult.CONTINUE;
-				}
-
-				@Override
-				public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-					Files.delete(dir);
-					return FileVisitResult.CONTINUE;
-				}
-			});
-		} catch (IOException exception) {
-			throw new UncheckedIOException("Could not delete the account's quiz folder", exception);
-		}
-	}
-
-	public record SettingsResponse(String username, boolean allowLateJoin, long autoAdvanceDelayMs) {
+	public record SettingsResponse(String accountId, String email, String username,
+			boolean allowLateJoin, long autoAdvanceDelayMs) {
 		static SettingsResponse from(Account account) {
-			return new SettingsResponse(account.email(), account.allowLateJoin(), account.autoAdvanceDelayMs());
+			return new SettingsResponse(account.id(), account.email(), account.email(),
+					account.allowLateJoin(), account.autoAdvanceDelayMs());
 		}
 	}
 

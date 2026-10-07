@@ -1,21 +1,13 @@
 package org.dev.quizzle.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.nio.file.Path;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import org.dev.quizzle.session.GameState;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
-import org.dev.quizzle.config.SnapshotProperties;
 import org.dev.quizzle.session.ConnectionStatus;
 import org.dev.quizzle.session.GameCommand;
 import org.dev.quizzle.session.GameSessionSnapshot;
@@ -23,16 +15,23 @@ import org.dev.quizzle.session.GameSessionSnapshot.PlayerSnapshot;
 import org.dev.quizzle.session.GameSessionSnapshot.SubmittedAnswerSnapshot;
 import org.dev.quizzle.session.GameStateMachine;
 import org.dev.quizzle.session.SessionTestFixtures;
-import tools.jackson.databind.json.JsonMapper;
 
-class SqliteSnapshotRepositoryTests {
+@org.springframework.boot.test.context.SpringBootTest(properties = "quiz.snapshot.interval-ms=3600000")
+class PostgresSnapshotRepositoryTests extends PostgresIntegrationSupport {
+	@org.springframework.beans.factory.annotation.Autowired
+	PostgresSnapshotRepository repository;
+	@org.springframework.beans.factory.annotation.Autowired
+	org.springframework.jdbc.core.JdbcTemplate jdbc;
 
-	@TempDir
-	Path temporaryDirectory;
+	@org.junit.jupiter.api.BeforeEach
+	void prepareOwner() {
+		jdbc.update("DELETE FROM accounts");
+		jdbc.update("INSERT INTO accounts(id,email,normalized_email,status) VALUES (?,'snapshot@test','snapshot@test','ACTIVE')",
+				UUID.fromString(SessionTestFixtures.OWNER_ACCOUNT_ID));
+	}
 
 	@Test
 	void roundTripsTheCompleteSnapshotAndReplacesItOnStateChange() {
-		SqliteSnapshotRepository repository = createRepository();
 		UUID playerId = UUID.randomUUID();
 		GameSessionSnapshot lobby = new GameSessionSnapshot(
 				"RoundTrip25",
@@ -77,37 +76,13 @@ class SqliteSnapshotRepositoryTests {
 	}
 
 	@Test
-	void skipsACorruptedRowWithoutBlockingWorkingSnapshots() throws Exception {
-		SqliteSnapshotRepository repository = createRepository();
+	void rejectsUnsupportedOrMismatchedSnapshotsRatherThanSilentlyDiscardingData() throws Exception {
 		GameSessionSnapshot valid = SessionTestFixtures.lobbySnapshot("Working235", 1_000);
 		repository.save(valid);
 
-		String jdbcUrl = "jdbc:sqlite:" + temporaryDirectory.resolve("snapshots.db")
-				.toAbsolutePath().toString().replace('\\', '/');
-		try (Connection connection = DriverManager.getConnection(jdbcUrl);
-				PreparedStatement statement = connection.prepareStatement("""
-						INSERT INTO session_snapshots (
-						    codehash, schema_version, state, current_question_index,
-						    server_start_epoch_ms, updated_at_epoch_ms, payload_json
-						) VALUES (?, 1, 'LOBBY', -1, 0, 1, ?)
-						""")) {
-			statement.setString(1, "BrokenRow25");
-			statement.setString(2, "{not-json");
-			statement.executeUpdate();
-		}
-
-		List<GameSessionSnapshot> restored = repository.loadAll();
-
-		assertEquals(1, restored.size());
-		assertEquals(valid, restored.getFirst());
-		assertTrue(restored.stream().noneMatch(snapshot -> snapshot.codehash().equals("BrokenRow25")));
-	}
-
-	private SqliteSnapshotRepository createRepository() {
-		SqliteSnapshotRepository repository = new SqliteSnapshotRepository(
-				new SnapshotProperties(temporaryDirectory.resolve("snapshots.db"), 60_000, 5_000),
-				JsonMapper.builder().build());
-		repository.initialize();
-		return repository;
+		jdbc.update("UPDATE session_snapshots SET schema_version=1 WHERE codehash=?", valid.codehash());
+		org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, repository::loadAll);
+		jdbc.update("UPDATE session_snapshots SET schema_version=2, codehash='Mismatch235' WHERE codehash=?", valid.codehash());
+		org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, repository::loadAll);
 	}
 }

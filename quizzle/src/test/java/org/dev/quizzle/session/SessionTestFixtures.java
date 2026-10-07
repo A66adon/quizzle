@@ -9,7 +9,7 @@ import org.dev.quizzle.quiz.model.QuizDefinition;
 
 public final class SessionTestFixtures {
 
-	public static final String OWNER_ACCOUNT_ID = "session-test-account";
+	public static final String OWNER_ACCOUNT_ID = "f0c45c65-b09a-4a78-aaf9-e47eaa7ecf74";
 
 	private SessionTestFixtures() {
 	}

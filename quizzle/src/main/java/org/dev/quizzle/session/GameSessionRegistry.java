@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 
 import org.dev.quizzle.account.AccountService;
 import org.dev.quizzle.config.GameSessionProperties;
-import org.dev.quizzle.persistence.SqliteSnapshotRepository;
+import org.dev.quizzle.persistence.PostgresSnapshotRepository;
 import org.dev.quizzle.quiz.catalog.LoadedQuiz;
 import org.dev.quizzle.quiz.catalog.QuizCatalog;
 import org.dev.quizzle.quiz.model.AnswerDefinition;
@@ -47,14 +47,14 @@ public final class GameSessionRegistry {
 	private final QuizCatalog quizCatalog;
 	private final GameStateMachine stateMachine;
 	private final AnswerGradingService gradingService;
-	private final SqliteSnapshotRepository snapshotRepository;
+	private final PostgresSnapshotRepository snapshotRepository;
 	private final AccountService accountService;
 
 	public GameSessionRegistry(
 			GameSessionProperties properties,
 			QuizCatalog quizCatalog,
 			GameStateMachine stateMachine,
-			SqliteSnapshotRepository snapshotRepository,
+			PostgresSnapshotRepository snapshotRepository,
 			AccountService accountService) {
 		this.codehashLength = properties.codehashLength();
 		this.allowJoinAfterStart = properties.allowJoinAfterStart();
@@ -595,4 +595,3 @@ public final class GameSessionRegistry {
 		}
 	}
 }
-

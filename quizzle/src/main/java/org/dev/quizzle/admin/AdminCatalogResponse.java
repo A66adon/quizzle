@@ -18,10 +18,10 @@ public record AdminCatalogResponse(
 		List<QuizSummary> quizSummaries = snapshot.quizzes().stream()
 				.map(loadedQuiz -> new QuizSummary(
 						loadedQuiz.fileName(),
-						loadedQuiz.quiz().title(),
-						loadedQuiz.quiz().description(),
-						loadedQuiz.quiz().author(),
-						loadedQuiz.quiz().questions().size()))
+						loadedQuiz.title(),
+						loadedQuiz.description(),
+						loadedQuiz.author(),
+						loadedQuiz.questionCount()))
 				.toList();
 		List<QuizIssue> quizIssues = snapshot.issues().stream()
 				.map(issue -> new QuizIssue(issue.fileName(), issue.reason()))

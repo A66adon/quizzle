@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
 
 import org.dev.quizzle.config.AccountProperties;
 import org.dev.quizzle.config.GameSessionProperties;
@@ -50,7 +51,11 @@ public final class AccountService {
 				Instant.now().toEpochMilli(),
 				sessionProperties.allowJoinAfterStart(),
 				sessionProperties.autoAdvanceDelayMs());
-		return accountStore.create(account);
+		try {
+			return accountStore.create(account);
+		} catch (DuplicateKeyException exception) {
+			throw new AccountRegistrationException("This username is already taken");
+		}
 	}
 
 	public Optional<Account> authenticate(String rawUsername, String rawPassword) {
@@ -59,13 +64,15 @@ public final class AccountService {
 			return Optional.empty();
 		}
 		return accountStore.findByEmail(username)
+				.filter(account -> account.status() == Account.Status.ACTIVE && account.passwordHash() != null)
 				.filter(account -> passwordEncoder.matches(rawPassword, account.passwordHash()));
 	}
 
 	public void changePassword(String accountId, String currentPassword, String newPassword) {
 		Account account = accountStore.findById(accountId)
 				.orElseThrow(() -> new AccountRegistrationException("Account not found"));
-		if (!passwordEncoder.matches(currentPassword == null ? "" : currentPassword, account.passwordHash())) {
+		if (account.passwordHash() == null
+				|| !passwordEncoder.matches(currentPassword == null ? "" : currentPassword, account.passwordHash())) {
 			throw new AccountRegistrationException("The current password is incorrect");
 		}
 		validatePassword(newPassword);

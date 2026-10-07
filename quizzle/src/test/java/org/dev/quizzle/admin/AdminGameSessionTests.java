@@ -30,17 +30,15 @@ import tools.jackson.databind.ObjectMapper;
 
 import org.dev.quizzle.security.CsrfToken;
 import org.dev.quizzle.account.AccountSession;
-import org.dev.quizzle.config.QuizCatalogProperties;
+import org.dev.quizzle.quiz.catalog.QuizEditorService;
+import org.dev.quizzle.quiz.catalog.QuizYamlParser;
 
 @SpringBootTest(properties = {
-		"quiz.account.file=./build/test-data/admin-accounts-${random.uuid}.yml",
-		"quiz.catalog.directory=./build/test-data/admin-quizzes-${random.uuid}",
 		"quiz.session.public-base-url=https://quiz.example.test/events",
-		"quiz.snapshot.database-path=./build/test-data/admin-sessions-${random.uuid}.db",
 		"quiz.snapshot.interval-ms=3600000"
 })
 @AutoConfigureMockMvc
-class AdminGameSessionTests {
+class AdminGameSessionTests extends org.dev.quizzle.persistence.PostgresIntegrationSupport {
 
 	@Autowired
 	MockMvc mockMvc;
@@ -49,7 +47,10 @@ class AdminGameSessionTests {
 	ObjectMapper objectMapper;
 
 	@Autowired
-	QuizCatalogProperties catalogProperties;
+	QuizEditorService editorService;
+
+	@Autowired
+	QuizYamlParser parser;
 
 	@Test
 	void protectsCreationFromUnauthenticatedRequests() throws Exception {
@@ -168,9 +169,9 @@ class AdminGameSessionTests {
 				.andExpect(redirectedUrl("/admin"))
 				.andReturn();
 		MockHttpSession authenticatedSession = (MockHttpSession) result.getRequest().getSession(false);
-		Path quizDirectory = Files.createDirectories(
-				catalogProperties.directory().resolve(AccountSession.currentAccountId(authenticatedSession)));
-		Files.copy(Path.of("quizzes", "safety-basics.yaml"), quizDirectory.resolve("safety-basics.yaml"));
+		editorService.create(AccountSession.currentAccountId(authenticatedSession),
+				parser.parse(Files.readString(Path.of("quizzes", "safety-basics.yaml"))
+						.replace("Workplace Safety Basics", "Safety Basics")));
 		return authenticatedSession;
 	}
 }

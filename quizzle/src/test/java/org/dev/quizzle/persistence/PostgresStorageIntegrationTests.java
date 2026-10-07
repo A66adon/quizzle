@@ -1,0 +1,231 @@
+package org.dev.quizzle.persistence;
+
+import static org.junit.jupiter.api.Assertions.*;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import org.dev.quizzle.account.Account;
+import org.dev.quizzle.account.AccountStore;
+import org.dev.quizzle.account.AccountService;
+import org.dev.quizzle.config.GameSessionProperties;
+import org.dev.quizzle.quiz.catalog.*;
+import org.dev.quizzle.quiz.model.QuizDefinition;
+import org.dev.quizzle.session.*;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+@SpringBootTest(properties = "quiz.snapshot.interval-ms=3600000")
+class PostgresStorageIntegrationTests extends PostgresIntegrationSupport {
+	@Autowired JdbcTemplate jdbc;
+	@Autowired Flyway flyway;
+	@Autowired AccountStore accounts;
+	@Autowired AccountService accountService;
+	@Autowired QuizEditorService editor;
+	@Autowired QuizCatalog catalog;
+	@Autowired QuizYamlParser parser;
+	@Autowired PostgresSnapshotRepository snapshots;
+	@Autowired GameSessionProperties sessionProperties;
+	private Account owner;
+	private Account other;
+
+	@BeforeEach
+	void cleanRows() {
+		jdbc.update("DELETE FROM accounts");
+		owner = account("Original@Example.com");
+		other = account("other@example.com");
+	}
+
+	private Account account(String email) {
+		return accounts.create(new Account(UUID.randomUUID().toString(), email, null, true,
+				List.of(), System.currentTimeMillis(), false, 5000));
+	}
+
+	@Test
+	void migratesEmptyPostgresqlAndEnforcesAllConstraints() {
+		assertEquals("1", flyway.info().current().getVersion().getVersion());
+		assertTrue(flyway.validateWithResult().validationSuccessful);
+		assertEquals(7, jdbc.queryForObject("""
+				SELECT count(*) FROM information_schema.tables WHERE table_schema='public'
+				AND table_name IN ('accounts','external_identities','email_verification_tokens',
+				    'password_reset_tokens','quizzes','session_snapshots','flyway_schema_history')
+				""", Integer.class));
+		assertThrows(DataIntegrityViolationException.class, () -> jdbc.update(
+				"UPDATE accounts SET status='INVALID' WHERE id=?", UUID.fromString(owner.id())));
+		assertThrows(DataIntegrityViolationException.class, () -> jdbc.update(
+				"UPDATE accounts SET auto_advance_delay_ms=-1 WHERE id=?", UUID.fromString(owner.id())));
+		assertThrows(DataIntegrityViolationException.class, () -> jdbc.update("""
+				INSERT INTO external_identities(id,account_id,provider,provider_subject,provider_email)
+				VALUES (?,?,'google','sub','x@example.com')
+				""", UUID.randomUUID(), UUID.randomUUID()));
+		jdbc.update("""
+				INSERT INTO external_identities(id,account_id,provider,provider_subject,provider_email)
+				VALUES (?,?,'google','sub','x@example.com')
+				""", UUID.randomUUID(), UUID.fromString(owner.id()));
+		assertThrows(DuplicateKeyException.class, () -> jdbc.update("""
+				INSERT INTO external_identities(id,account_id,provider,provider_subject,provider_email)
+				VALUES (?,?,'google','sub','other@example.com')
+				""", UUID.randomUUID(), UUID.fromString(other.id())));
+		for (String table : List.of("email_verification_tokens", "password_reset_tokens")) {
+			jdbc.update("INSERT INTO " + table + "(id,account_id,token_digest,expires_at) VALUES (?,?,?,now()+interval '1 hour')",
+					UUID.randomUUID(), UUID.fromString(owner.id()), "a".repeat(64));
+			assertThrows(DuplicateKeyException.class, () -> jdbc.update(
+					"INSERT INTO " + table + "(id,account_id,token_digest,expires_at) VALUES (?,?,?,now())",
+					UUID.randomUUID(), UUID.fromString(other.id()), "a".repeat(64)));
+			assertThrows(DataIntegrityViolationException.class, () -> jdbc.update(
+					"INSERT INTO " + table + "(id,account_id,token_digest,expires_at) VALUES (?,?,?,now())",
+					UUID.randomUUID(), UUID.fromString(owner.id()), "plaintext-token"));
+		}
+	}
+
+	@Test
+	void concurrentNormalizedEmailsHaveOneWinnerAndSettingsPersist() throws Exception {
+		try (var executor = Executors.newFixedThreadPool(2)) {
+			var results = executor.invokeAll(List.<Callable<Boolean>>of(
+					() -> tryCreate("  Race@Example.COM  "), () -> tryCreate("race@example.com")));
+			assertEquals(1, results.stream().filter(result -> {
+				try { return result.get(); } catch (Exception failure) { throw new AssertionError(failure); }
+			}).count());
+		}
+		Account loaded = accounts.findByEmail(" ORIGINAL@example.com ").orElseThrow();
+		assertEquals("Original@Example.com", loaded.email());
+		assertNull(loaded.passwordHash());
+		accountService.updateGameSettings(owner.id(), true, 1234);
+		AccountStore restarted = new AccountStore(jdbc);
+		assertTrue(restarted.findById(owner.id()).orElseThrow().allowLateJoin());
+		assertEquals(1234, restarted.findById(owner.id()).orElseThrow().autoAdvanceDelayMs());
+		assertFalse(restarted.findById(other.id()).orElseThrow().allowLateJoin());
+	}
+
+	private boolean tryCreate(String email) {
+		try { account(email); return true; }
+		catch (DuplicateKeyException expected) { return false; }
+	}
+
+	@Test
+	void crudImportExportOwnershipAndOptimisticRevisions() throws Exception {
+		QuizDefinition quiz = SessionTestFixtures.quiz();
+		String slug = editor.create(owner.id(), quiz);
+		assertEquals(1, editor.loadRevision(owner.id(), slug).version());
+		assertThrows(QuizEditorException.class, () -> editor.load(other.id(), slug));
+		assertThrows(QuizEditorException.class, () -> editor.delete(other.id(), slug));
+		assertThrows(QuizEditorException.class, () -> editor.update(other.id(), slug, quiz, 1));
+		assertEquals(2, editor.update(owner.id(), slug, quiz, 1).version());
+		var conflict = assertThrows(QuizRevisionConflictException.class,
+				() -> editor.update(owner.id(), slug, new QuizDefinition("Stale", "Description", "Author", List.of()), 1));
+		assertEquals(2, conflict.currentVersion());
+		assertEquals(quiz, editor.load(owner.id(), slug));
+		assertThrows(IllegalArgumentException.class, () -> editor.update(owner.id(), slug, quiz, 0));
+		assertEquals(2, editor.loadRevision(owner.id(), slug).version());
+		LoadedQuiz imported = editor.importYaml(owner.id(), editor.exportYaml(owner.id(), slug));
+		assertNotEquals(slug, imported.fileName());
+		assertEquals(quiz, imported.quiz());
+		assertEquals(1, imported.version());
+		assertEquals(quiz, parser.parse(editor.exportYaml(owner.id(), imported.fileName())));
+		String draft = editor.create(owner.id(), new QuizDefinition("Draft", "Description", "Author", List.of()));
+		assertEquals(0, editor.load(owner.id(), draft).questions().size());
+		assertTrue(catalog.snapshotFor(other.id()).quizzes().isEmpty());
+		assertEquals(3, catalog.snapshotFor(owner.id()).quizzes().size());
+		editor.delete(owner.id(), imported.fileName());
+		assertThrows(QuizEditorException.class, () -> editor.load(owner.id(), imported.fileName()));
+	}
+
+	@Test
+	void concurrentEditsHaveOneWinnerWithoutOverwritingTheWinningRevision() throws Exception {
+		String slug = editor.create(owner.id(), SessionTestFixtures.quiz());
+		try (var executor = Executors.newFixedThreadPool(2)) {
+			var results = executor.invokeAll(List.<Callable<Boolean>>of(
+					() -> tryEdit(slug, "First"), () -> tryEdit(slug, "Second")));
+			assertEquals(1, results.stream().filter(result -> {
+				try { return result.get(); } catch (Exception failure) { throw new AssertionError(failure); }
+			}).count());
+		}
+		assertEquals(2, editor.loadRevision(owner.id(), slug).version());
+		assertTrue(List.of("First", "Second").contains(editor.load(owner.id(), slug).title()));
+		assertEquals(1, catalog.snapshotFor(owner.id()).quizzes().size());
+	}
+
+	private boolean tryEdit(String slug, String title) {
+		try {
+			editor.update(owner.id(), slug, new QuizDefinition(title, "Description", "Author", List.of()), 1);
+			return true;
+		} catch (QuizRevisionConflictException expected) {
+			assertEquals(2, expected.currentVersion());
+			return false;
+		}
+	}
+
+	@Test
+	void foreignKeysCascadeOwnedRowsAndLeaveAnotherAccountUntouched() {
+		String slug = editor.create(owner.id(), SessionTestFixtures.quiz());
+		String otherSlug = editor.create(other.id(), SessionTestFixtures.quiz());
+		snapshots.save(GameSessionSnapshot.create("OwnerSnapshot", owner.id(), slug, SessionTestFixtures.quiz(), 1000));
+		snapshots.save(GameSessionSnapshot.create("OtherSnapshot", other.id(), otherSlug, SessionTestFixtures.quiz(), 1000));
+		for (Account account : List.of(owner, other)) {
+			jdbc.update("""
+					INSERT INTO external_identities(id,account_id,provider,provider_subject,provider_email)
+					VALUES (?,?,'google',?,?)
+					""", UUID.randomUUID(), UUID.fromString(account.id()), account.id(), account.email());
+			for (String table : List.of("email_verification_tokens", "password_reset_tokens")) {
+				jdbc.update("INSERT INTO " + table + "(id,account_id,token_digest,expires_at) VALUES (?,?,?,now())",
+						UUID.randomUUID(), UUID.fromString(account.id()),
+						(account == owner ? "a" : "b").repeat(64));
+			}
+		}
+		accounts.delete(owner.id());
+		assertTrue(catalog.snapshotFor(owner.id()).quizzes().isEmpty());
+		assertEquals(other.id(), snapshots.loadAll().getFirst().ownerAccountId());
+		assertEquals(1, snapshots.loadAll().size());
+		for (String table : List.of("external_identities", "email_verification_tokens", "password_reset_tokens")) {
+			assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM " + table, Integer.class));
+			assertEquals(other.id(), jdbc.queryForObject("SELECT account_id FROM " + table, String.class));
+		}
+		assertEquals(1, catalog.snapshotFor(other.id()).quizzes().size());
+	}
+
+	@Test
+	void metadataListingDoesNotReadEvenInvalidStoredContent() {
+		String slug = editor.create(owner.id(), SessionTestFixtures.quiz());
+		jdbc.update("UPDATE quizzes SET content='{}'::jsonb WHERE owner_account_id=? AND slug=?",
+				UUID.fromString(owner.id()), slug);
+		var listed = catalog.snapshotFor(owner.id()).quizzes().getFirst();
+		assertEquals(SessionTestFixtures.quiz().title(), listed.title());
+		assertEquals(SessionTestFixtures.quiz().questions().size(), listed.questionCount());
+		assertNull(listed.quiz());
+	}
+
+	@Test
+	void restartRestoresPayloadWithoutQuizAndDeletionCascadesOnlyOwnedData() {
+		String slug = editor.create(owner.id(), SessionTestFixtures.quiz());
+		String otherSlug = editor.create(other.id(), SessionTestFixtures.quiz());
+		var registry = new GameSessionRegistry(sessionProperties, catalog, new GameStateMachine(), snapshots, accountService);
+		var created = registry.create(owner.id(), slug);
+		registry.joinPlayer(created.codehash(), "Alex");
+		var open = registry.transition(created.codehash(), GameCommand.START);
+		editor.delete(owner.id(), slug);
+		var restarted = new GameSessionRegistry(sessionProperties, catalog, new GameStateMachine(),
+				new PostgresSnapshotRepository(jdbc, tools.jackson.databind.json.JsonMapper.builder().build()), accountService);
+		long reboot = System.currentTimeMillis();
+		restarted.rehydrate();
+		var restored = restarted.find(created.codehash()).orElseThrow();
+		assertEquals(GameState.QUESTION_OPEN, restored.state());
+		assertEquals(open.quiz(), restored.quiz());
+		assertEquals(1, restored.players().size());
+		assertTrue(restored.serverStartEpochMs() >= reboot);
+		assertEquals(ConnectionStatus.TEMPORARILY_DISCONNECTED, restored.players().getFirst().connectionStatus());
+		var otherSession = registry.create(other.id(), otherSlug);
+		registry.closeAllOwnedBy(owner.id());
+		accounts.delete(owner.id());
+		assertTrue(registry.find(created.codehash()).isEmpty());
+		assertEquals(List.of(otherSession), snapshots.loadAll());
+		assertTrue(accounts.findById(owner.id()).isEmpty());
+		assertTrue(accounts.findById(other.id()).isPresent());
+		assertEquals(1, catalog.snapshotFor(other.id()).quizzes().size());
+	}
+}

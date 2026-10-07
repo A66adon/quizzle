@@ -26,23 +26,24 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import org.dev.quizzle.security.CsrfToken;
-import org.dev.quizzle.config.QuizCatalogProperties;
+import org.dev.quizzle.quiz.catalog.QuizEditorService;
+import org.dev.quizzle.quiz.catalog.QuizYamlParser;
 
 @SpringBootTest(properties = {
-		"quiz.account.file=./build/test-data/auth-accounts-${random.uuid}.yml",
-		"quiz.catalog.directory=./build/test-data/auth-quizzes-${random.uuid}",
 		"quiz.session.public-base-url=https://quiz.example.test",
-		"quiz.snapshot.database-path=./build/test-data/auth-sessions-${random.uuid}.db",
 		"quiz.snapshot.interval-ms=3600000"
 })
 @AutoConfigureMockMvc
-class AccountAuthenticationTests {
+class AccountAuthenticationTests extends org.dev.quizzle.persistence.PostgresIntegrationSupport {
 
 	@Autowired
 	MockMvc mockMvc;
 
 	@Autowired
-	QuizCatalogProperties catalogProperties;
+	QuizEditorService editorService;
+
+	@Autowired
+	QuizYamlParser parser;
 
 	@Test
 	void protectsAdminPagesAndDataWithoutASession() throws Exception {
@@ -105,9 +106,9 @@ class AccountAuthenticationTests {
 	@Test
 	void authenticatedSessionCanReadOnlySafeCatalogData() throws Exception {
 		MockHttpSession session = login("phase-one-account", "correct horse battery staple");
-		Path quizDirectory = Files.createDirectories(
-				catalogProperties.directory().resolve(AccountSession.currentAccountId(session)));
-		Files.copy(Path.of("quizzes", "safety-basics.yaml"), quizDirectory.resolve("safety-basics.yaml"));
+		editorService.create(AccountSession.currentAccountId(session),
+				parser.parse(Files.readString(Path.of("quizzes", "safety-basics.yaml"))
+						.replace("Workplace Safety Basics", "Safety Basics")));
 
 		mockMvc.perform(get("/admin").session(session))
 				.andExpect(status().isOk())

@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -53,6 +54,23 @@ public final class QuizYamlParser {
 			throw new QuizFileException("Could not read file", exception);
 		}
 
+		return readDocument(document);
+	}
+
+	public QuizDefinition parse(String yaml) throws QuizFileException {
+		if (yaml == null || yaml.getBytes(StandardCharsets.UTF_8).length > limits.maxFileBytes()) {
+			throw new QuizFileException("YAML exceeds maximum allowed bytes");
+		}
+		try {
+			return readDocument(createYaml().load(yaml));
+		} catch (MarkedYAMLException exception) {
+			throw new QuizFileException(formatMarkedError(exception), exception);
+		} catch (YAMLException exception) {
+			throw new QuizFileException("Malformed YAML: parser rejected the document", exception);
+		}
+	}
+
+	private QuizDefinition readDocument(Object document) throws QuizFileException {
 		List<String> errors = new ArrayList<>();
 		Map<String, Object> root = readMap(document, "quiz", errors);
 		checkFields(root, QUIZ_FIELDS, Set.of(), "quiz", errors);

@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
@@ -19,32 +17,24 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 import org.dev.quizzle.config.GameSessionProperties;
-import org.dev.quizzle.config.AccountProperties;
 import org.dev.quizzle.account.AccountService;
-import org.dev.quizzle.account.AccountStore;
-import org.dev.quizzle.config.QuizCatalogProperties;
-import org.dev.quizzle.config.SnapshotProperties;
-import org.dev.quizzle.persistence.SqliteSnapshotRepository;
+import org.dev.quizzle.persistence.PostgresSnapshotRepository;
 import org.dev.quizzle.quiz.catalog.QuizCatalog;
-import org.dev.quizzle.quiz.catalog.QuizDefinitionValidator;
 import org.dev.quizzle.quiz.catalog.QuizYamlParser;
 import org.dev.quizzle.quiz.model.AnswerDefinition;
 import org.dev.quizzle.session.GameSessionRegistry.PlayerConnection;
 import org.dev.quizzle.session.GameSessionRegistry.ReconnectRejectedException;
-import tools.jackson.databind.json.JsonMapper;
 
 class GameSessionRegistryTests {
 
-	@TempDir
-	Path temporaryDirectory;
+	Path temporaryDirectory = Path.of("build", "registry-fixtures");
 
 	@Test
 	void createsUniqueSessionsConcurrentlyAndSnapshotsEveryOne() throws Exception {
 		Path quizDirectory = prepareQuizDirectory();
-		SqliteSnapshotRepository repository = createRepository();
+		PostgresSnapshotRepository repository = createRepository();
 		GameSessionRegistry registry = createRegistry(createCatalog(quizDirectory), repository);
 		registry.rehydrate();
 
@@ -75,7 +65,7 @@ class GameSessionRegistryTests {
 	@Test
 	void rehydratesWithoutYamlAndRefreshesAnOpenQuestionTimer() throws Exception {
 		Path quizDirectory = prepareQuizDirectory();
-		SqliteSnapshotRepository repository = createRepository();
+		PostgresSnapshotRepository repository = createRepository();
 		GameSessionRegistry firstRegistry = createRegistry(createCatalog(quizDirectory), repository);
 		firstRegistry.rehydrate();
 		GameSessionSnapshot created = firstRegistry.create(SessionTestFixtures.OWNER_ACCOUNT_ID, "safety.yaml");
@@ -83,8 +73,7 @@ class GameSessionRegistryTests {
 		long oldTimer = opened.serverStartEpochMs();
 
 		Thread.sleep(5);
-		Files.delete(quizDirectory.resolve(SessionTestFixtures.OWNER_ACCOUNT_ID).resolve("safety.yaml"));
-		QuizCatalog emptyCatalog = createCatalog(quizDirectory);
+		QuizCatalog emptyCatalog = org.mockito.Mockito.mock(QuizCatalog.class);
 		long rebootStartedAt = System.currentTimeMillis();
 		GameSessionRegistry restoredRegistry = createRegistry(emptyCatalog, repository);
 		restoredRegistry.rehydrate();
@@ -101,7 +90,7 @@ class GameSessionRegistryTests {
 
 	@Test
 	void kickedPlayerIsMarkedFinalAndCannotReconnect() throws Exception {
-		SqliteSnapshotRepository repository = createRepository();
+		PostgresSnapshotRepository repository = createRepository();
 		GameSessionRegistry registry = createRegistry(createCatalog(prepareQuizDirectory()), repository);
 		registry.rehydrate();
 		GameSessionSnapshot created = registry.create(SessionTestFixtures.OWNER_ACCOUNT_ID, "safety.yaml");
@@ -147,7 +136,7 @@ class GameSessionRegistryTests {
 
 	@Test
 	void closingASessionRemovesItFromMemoryAndFromTheSnapshotStore() throws Exception {
-		SqliteSnapshotRepository repository = createRepository();
+		PostgresSnapshotRepository repository = createRepository();
 		GameSessionRegistry registry = createRegistry(createCatalog(prepareQuizDirectory()), repository);
 		registry.rehydrate();
 		GameSessionSnapshot created = registry.create(SessionTestFixtures.OWNER_ACCOUNT_ID, "safety.yaml");
@@ -162,12 +151,7 @@ class GameSessionRegistryTests {
 
 	@Test
 	void shufflesAnswersPerSessionUnlessTheQuestionOptsOut() throws Exception {
-		Path quizDirectory = Files.createDirectories(temporaryDirectory.resolve("shuffled"));
-		Path accountDirectory = Files.createDirectories(quizDirectory.resolve(SessionTestFixtures.OWNER_ACCOUNT_ID));
-		Files.writeString(
-				accountDirectory.resolve("shuffled.yaml"),
-				shuffledQuizYaml(),
-				StandardCharsets.UTF_8);
+		Path quizDirectory = temporaryDirectory.resolve("shuffled");
 		GameSessionRegistry registry = createRegistry(createCatalog(quizDirectory), createRepository());
 		registry.rehydrate();
 
@@ -246,45 +230,50 @@ class GameSessionRegistryTests {
 	}
 
 	private Path prepareQuizDirectory() throws Exception {
-		Path quizDirectory = Files.createDirectories(temporaryDirectory.resolve("quizzes"));
-		Path accountDirectory = Files.createDirectories(quizDirectory.resolve(SessionTestFixtures.OWNER_ACCOUNT_ID));
-		Files.writeString(
-				accountDirectory.resolve("safety.yaml"),
-				SessionTestFixtures.yaml(),
-				StandardCharsets.UTF_8);
-		return quizDirectory;
+		return temporaryDirectory.resolve("quizzes");
 	}
 
-	private QuizCatalog createCatalog(Path quizDirectory) {
-		return new QuizCatalog(
-				new QuizCatalogProperties(quizDirectory),
-				new QuizYamlParser(SessionTestFixtures.validationLimits()),
-				new QuizDefinitionValidator(SessionTestFixtures.validationLimits()));
+	private QuizCatalog createCatalog(Path quizDirectory) throws org.dev.quizzle.quiz.catalog.QuizFileException {
+		QuizCatalog catalog = org.mockito.Mockito.mock(QuizCatalog.class);
+		QuizYamlParser parser = new QuizYamlParser(SessionTestFixtures.validationLimits());
+		org.mockito.Mockito.when(catalog.findByFileName(SessionTestFixtures.OWNER_ACCOUNT_ID, "safety.yaml"))
+				.thenReturn(java.util.Optional.of(new org.dev.quizzle.quiz.catalog.LoadedQuiz("safety.yaml",
+						parser.parse(SessionTestFixtures.yaml()))));
+		org.mockito.Mockito.when(catalog.findByFileName(SessionTestFixtures.OWNER_ACCOUNT_ID, "shuffled.yaml"))
+				.thenReturn(java.util.Optional.of(new org.dev.quizzle.quiz.catalog.LoadedQuiz("shuffled.yaml",
+						parser.parse(shuffledQuizYaml()))));
+		return catalog;
 	}
 
-	private SqliteSnapshotRepository createRepository() {
-		SqliteSnapshotRepository repository = new SqliteSnapshotRepository(
-				new SnapshotProperties(temporaryDirectory.resolve("registry.db"), 60_000, 10_000),
-				JsonMapper.builder().build());
-		repository.initialize();
+	private PostgresSnapshotRepository createRepository() {
+		PostgresSnapshotRepository repository = org.mockito.Mockito.mock(PostgresSnapshotRepository.class);
+		var snapshots = new java.util.concurrent.ConcurrentHashMap<String, GameSessionSnapshot>();
+		org.mockito.Mockito.doAnswer(call -> {
+			GameSessionSnapshot snapshot = call.getArgument(0);
+			snapshots.put(snapshot.codehash(), snapshot);
+			return null;
+		}).when(repository).save(org.mockito.ArgumentMatchers.any());
+		org.mockito.Mockito.doAnswer(call -> {
+			snapshots.remove((String) call.getArgument(0));
+			return null;
+		}).when(repository).delete(org.mockito.ArgumentMatchers.anyString());
+		org.mockito.Mockito.when(repository.loadAll()).thenAnswer(call -> List.copyOf(snapshots.values()));
 		return repository;
 	}
 
 	private GameSessionRegistry createRegistry(
 			QuizCatalog catalog,
-			SqliteSnapshotRepository repository) {
+			PostgresSnapshotRepository repository) {
 		return createRegistry(catalog, repository, false);
 	}
 
 	private GameSessionRegistry createRegistry(
 			QuizCatalog catalog,
-			SqliteSnapshotRepository repository,
+			PostgresSnapshotRepository repository,
 			boolean allowJoinAfterStart) {
 		GameSessionProperties sessionProperties = new GameSessionProperties(
 				URI.create("https://quiz.example.test"), 10, 5_000L, allowJoinAfterStart);
-		AccountProperties accountProperties = new AccountProperties(temporaryDirectory.resolve("accounts.yml"), 8);
-		AccountService accountService = new AccountService(
-				new AccountStore(accountProperties, sessionProperties), accountProperties, sessionProperties);
+		AccountService accountService = org.mockito.Mockito.mock(AccountService.class);
 		return new GameSessionRegistry(
 				sessionProperties,
 				catalog,

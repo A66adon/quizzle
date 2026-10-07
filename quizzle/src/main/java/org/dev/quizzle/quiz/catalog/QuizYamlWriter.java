@@ -1,11 +1,5 @@
 package org.dev.quizzle.quiz.catalog;
 
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,33 +14,18 @@ import org.dev.quizzle.quiz.model.AnswerDefinition;
 import org.dev.quizzle.quiz.model.QuestionDefinition;
 import org.dev.quizzle.quiz.model.QuizDefinition;
 
-/**
- * Writes a {@link QuizDefinition} back to the same YAML shape {@link QuizYamlParser} reads, so
- * quizzes built in the editor are indistinguishable from hand-written quiz files.
- */
+/** Produces portable YAML exports in the same shape the import parser reads. */
 @Component
 public final class QuizYamlWriter {
 
-	public void write(Path file, QuizDefinition quiz) {
+	public String write(QuizDefinition quiz) {
 		Map<String, Object> root = new LinkedHashMap<>();
 		root.put("title", quiz.title());
 		root.put("description", quiz.description());
 		root.put("author", quiz.author());
 		root.put("questions", toQuestionMaps(quiz.questions()));
 
-		try {
-			Path parent = file.toAbsolutePath().normalize().getParent();
-			if (parent != null) {
-				Files.createDirectories(parent);
-			}
-			Path tempFile = file.resolveSibling(file.getFileName() + ".tmp");
-			try (var output = Files.newOutputStream(tempFile)) {
-				createDumperYaml().dump(root, new OutputStreamWriter(output, StandardCharsets.UTF_8));
-			}
-			Files.move(tempFile, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-		} catch (IOException exception) {
-			throw new QuizEditorException("Could not write quiz file: " + exception.getMessage());
-		}
+		return createDumperYaml().dump(root);
 	}
 
 	private List<Map<String, Object>> toQuestionMaps(List<QuestionDefinition> questions) {
