@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en" data-theme-scope="presenter">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<meta name="referrer" content="no-referrer">
+	<title>Resend verification</title>
+	<link rel="stylesheet" href="/assets/branding.css">
+	<link rel="stylesheet" href="/assets/theme.css">
+	<link rel="stylesheet" href="/assets/admin.css">
+	<script type="module" src="/assets/theme.js"></script>
+	<script src="/assets/csrf.js"></script>
+	<script src="/assets/auth-lifecycle.js" defer></script>
+</head>
+<body class="login-page">
+	<main class="login-shell">
+		<section class="login-card" aria-labelledby="auth-title">
+			<h1 id="auth-title">Resend verification</h1>
+			<p class="muted">If your account needs verification, we will send a new link.</p>
+			<p id="auth-message" class="muted" role="status" hidden></p>
+			<p id="auth-error" class="form-error" role="alert" hidden></p>
+			<form action="/resend-verification" method="post" class="login-form">
+				<label for="email">Email</label>
+				<input id="email" name="email" type="email" autocomplete="email" maxlength="254" required autofocus>
+				<button type="submit" class="primary-button">Send verification link</button>
+			</form>
+			<p class="muted login-switch"><a href="/login">Back to sign in</a></p>
+		</section>
+	</main>
+</body>
+</html>

@@ -33,19 +33,22 @@
 			<div class="brand-mark" data-brand-mark aria-hidden="true"></div>
 			<h1 class="brand-name"><span data-brand-name></span></h1>
 			<h2 id="login-title">Sign in</h2>
-			<p class="muted">Sign in with your username to manage your quizzes.</p>
+			<p class="muted">Sign in with your verified email to manage your quizzes.</p>
 
 			<p class="form-error" id="login-error" role="alert" hidden>
-				The username or password is incorrect. Please try again.
+				Sign-in failed. Check your email and password and verify your email before trying again.
 			</p>
+			<p id="auth-status" class="muted" role="status" hidden></p>
 
 			<form action="/login" method="post" class="login-form">
-				<label for="username">Username</label>
-				<input id="username" name="username" type="text" autocomplete="username" required autofocus>
+				<label for="email">Email</label>
+				<input id="email" name="email" type="email" autocomplete="username" maxlength="254" required autofocus>
 				<label for="password">Password</label>
 				<input id="password" name="password" type="password" autocomplete="current-password" required>
 				<button type="submit" class="primary-button">Sign in</button>
 			</form>
+			<p><a id="google-login" class="ghost-button" href="/oauth2/authorization/google" hidden>Continue with Google</a></p>
+			<p class="muted login-switch"><a href="/forgot-password">Forgot password?</a> · <a href="/resend-verification">Resend verification</a></p>
 			<p class="muted login-switch">No account yet? <a href="/register">Register</a></p>
 		</section>
 	</main>

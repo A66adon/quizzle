@@ -8,7 +8,7 @@
 	const saveSettingsButton = document.querySelector("#save-settings");
 
 	const passwordForm = document.querySelector("#password-form");
-	const passwordUsernameInput = document.querySelector("#password-username");
+	const passwordEmailInput = document.querySelector("#password-email");
 	const currentPasswordInput = document.querySelector("#current-password");
 	const newPasswordInput = document.querySelector("#new-password");
 	const passwordError = document.querySelector("#password-error");
@@ -16,6 +16,8 @@
 
 	const deleteError = document.querySelector("#delete-error");
 	const deleteAccountButton = document.querySelector("#delete-account");
+	const deletePasswordInput = document.querySelector("#delete-current-password");
+	let hasLocalPassword = true;
 
 	loadSettings();
 
@@ -28,14 +30,29 @@
 	deleteAccountButton.addEventListener("click", deleteAccount);
 
 	async function loadSettings() {
+		saveSettingsButton.disabled = true;
+		savePasswordButton.disabled = true;
+		deleteAccountButton.disabled = true;
 		try {
 			const settings = await requestJson("/admin/api/account/settings");
-			emailLabel.textContent = settings.username;
-			passwordUsernameInput.value = settings.username || "";
+			if (typeof settings.email !== "string" || typeof settings.hasLocalPassword !== "boolean"
+					|| typeof settings.allowLateJoin !== "boolean"
+					|| !Number.isSafeInteger(settings.autoAdvanceDelayMs)) {
+				throw new Error("Incomplete account settings response");
+			}
+			emailLabel.textContent = settings.email;
+			passwordEmailInput.value = settings.email || "";
+			hasLocalPassword = settings.hasLocalPassword;
+			document.querySelector("#local-password-section").hidden = !hasLocalPassword;
+			document.querySelector("#delete-password-field").hidden = !hasLocalPassword;
+			document.querySelector("#oauth-reauthentication").hidden = hasLocalPassword;
 			allowLateJoinInput.checked = Boolean(settings.allowLateJoin);
-			autoAdvanceInput.value = Math.round(settings.autoAdvanceDelayMs / 1000);
+			autoAdvanceInput.value = settings.autoAdvanceDelayMs / 1000;
+			saveSettingsButton.disabled = false;
+			savePasswordButton.disabled = !hasLocalPassword;
+			deleteAccountButton.disabled = false;
 		} catch (error) {
-			showMessage(settingsError, "Could not load your settings.");
+			showMessage(settingsError, "Could not load your settings. Reload before making changes.");
 		}
 	}
 
@@ -106,10 +123,17 @@
 		}
 		deleteAccountButton.disabled = true;
 		try {
-			await requestJson("/admin/api/account", { method: "DELETE" });
+			await requestJson("/admin/api/account", {
+				method: "DELETE",
+				headers: {"Content-Type": "application/json"},
+				body: JSON.stringify(hasLocalPassword ? {currentPassword: deletePasswordInput.value} : {})
+			});
+			deletePasswordInput.value = "";
 			window.location.assign("/login");
 		} catch (error) {
-			showMessage(deleteError, "The account could not be deleted.");
+			showMessage(deleteError, error.status === 403
+				? "Confirm your current password, or sign in with Google again before deleting."
+				: "The account could not be deleted.");
 			deleteAccountButton.disabled = false;
 		}
 	}
@@ -139,7 +163,9 @@
 			throw new Error("Session expired");
 		}
 		if (!response.ok) {
-			throw new Error(`Request failed with status ${response.status}`);
+			const error = new Error(`Request failed with status ${response.status}`);
+			error.status = response.status;
+			throw error;
 		}
 		if (response.status === 204) return null;
 		return response.json();
