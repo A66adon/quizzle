@@ -45,4 +45,19 @@ class AuthPolicyTests {
 		sessions.revoke("account",1,current.getId());
 		assertTrue(old.isInvalid());assertFalse(current.isInvalid());
 	}
+	@Test void productionIpLimitRemainsFiniteAndSeparateForEachAction() {
+		var limiter=new AuthRateLimiter();
+		for(int i=0;i<60;i++) assertTrue(limiter.allow("register","loopback","user"+i+"@example.test"));
+		assertFalse(limiter.allow("register","loopback","next@example.test"));
+		assertTrue(limiter.allow("login","loopback","next@example.test"));
+	}
+	@Test void ephemeralCiCanRaiseOnlyTheValidatedFiniteIpCapWithoutDisablingEmailLimits() {
+		var limiter=new AuthRateLimiter(new AuthRateLimitProperties(600));
+		for(int i=0;i<600;i++) assertTrue(limiter.allow("register","loopback","user"+i+"@example.test"));
+		assertFalse(limiter.allow("register","loopback","next@example.test"));
+		for(int i=0;i<10;i++) assertTrue(limiter.allow("login","ip"+i,"same@example.test"));
+		assertFalse(limiter.allow("login","another-ip","same@example.test"));
+		assertThrows(IllegalArgumentException.class,()->new AuthRateLimitProperties(0));
+		assertThrows(IllegalArgumentException.class,()->new AuthRateLimitProperties(1001));
+	}
 }

@@ -9,11 +9,17 @@ public final class AuthRateLimiter {
 	private static final int CAPACITY = 10000;
 	private static final long WINDOW_MS = 15 * 60 * 1000L;
 	private final Map<String, Bucket> buckets = new LinkedHashMap<>();
+	private final int ipLimit;
+	public AuthRateLimiter() {this(new org.dev.quizzle.config.AuthRateLimitProperties(60));}
+	@org.springframework.beans.factory.annotation.Autowired
+	public AuthRateLimiter(org.dev.quizzle.config.AuthRateLimitProperties properties) {
+		this.ipLimit=properties.ipLimit();
+	}
 	public synchronized boolean allow(String action, String ip, String email) {
 		long now = System.currentTimeMillis();
 		buckets.entrySet().removeIf(entry -> now - entry.getValue().start >= WINDOW_MS);
 		String normalized=org.dev.quizzle.account.AccountStore.normalizeEmail(email);
-		boolean ipAllowed=take(action + ":ip:" + ip, 60, now);
+		boolean ipAllowed=take(action + ":ip:" + ip, ipLimit, now);
 		return ipAllowed & (normalized.isEmpty() || take(action + ":email:" + org.dev.quizzle.account.AccountTokens.digest(normalized), 10, now));
 	}
 	private boolean take(String key, int limit, long now) {
