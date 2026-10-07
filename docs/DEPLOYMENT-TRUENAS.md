@@ -1,177 +1,53 @@
-# Running Quizzle on TrueNAS SCALE
+# Quizzle on TrueNAS SCALE
 
-TrueNAS SCALE 24.10 and newer can install plain Docker Compose files through
-**Apps → Discover Apps → ⋮ → Install via YAML**. This guide uses that path.
+TrueNAS SCALE versions supporting Docker Compose can run the repository stack. Build a pinned
+Quizzle image on a build host and make it available to TrueNAS, or deploy the checked-out Compose
+project using a supported local-build workflow. Do not clone/pull/build arbitrary `main` code as
+root on every container start.
 
-There is no published Quizzle container image, so the stack uses the official
-`gradle:9.5.1-jdk21` image: on startup it clones (or updates) the repository, builds the Spring Boot
-JAR, and runs it. Quizzle stores its state in an embedded SQLite file, so **no database container is
-needed**.
+> **Breaking change:** the old single-container YAML-account/SQLite setup no longer applies.
+> There is no automatic account/quiz/snapshot migration. Back up that installation, register and
+> verify new accounts, then explicitly import exported quiz YAML. Follow the
+> [deployment guide](deployment.md) for configuration and backup/restore.
 
-The application listens on port **17713 in this TrueNAS setup**. The repository's regular Docker
-Compose configuration continues to use port `8080`.
+## Storage and configuration
 
-## 1. Prepare the datasets
+Use PostgreSQL 16 with a persistent volume mounted at `/var/lib/postgresql/data`. For TrueNAS
+bind datasets, replace only the database volume's source with a dedicated dataset and ensure
+the PostgreSQL container user can access it. Do not reuse the SQLite dataset as a database cluster.
+Keep database host ports unpublished.
 
-Create these directories (for example as datasets under an existing pool):
+Mount a branding dataset at `/branding:ro`, preserving `branding.yaml` and `images/`. The app
+uses UID/GID 10001 and needs only read access to branding. There are no writable per-account
+quiz or account files to mount.
 
-```
-/mnt/FastData/Apps/Quizzle/workspace    # git checkout and Gradle cache
-/mnt/FastData/Apps/Quizzle/quizzes      # base folder; one subfolder per account id
-/mnt/FastData/Apps/Quizzle/branding     # optional branding.yaml
-/mnt/FastData/Apps/Quizzle/db           # SQLite session snapshots
-```
+Configure the root `.env.example` variables through TrueNAS private environment settings:
+PostgreSQL credentials, SMTP sender/host/auth/TLS, external `PUBLIC_BASE_URL`,
+`SESSION_COOKIE_SECURE=true`, optional email-domain restriction and optional Google client
+credentials. The app's JDBC hostname must match the database Compose service.
 
-Register an account through `/register` first to learn its account id (visible in
-`data/accounts.yml`, or via the browser once logged in), then either use the
-in-app **Editor** (`/editor`) to build a quiz visually, or copy at least one quiz
-YAML into `quizzes/<accountId>/` by hand. The format is described in the
-[README](../README.md#create-a-quiz); you can start from
-[`quizzes/safety-basics.yaml`](../quizzes/safety-basics.yaml).
+If using a prebuilt image, replace `build: .` with your pinned `image:` in the repository
+Compose service. Keep the PostgreSQL dependency/health checks, graceful stop period and named
+volume. Set the application port mapping to `17713:8080` if preserving the former TrueNAS port.
+Do not change the application's internal port unless its health check is changed consistently.
 
-To use your own wording and colors, copy
-[`branding/branding.yaml`](../branding/branding.yaml) and the optional `branding/images/` directory
-into the `branding/` dataset, preserving that layout. Then edit the YAML—see
-[Customize the look](../README.md#customize-the-look). Without that file, the built-in defaults
-apply.
+## Proxy and first use
 
-## 2. Install the app
+Terminate HTTPS at a trusted reverse proxy. Forward WebSocket upgrades for `/{codehash}/data`,
+disable SSE buffering for `/admin/api/sessions/{codehash}/events`, and allow long-lived
+connections. Set `PUBLIC_BASE_URL` to the external HTTPS origin, not the container IP.
 
-Open **Apps → Discover Apps → ⋮ → Install via YAML**, name the app `quizzle`, and paste:
+Confirm `/health`, register at `/register`, follow the SMTP verification email, sign in at
+`/login`, and import a quiz. Test one participant and presenter before public use. Google requires
+the exact `/login/oauth2/code/google` authorized redirect URI when enabled.
 
-```yaml
-services:
-  quizzle:
-    container_name: quizzle
-    image: gradle:9.5.1-jdk21
-    user: root
-    working_dir: /workspace
+## Upgrades and backups
 
-    environment:
-      - TZ=Europe/Berlin
-      - GRADLE_USER_HOME=/workspace/.gradle
+Use `scripts/backup.sh` against the correct Compose deployment before updating the pinned image.
+Store encrypted/off-host database dumps and separate branding/configuration backups. Replace the
+image and recreate the app; Flyway migrates at startup. Confirm account/settings/quizzes and
+supported session recovery.
 
-      # Required: only this email domain may self-register (no shared password anymore).
-      - ALLOWED_EMAIL_DOMAIN=your-company.com
-
-      # Must be the URL participants actually open; it goes into the join links and QR codes.
-      - PUBLIC_BASE_URL=https://quiz.example.org
-      - SESSION_COOKIE_SECURE=true
-
-      - SERVER_PORT=17713
-      - QUIZ_FOLDER=/data/quizzes
-      - BRANDING_FOLDER=/data/branding
-      - QUIZ_DATABASE_PATH=/data/db/quiz-snapshots.db
-
-      # Optional:
-      # - JAVA_TOOL_OPTIONS=-Xms256m -Xmx1024m
-
-    ports:
-      - "17713:17713"
-
-    volumes:
-      - /mnt/FastData/Apps/Quizzle/workspace:/workspace
-      - /mnt/FastData/Apps/Quizzle/quizzes:/data/quizzes
-      - /mnt/FastData/Apps/Quizzle/branding:/data/branding
-      - /mnt/FastData/Apps/Quizzle/db:/data/db
-
-    restart: unless-stopped
-
-    command:
-      - bash
-      - -c
-      - |
-        set -eu
-        if [ -d /workspace/quizzle/.git ]; then
-          git -C /workspace/quizzle pull --ff-only
-        else
-          git clone --depth 1 https://git.olli.info/Oliver/quizzle.git /workspace/quizzle
-        fi
-        cd /workspace/quizzle/quizzle
-        gradle --no-daemon bootJar
-        exec java -jar build/libs/quizzle-0.0.1-SNAPSHOT.jar
-```
-
-Replace `ALLOWED_EMAIL_DOMAIN` and `PUBLIC_BASE_URL` before starting, then install.
-
-
-The first start downloads the Gradle dependencies and takes a few minutes. Because
-`GRADLE_USER_HOME` points into the persistent workspace, later restarts only rebuild what changed.
-Follow the progress under **Apps → quizzle → Logs**; the app is ready when the log shows
-`Started QuizApplication`.
-
-## 3. Reverse proxy
-
-Quizzle is reachable directly at `http://TRUENAS-IP:17713`. If you publish it through a reverse
-proxy, the proxy must:
-
-- forward WebSocket upgrades (`Upgrade` and `Connection` headers) for `/{codehash}/data`,
-- not buffer `text/event-stream` responses – the presenter view uses Server-Sent Events for
-  `/admin/api/sessions/{codehash}/events`. Quizzle sends `X-Accel-Buffering: no` on that response,
-  which nginx honours automatically; other proxies may need `proxy_buffering off` (or their
-  equivalent) explicitly. If the stream stays silent, the presenter view falls back to polling
-  `/admin/api/sessions/{codehash}/state` and shows `Live (polling)`.
-- allow long-lived connections (a quiz session keeps one socket open for its whole duration).
-
-Nginx example:
-
-```nginx
-location / {
-    proxy_pass         http://TRUENAS-IP:17713;
-    proxy_http_version 1.1;
-    proxy_set_header   Upgrade    $http_upgrade;
-    proxy_set_header   Connection $connection_upgrade;
-    proxy_set_header   Host       $host;
-    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-    proxy_set_header   X-Forwarded-Proto $scheme;
-    proxy_buffering    off;
-    proxy_read_timeout 3600s;
-}
-```
-
-Set `PUBLIC_BASE_URL` to the public URL (`https://quiz.example.org`), not to the TrueNAS IP –
-otherwise the QR code sends participants to an address they cannot reach. Keep
-`SESSION_COOKIE_SECURE=true` whenever the public URL uses HTTPS.
-
-## 4. Verify
-
-1. Open `https://quiz.example.org/admin/login` and sign in.
-2. The quiz catalog must list the files from `/data/quizzes/<accountId>`. Broken files appear as
-   skipped with
-   their validation error.
-3. Create a session, open the presenter view and scan the QR code with a phone.
-4. Restart the app in TrueNAS – the session must still be there afterwards, and the phone must
-   reconnect on its own.
-
-## Updating
-
-Restart the app (**Apps → quizzle → ⋮ → Restart**). The start command runs `git pull --ff-only` and
-rebuilds the jar.
-
-To pin a specific version instead of always tracking `main`, replace the clone line with a tag:
-
-```bash
-git clone --depth 1 --branch v1.0.0 https://git.olli.info/Oliver/quizzle.git /workspace/quizzle
-```
-
-## Backup
-
-Everything worth keeping lives in the mounted datasets:
-
-- `quizzes/` – your quiz definitions,
-- `branding/` – your branding file,
-- `db/quiz-snapshots.db` – running and finished sessions.
-
-`workspace/` is a disposable build cache; deleting it only forces a fresh clone and rebuild.
-
-## Troubleshooting
-
-| Symptom | Cause |
-| --- | --- |
-| App exits immediately, log says `ALLOWED_EMAIL_DOMAIN must be set` | `ALLOWED_EMAIL_DOMAIN` is empty in the YAML. |
-| App never starts, log ends in a `git clone` error | TrueNAS cannot reach `git.olli.info`, does not trust its certificate, or the repository needs a token. |
-| Catalog is empty | `QUIZ_FOLDER` does not point at the mounted dataset, or `QUIZ_FOLDER/<accountId>/` contains no `.yaml` / `.yml` files. |
-| QR code leads nowhere | `PUBLIC_BASE_URL` still points at `localhost` or an internal address. |
-| Participants show "Connection lost" in a loop | The reverse proxy does not forward WebSocket upgrades. |
-| Presenter view shows "Live (polling)" | The reverse proxy buffers or blocks `text/event-stream`; the view keeps working through polling, but fix the proxy for instant updates. |
-| Sessions gone after a restart | `/data/db` is not persisted, or `QUIZ_DATABASE_PATH` points outside the mount. |
+Restarting/replacing containers does not delete PostgreSQL data. **Removing the database volume
+or running `docker compose down -v` does.** Restoring a pre-upgrade dump may be necessary for
+rollback after schema changes; a previous image alone is not a database rollback.

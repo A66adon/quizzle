@@ -7,19 +7,25 @@
 ![Gradle](https://img.shields.io/badge/Gradle-Wrapper-02303A?logo=gradle&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 
-Quizzle turns YAML files into presenter-led quizzes. An admin starts a session, participants join by
+Quizzle turns editable quizzes into presenter-led sessions. An account holder starts a session, participants join by
 QR code from their phones, and the presenter controls each question from a shared screen. The whole
-application runs as one Spring Boot process with embedded SQLite storage and no required external
-services.
+application runs as one Spring Boot process backed by PostgreSQL. SMTP delivers account verification
+and password-reset emails; Google sign-in is optional. The frontend remains vanilla JavaScript.
+
+> [!WARNING]
+> **Breaking storage change / clean start:** YAML accounts, per-account quiz folders and SQLite
+> snapshots are not migrated or read at runtime. Back up the previous installation before upgrading.
+> Re-register accounts and explicitly import quiz YAML. PostgreSQL is now the only mutable store;
+> branding YAML/images remain read-only deployment files.
 
 ## At a glance
 
 - **Easy to host:** one Java process or Docker Compose stack.
 - **Real-time:** WebSockets connect participants; Server-Sent Events update the presenter.
-- **Resilient:** active sessions are snapshotted to SQLite and restored after a restart.
+- **Resilient:** active sessions are snapshotted to PostgreSQL and restored after a restart.
 - **Offline-friendly:** quizzes, branding, and DiceBear avatar assets are stored locally.
 - **Safe by default:** the server validates quiz files, state transitions, and answer timing.
-- **Customizable:** edit YAML files to change quizzes, wording, logo, and light/dark colors.
+- **Portable:** import/export quiz YAML; customize branding, logo, and light/dark colors with files.
 
 ## Quick start with Docker
 
@@ -29,37 +35,38 @@ from the repository root.
 **PowerShell**
 
 ```powershell
-$env:ALLOWED_EMAIL_DOMAIN = 'your-company.com'
-docker compose up --build
+Copy-Item .env.example .env
+# Edit .env: database password, public HTTPS URL and real SMTP settings.
+docker compose up -d --build
 ```
 
 **Bash**
 
 ```bash
-ALLOWED_EMAIL_DOMAIN='your-company.com' docker compose up --build
+cp .env.example .env
+# Edit .env: database password, public HTTPS URL and real SMTP settings.
+docker compose up -d --build
 ```
 
-Open <http://localhost:8080/register>, create an account with a `@your-company.com` email, sign in,
-choose a quiz, and create a session. Stop the stack with <kbd>Ctrl</kbd>+<kbd>C</kbd>, then run
-`docker compose down` when you no longer need it.
+Open your configured public URL at `/register`, register with email and password confirmation,
+follow the verification email, and sign in. Create a quiz in the editor or explicitly import
+[`quizzes/safety-basics.yaml`](quizzes/safety-basics.yaml), then create a session.
 
 > [!IMPORTANT]
-> `ALLOWED_EMAIL_DOMAIN` is required. Only email addresses on that domain may self-register; there is
-> no shared password and no administrator role.
+> A blank `ALLOWED_EMAIL_DOMAIN` allows any valid email address. Setting it restricts both local
+> registration and Google sign-in to that exact domain. No local account can sign in before verification.
+> SMTP must be configured. For development with captured mail, see the
+> [Mailpit profile](docs/deployment.md#local-development-with-mailpit).
 
 ### Run directly with Java
 
-Requirements: JDK 21. The path overrides below connect the Gradle project in `quizzle/` to the
-repository-level sample quizzes, branding, and data directory.
+Requirements: JDK 21, PostgreSQL 16 and SMTP. Copy `quizzle/.env.example` to `quizzle/.env`,
+provide database credentials and start those services. PostgreSQL is required, including locally.
 
 **PowerShell**
 
 ```powershell
 Set-Location .\quizzle
-$env:ALLOWED_EMAIL_DOMAIN = 'your-company.com'
-$env:QUIZ_FOLDER = '../data/quizzes'
-$env:BRANDING_FOLDER = '../branding'
-$env:QUIZ_DATABASE_PATH = '../data/quiz-snapshots.db'
 .\gradlew.bat bootRun
 ```
 
@@ -67,10 +74,6 @@ $env:QUIZ_DATABASE_PATH = '../data/quiz-snapshots.db'
 
 ```bash
 cd quizzle
-ALLOWED_EMAIL_DOMAIN='your-company.com' \
-QUIZ_FOLDER='../data/quizzes' \
-BRANDING_FOLDER='../branding' \
-QUIZ_DATABASE_PATH='../data/quiz-snapshots.db' \
 ./gradlew bootRun
 ```
 
@@ -84,6 +87,8 @@ precedence over `.env`; `.env` takes precedence over built-in defaults.
 | --- | --- | --- |
 | Register | `/register` | New account holder |
 | Login | `/login` | Returning account holder |
+| Verify email | `/verify-email` | Single-use verification link |
+| Forgot/reset password | `/forgot-password`, `/reset-password` | Email reset lifecycle |
 | Session overview | `/admin` | Signed-in account holder — home screen; settings live in the gear panel here |
 | Quiz editor | `/editor` | Signed-in account holder — presenter-style edit mode, reached by adding/editing a quiz |
 | Settings | `/settings` | Signed-in account holder — legacy standalone page; the same actions live in the `/admin` gear panel |
@@ -102,18 +107,22 @@ ignored by Git.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `ALLOWED_EMAIL_DOMAIN` | — | **Required.** Only `@domain` addresses may self-register. |
-| `ACCOUNTS_FILE` | `./data/accounts.yml` | Flat-file account store (one record per user). |
+| `DATABASE_URL` | PostgreSQL JDBC URL | Required PostgreSQL connection; Compose supplies its internal hostname. |
+| `DATABASE_USER`, `DATABASE_PASSWORD` | — | JDBC credentials; Compose derives these from `POSTGRES_USER`/`POSTGRES_PASSWORD`. |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | `quizzle`, `quizzle`, required | Compose database configuration. |
+| `ALLOWED_EMAIL_DOMAIN` | blank | Optional exact-domain restriction for local and Google accounts. |
 | `ACCOUNT_MIN_PASSWORD_LENGTH` | `8` | Minimum password length for registration/change. |
 | `SERVER_PORT` | `8080` | HTTP listening port. |
 | `PUBLIC_BASE_URL` | `http://localhost:8080` | Base URL used in participant links and QR codes. |
-| `SESSION_COOKIE_SECURE` | `false` | Set to `true` when the public URL uses HTTPS. |
-| `QUIZ_FOLDER` | `./data/quizzes` | Base folder holding one subfolder per account id (`<QUIZ_FOLDER>/<accountId>/*.yaml`); each account only ever sees its own subfolder. |
+| `SESSION_COOKIE_SECURE` | `true` in Compose | Production HTTPS; explicitly set `false` only for local HTTP development. |
+| `SMTP_HOST`, `SMTP_PORT` | required, `587` | SMTP server. |
+| `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_AUTH`, `SMTP_STARTTLS`, `SMTP_SSL`, `SMTP_FROM` | provider-specific | SMTP credentials, transport and sender; see `.env.example`. |
+| `EMAIL_VERIFICATION_TTL_MINUTES`, `PASSWORD_RESET_TTL_MINUTES` | `1440`, `30` | Bounded verification/reset token lifetimes. |
+| `AUTH_RATE_LIMIT_IP_LIMIT` | `60` | Per-IP/auth-action requests per 15 minutes, validated from 1 to 1000; the per-email limit remains 10. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | blank | Configure both to enable optional Google OIDC. |
 | `BRANDING_FOLDER` | `./branding` | Directory containing branding configuration and images. |
 | `BRANDING_FILE` | `branding.yaml` | Branding filename inside `BRANDING_FOLDER`. |
-| `QUIZ_DATABASE_PATH` | `./data/quiz-snapshots.db` | SQLite snapshot database. |
 | `SNAPSHOT_INTERVAL_MS` | `30000` | Periodic snapshot interval. |
-| `SQLITE_BUSY_TIMEOUT_MS` | `5000` | SQLite lock wait timeout. |
 | `SESSION_CODEHASH_LENGTH` | `10` | Length of generated session join codes. |
 | `AUTO_ADVANCE_DELAY_MS` | `5000` | Presenter automatic-advance delay after results or the leaderboard. |
 | `ALLOW_JOIN_AFTER_START` | `false` | When `true`, new players may join after the lobby, until the session is closed. |
@@ -128,9 +137,9 @@ WebSocket message-size limits can be overridden the same way. Their names and de
 
 ## Create a quiz
 
-Add one YAML file per quiz alongside
-[`quizzes/safety-basics.yaml`](quizzes/safety-basics.yaml), then restart Quizzle so the catalog
-reloads it. Start with that file or use this minimal example:
+Use the editor's **Save** action or **Import YAML**. Only database rows owned by your account appear
+in the catalog; placing files in a folder does not load them. **Export YAML** produces a portable
+copy. Start with [`quizzes/safety-basics.yaml`](quizzes/safety-basics.yaml) or this example:
 
 ```yaml
 title: "Workplace Safety Basics"
@@ -153,9 +162,13 @@ questions:
 ```
 
 Quizzes must have unique question IDs, at least two answers per question, and at least one correct
-answer. A single-choice question must have exactly one correct answer. Invalid files are skipped and
-shown in the admin catalog with a precise validation error; they do not prevent valid quizzes from
-loading.
+answer. A single-choice question must have exactly one correct answer. Invalid imports and saves are rejected without overwriting the stored quiz.
+Drafts with no questions can be edited, but sessions need a playable quiz.
+
+The editor keeps account-isolated local drafts and shows save/offline/conflict status. Restore or
+discard a recovered draft explicitly. A stale revision returns a conflict rather than silently
+overwriting another tab's changes. Local drafts are tied to the current browser/origin and are
+not a backup.
 
 Answers are shuffled once per session by default. Set `shuffle_answers: false` when order matters.
 For multiple-choice questions, a participant must select the exact correct set to score points.
@@ -215,11 +228,13 @@ at runtime. A participant UUID provides a stable avatar across screens and recon
 .
 ├── quizzle/                  Spring Boot 4.1 application and Gradle wrapper
 │   └── src/main/
-│       ├── java/gd/safety/quizzle/
+│       ├── java/org/dev/quizzle/
 │       └── resources/       Static admin, presenter, and participant clients
-├── quizzes/                 Quiz catalog YAML files
+├── quizzes/                 YAML samples for explicit import
 ├── branding/                Branding YAML and image assets
-├── data/                    Local SQLite data (ignored by Git)
+├── e2e/                     Playwright browser suites
+├── load/                    Protocol-aware k6 scenarios
+├── scripts/                 Compose smoke, backup and restore
 ├── docs/                    Deployment documentation
 ├── Dockerfile
 └── docker-compose.yml
@@ -239,6 +254,8 @@ Run the Gradle wrapper from `quizzle/`:
 Set-Location .\quizzle
 .\gradlew.bat test
 .\gradlew.bat bootJar
+# Requires Docker: real PostgreSQL, no H2 substitute.
+.\gradlew.bat integrationTest
 ```
 
 **Bash**
@@ -247,15 +264,17 @@ Set-Location .\quizzle
 cd quizzle
 ./gradlew test
 ./gradlew bootJar
+./gradlew integrationTest # requires Docker
 ```
 
 The executable JAR is written to `quizzle/build/libs/quizzle-0.0.1-SNAPSHOT.jar`. Tests include unit
-and Spring MVC coverage. The repository also contains `smoke-test.ps1`, a restart/persistence smoke
-test for a preconfigured `quizzle-test` container listening on port `18080`.
+and MVC coverage. PostgreSQL tests use Testcontainers and run separately with `integrationTest`.
+The [deployment guide](docs/deployment.md#validation-commands) lists browser, Compose, security and
+load commands. Heavy suites run nightly/manually rather than on every small change.
 
 > [!NOTE]
-> Run the Gradle tests without Quizzle configuration variables such as `ALLOWED_EMAIL_DOMAIN`,
-> `QUIZ_FOLDER`, or `BRANDING_FILE` in the process environment. Some tests intentionally verify
+> Run the Gradle tests without Quizzle configuration variables such as `ALLOWED_EMAIL_DOMAIN`
+> or `BRANDING_FILE` in the process environment. Some tests intentionally verify
 > precedence between process variables, `.env`, and test fixtures.
 
 ## Deploy
@@ -263,42 +282,39 @@ test for a preconfigured `quizzle-test` container listening on port `18080`.
 ### Container image
 
 Build a production image from the repository root. The multi-stage [`Dockerfile`](Dockerfile) builds
-the JAR with `gradle:9.5.1-jdk21` and runs it on `eclipse-temurin:21-jre` as the unprivileged user
+the JAR with `gradle:9.5.1-jdk21` and runs it on `eclipse-temurin:21-jre-alpine` as the unprivileged user
 `quizzle` (UID 10001):
 
 ```bash
 docker build -t quizzle:local .
 ```
 
-The image expects three paths under `/data`, all owned by UID 10001:
+The application image has no mutable account/quiz filesystem. PostgreSQL stores all account,
+token, settings, quiz and snapshot rows in the `postgres-data` named volume.
 
 | Path | Contents | Mount |
 | --- | --- | --- |
-| `/data/quizzes` | Quiz YAML files, one subfolder per account id | read-write (the Editor and account deletion write/delete files here) |
-| `/data/branding` | `branding.yaml` and `images/` | read-only |
-| `/data/db` | SQLite snapshot database | read-write, **must be persistent** |
+| `/branding` | `branding.yaml` and `images/` | read-only application mount |
+| `/var/lib/postgresql/data` | PostgreSQL 16 database | named volume on database container |
 
-[`docker-compose.yml`](docker-compose.yml) wires exactly that up and publishes port `8080`. Set
-`ALLOWED_EMAIL_DOMAIN` in the environment (or an ignored `.env` next to the compose file) before
-starting:
+[`docker-compose.yml`](docker-compose.yml) publishes application port `8080`; PostgreSQL has no
+host port. Configure the ignored root `.env` before starting:
 
 ```bash
-ALLOWED_EMAIL_DOMAIN='your-company.com' docker compose up -d --build
+docker compose up -d --build
 ```
 
 ### Standalone JAR
 
-Set `ALLOWED_EMAIL_DOMAIN`, point `PUBLIC_BASE_URL` at the address participants actually reach, and
+Optionally set `ALLOWED_EMAIL_DOMAIN`, point `PUBLIC_BASE_URL` at the address participants actually reach, and
 enable `SESSION_COOKIE_SECURE` when serving over HTTPS. Run the JAR from the repository root so the
 default relative paths resolve:
 
 ```bash
-export ALLOWED_EMAIL_DOMAIN='your-company.com'
 export PUBLIC_BASE_URL='https://quiz.example.org'
 export SESSION_COOKIE_SECURE=true
-export QUIZ_FOLDER=./data/quizzes
 export BRANDING_FOLDER=./branding
-export QUIZ_DATABASE_PATH=./data/quiz-snapshots.db
+# Also configure DATABASE_URL/USER/PASSWORD and SMTP_*.
 java -jar quizzle/build/libs/quizzle-0.0.1-SNAPSHOT.jar
 ```
 
@@ -311,22 +327,22 @@ A reverse proxy in front of Quizzle must:
 - **not** buffer `text/event-stream` responses, otherwise the presenter view receives no live
   updates. Quizzle sends `X-Accel-Buffering: no` on the event stream, which nginx honours on its own;
 - allow idle connections to live longer than `WEBSOCKET_HEARTBEAT_TIMEOUT_MS` (default 40 s);
-- forward the original host/scheme if `PUBLIC_BASE_URL` is not set explicitly.
+- keep `PUBLIC_BASE_URL` fixed to the external HTTPS origin; auth links never trust the Host header.
 
 If the event stream delivers nothing within six seconds, the presenter falls back to polling
 `/admin/api/sessions/{codehash}/state` every two seconds and shows `Live (polling)`.
 
 ### Data and updates
 
-Sessions are written to SQLite on every state change and flushed again on a timer. After a restart
+Sessions are written to PostgreSQL on state changes and flushed again on a timer. After a restart
 the registry rehydrates open sessions: previously connected players become
 `TEMPORARILY_DISCONNECTED` so their cookies keep working, and a question that was open when the
 server stopped gets a fresh timer instead of an already-expired one. Closed sessions are deleted
-instead of restored. Back up and persist `QUIZ_DATABASE_PATH`; everything else is rebuilt from the
-quiz and branding files.
-
-Quiz files are re-scanned on every request, so changes to a `QUIZ_FOLDER/<accountId>/` folder show
-up immediately (no restart needed). Branding files are still read once at startup.
+instead of restored. Back up PostgreSQL with `bash scripts/backup.sh`; keep branding separately.
+`docker compose down` preserves the named volume; **`docker compose down -v` deletes it**.
+Flyway automatically upgrades the schema at startup. Application rollback across schema changes
+may require restoring the pre-upgrade database; consult [backup/upgrade guidance](docs/deployment.md).
+Branding files are read once at startup.
 
 For a complete TrueNAS SCALE setup, including persistent datasets, reverse proxy configuration,
 updates, backups, and troubleshooting, see
@@ -336,11 +352,12 @@ updates, backups, and troubleshooting, see
 
 | Symptom | Check |
 | --- | --- |
-| Server exits immediately | `ALLOWED_EMAIL_DOMAIN` is missing or blank. |
-| Quiz catalog is empty | `QUIZ_FOLDER/<your account id>/` has no `.yaml`/`.yml` files; each account only sees its own subfolder. |
+| Server exits immediately | PostgreSQL readiness/credentials and required SMTP configuration. |
+| Verification/reset email does not arrive | SMTP host, sender, TLS/auth settings and provider delivery logs. |
+| Quiz catalog is empty | Create a quiz or explicitly import YAML while signed in. |
 | QR code opens the wrong host | `PUBLIC_BASE_URL` is not reachable from participant devices. |
 | Participants repeatedly disconnect | The reverse proxy is not forwarding WebSocket upgrades. |
 | Presenter shows `Live (polling)` | The proxy is buffering or blocking Server-Sent Events. |
-| Sessions disappear after restart | `QUIZ_DATABASE_PATH` is not on persistent storage. |
+| Data disappears after restart | Database volume/mount or accidental `down -v`; never remove production volumes. |
 
 - Participants join in `LOBBY`. Set `ALLOW_JOIN_AFTER_START=true` to also accept joins after the quiz starts, until the session is closed. Answers are accepted only during `QUESTION_OPEN`.

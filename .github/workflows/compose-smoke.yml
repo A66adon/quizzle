@@ -1,0 +1,30 @@
+name: Compose persistence smoke
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - 'quizzle/**'
+      - 'branding/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'scripts/compose-smoke*'
+      - '.github/workflows/compose-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compose-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build, verify SMTP account lifecycle and persist through recreation
+        run: bash scripts/compose-smoke.sh

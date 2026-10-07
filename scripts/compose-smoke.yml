@@ -6,3 +6,21 @@ services:
     environment:
       PUBLIC_BASE_URL: http://localhost:18080
       SESSION_COOKIE_SECURE: 'false'
+      ALLOWED_EMAIL_DOMAIN: ''
+      ACCOUNT_MIN_PASSWORD_LENGTH: '8'
+      EMAIL_VERIFICATION_TTL_MINUTES: '1440'
+      PASSWORD_RESET_TTL_MINUTES: '30'
+      AUTH_RATE_LIMIT_IP_LIMIT: '60'
+      SMTP_HOST: mailpit
+      SMTP_PORT: '1025'
+      SMTP_USERNAME: ''
+      SMTP_PASSWORD: ''
+      SMTP_AUTH: 'false'
+      SMTP_STARTTLS: 'false'
+      SMTP_SSL: 'false'
+      SMTP_FROM: quizzle@localhost
+      GOOGLE_CLIENT_ID: ''
+      GOOGLE_CLIENT_SECRET: ''
+  mailpit:
+    ports: !override
+      - "127.0.0.1:18025:8025"

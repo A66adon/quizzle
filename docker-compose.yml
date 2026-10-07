@@ -1,15 +1,58 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-quizzle}
+      POSTGRES_USER: ${POSTGRES_USER:-quizzle}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your environment or .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
   quizzle:
     build: .
-    container_name: quizzle
     environment:
-      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:8080}
-      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-false}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-quizzle}
+      DATABASE_USER: ${POSTGRES_USER:-quizzle}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://quiz.example.com}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      ALLOWED_EMAIL_DOMAIN: ${ALLOWED_EMAIL_DOMAIN:-}
+      ACCOUNT_MIN_PASSWORD_LENGTH: ${ACCOUNT_MIN_PASSWORD_LENGTH:-8}
+      EMAIL_VERIFICATION_TTL_MINUTES: ${EMAIL_VERIFICATION_TTL_MINUTES:-1440}
+      PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-30}
+      AUTH_RATE_LIMIT_IP_LIMIT: ${AUTH_RATE_LIMIT_IP_LIMIT:-60}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_SSL: ${SMTP_SSL:-false}
+      SMTP_FROM: ${SMTP_FROM:-quizzle@example.com}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
     volumes:
-      - quizzle-data:/data
+      - ./branding:/branding:ro
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    profiles: [dev]
+    ports:
+      - "127.0.0.1:8025:8025"
     restart: unless-stopped
 
 volumes:
-  quizzle-data:
+  postgres-data:

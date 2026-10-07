@@ -173,3 +173,9 @@ out/
 !/docs/contracts.md
 !/docs/deployment.md
 !/docs/implementation-report.md
+/backups/
+**/node_modules/
+**/playwright-report/
+**/test-results/
+/load/results/
+/zap-reports/

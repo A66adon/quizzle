@@ -1,14 +1,18 @@
 # HTTP and realtime contracts
 
-This inventory captures the pre-PostgreSQL baseline. Changes below retain route names unless
-explicitly noted; participant entry, WebSocket messages and presenter commands remain compatible.
+This inventory records the integrated HTTP contracts. Participant entry, WebSocket messages and
+presenter commands remain compatible with the pre-PostgreSQL baseline.
 
 ## Authentication and ownership
 
-Baseline form endpoints are `GET/POST /register`, `GET/POST /login`, and `POST /logout`.
-Forms currently submit `username` and `password`; the authentication checkpoint replaces the
-username field with `email` and adds password confirmation and verification.
-The baseline account ID is held in an HTTP session, rotated on successful registration/login.
+Form endpoints are `GET/POST /register`, `GET/POST /login`, and `POST /logout`.
+Login submits `email` and `password`; registration also requires `passwordConfirmation` and
+creates a pending account without signing it in. `GET /verify-email?token=...` consumes a
+verification link and leads to ordinary login. Forgot/resend submit `email` to
+`/forgot-password` and `/resend-verification`; reset submits `token`, `password` and
+`passwordConfirmation` to `/reset-password` and never signs in automatically.
+Spring Security holds the authenticated account principal in the session, rotates successful
+sign-ins and rejects revoked credential versions.
 The readable `XSRF-TOKEN` cookie is echoed in `X-XSRF-TOKEN` or the `_csrf` form parameter.
 Admin, editor and settings pages and `/admin/api/**` require authentication. Ownership misses
 return 404, rather than disclosing another account's sessions or quizzes.
@@ -16,18 +20,23 @@ return 404, rather than disclosing another account's sessions or quizzes.
 ## Quiz editor and settings
 
 `GET /admin/api/quizzes` lists the caller's quizzes and validation issues.
-`GET /admin/api/quizzes/{fileName}` returns `{fileName, quiz}`.
+`GET /admin/api/quizzes/{fileName}` returns `{fileName, quiz, version}`.
 `POST /admin/api/quizzes` creates a quiz; `PUT /admin/api/quizzes/{fileName}` updates it;
-`DELETE` on the same route deletes it. The database checkpoint adds an explicit revision to
-responses and update requests and returns 409 on stale writes.
+`DELETE` on the same route deletes it. Updates submit `{quiz, version}`; stale writes return
+409 with `{error:"REVISION_CONFLICT", currentVersion}`. Import posts raw `application/yaml`
+to `/admin/api/quizzes/import`; export gets `/admin/api/quizzes/{fileName}/export`.
 
 `GET /admin/api/account/settings` reads account/game defaults. The settings controller also
-handles game defaults, password changes and account deletion. Defaults apply to newly created
-game sessions, not the participant identity.
+handles game defaults, password changes and account deletion. Settings include
+`accountId`, `email`, `hasLocalPassword`, `allowLateJoin` and `autoAdvanceDelayMs`.
+Local deletion supplies `{currentPassword}`; OAuth-only deletion requires recent same-account
+provider reauthentication at `/reauthenticate`. Defaults apply to newly created game sessions,
+not the participant identity.
 
-The existing editor has explicit Save, dirty comparison, navigation confirmation, `beforeunload`
-and best-effort page-hide saving. It has no durable account-isolated local draft or revision
-conflict protection at baseline.
+The editor has explicit Save, serialized debounced saves, account-isolated local drafts,
+recovery/conflict dialogs, navigation confirmation and `beforeunload`. Page hide stores local
+content rather than issuing a racing server save. Acknowledgements clear only matching content
+and base revisions; other tabs' drafts are not deleted.
 
 ## Presenter lifecycle
 
@@ -54,6 +63,6 @@ period support reconnection; maximum message size and name length are configurab
 
 ## Health
 
-`GET /health` is public and returns only `{"status":"UP"}`. It contains no actuator, account,
-configuration or credentials detail. Deployment readiness must additionally confirm database
-health and successful application startup.
+`GET /health` is public and performs a bounded database readiness query. It returns
+`{"status":"UP"}` or HTTP 503 with `{"status":"DOWN"}`. It contains no actuator, account,
+configuration, database-address or credentials detail.

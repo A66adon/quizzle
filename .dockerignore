@@ -2,3 +2,15 @@ quizzle/build
 quizzle/.gradle
 docs
 README.md
+.git
+.github
+.idea
+**/.env
+**/.env.*
+data
+e2e
+load
+scripts
+**/node_modules
+**/test-results
+**/playwright-report
