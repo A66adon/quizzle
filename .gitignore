@@ -163,9 +163,13 @@ out/
 ### VS Code ###
 .vscode
 .idea/*
-.github
+.github/*
+!.github/workflows/
 .gortex
 /docs/adr/
 /.impeccable/
-/docs/
+/docs/*
 !/docs/DEPLOYMENT-TRUENAS.md
+!/docs/contracts.md
+!/docs/deployment.md
+!/docs/implementation-report.md

@@ -36,6 +36,7 @@ class SqliteSnapshotRepositoryTests {
 		UUID playerId = UUID.randomUUID();
 		GameSessionSnapshot lobby = new GameSessionSnapshot(
 				"RoundTrip25",
+				SessionTestFixtures.OWNER_ACCOUNT_ID,
 				"safety.yaml",
 				SessionTestFixtures.quiz(),
 				GameState.LOBBY,

@@ -9,6 +9,8 @@ import org.dev.quizzle.quiz.model.QuizDefinition;
 
 public final class SessionTestFixtures {
 
+	public static final String OWNER_ACCOUNT_ID = "session-test-account";
+
 	private SessionTestFixtures() {
 	}
 
@@ -23,7 +25,7 @@ public final class SessionTestFixtures {
 	}
 
 	public static GameSessionSnapshot lobbySnapshot(String codehash, long nowEpochMs) {
-		return GameSessionSnapshot.create(codehash, "safety.yaml", quiz(), nowEpochMs);
+		return GameSessionSnapshot.create(codehash, OWNER_ACCOUNT_ID, "safety.yaml", quiz(), nowEpochMs);
 	}
 
 	public static QuizValidationProperties validationLimits() {

@@ -22,6 +22,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import org.dev.quizzle.config.GameSessionProperties;
+import org.dev.quizzle.config.AccountProperties;
+import org.dev.quizzle.account.AccountService;
+import org.dev.quizzle.account.AccountStore;
 import org.dev.quizzle.config.QuizCatalogProperties;
 import org.dev.quizzle.config.SnapshotProperties;
 import org.dev.quizzle.persistence.SqliteSnapshotRepository;
@@ -46,7 +49,8 @@ class GameSessionRegistryTests {
 		registry.rehydrate();
 
 		List<Callable<GameSessionSnapshot>> creations = IntStream.range(0, 40)
-				.mapToObj(ignored -> (Callable<GameSessionSnapshot>) () -> registry.create("safety.yaml"))
+				.mapToObj(ignored -> (Callable<GameSessionSnapshot>) () ->
+						registry.create(SessionTestFixtures.OWNER_ACCOUNT_ID, "safety.yaml"))
 				.toList();
 		try (var executor = Executors.newFixedThreadPool(12)) {
 			List<GameSessionSnapshot> created = executor.invokeAll(creations).stream()
@@ -74,12 +78,12 @@ class GameSessionRegistryTests {
 		SqliteSnapshotRepository repository = createRepository();
 		GameSessionRegistry firstRegistry = createRegistry(createCatalog(quizDirectory), repository);
 		firstRegistry.rehydrate();
-		GameSessionSnapshot created = firstRegistry.create("safety.yaml");
+		GameSessionSnapshot created = firstRegistry.create(SessionTestFixtures.OWNER_ACCOUNT_ID, "safety.yaml");
 		GameSessionSnapshot opened = firstRegistry.transition(created.codehash(), GameCommand.START);
 		long oldTimer = opened.serverStartEpochMs();
 
 		Thread.sleep(5);
-		Files.delete(quizDirectory.resolve("safety.yaml"));
+		Files.delete(quizDirectory.resolve(SessionTestFixtures.OWNER_ACCOUNT_ID).resolve("safety.yaml"));
 		QuizCatalog emptyCatalog = createCatalog(quizDirectory);
 		long rebootStartedAt = System.currentTimeMillis();
 		GameSessionRegistry restoredRegistry = createRegistry(emptyCatalog, repository);
@@ -89,6 +93,7 @@ class GameSessionRegistryTests {
 		assertEquals(GameState.QUESTION_OPEN, restored.state());
 		assertEquals(0, restored.currentQuestionIndex());
 		assertEquals("Safety", restored.quiz().title());
+		assertEquals(SessionTestFixtures.OWNER_ACCOUNT_ID, restored.ownerAccountId());
 		assertTrue(restored.serverStartEpochMs() >= rebootStartedAt);
 		assertNotEquals(oldTimer, restored.serverStartEpochMs());
 		assertEquals(restored, repository.loadAll().getFirst());
@@ -99,7 +104,7 @@ class GameSessionRegistryTests {
 		SqliteSnapshotRepository repository = createRepository();
 		GameSessionRegistry registry = createRegistry(createCatalog(prepareQuizDirectory()), repository);
 		registry.rehydrate();
-		GameSessionSnapshot created = registry.create("safety.yaml");
+		GameSessionSnapshot created = registry.create(SessionTestFixtures.OWNER_ACCOUNT_ID, "safety.yaml");
 		PlayerConnection joined = registry.joinPlayer(created.codehash(), "Robin");
 
 		GameSessionSnapshot kicked = registry.kickPlayer(created.codehash(), joined.player().playerId());
@@ -114,13 +119,13 @@ class GameSessionRegistryTests {
 	void rejectsJoinAfterTheLobbyByDefault() throws Exception {
 		GameSessionRegistry registry = createRegistry(createCatalog(prepareQuizDirectory()), createRepository());
 		registry.rehydrate();
-		GameSessionSnapshot created = registry.create("safety.yaml");
-		registry.transition(created.codehash(), GameCommand.START);
+		GameSessionSnapshot created = registry.create(SessionTestFixtures.OWNER_ACCOUNT_ID, "safety.yaml");
+		GameSessionSnapshot opened = registry.transition(created.codehash(), GameCommand.START);
 
 		assertThrows(GameSessionRegistry.JoinNotAllowedException.class,
 				() -> registry.joinPlayer(created.codehash(), "Late"));
-		assertTrue(registry.isJoinOpen(GameState.LOBBY));
-		assertTrue(!registry.isJoinOpen(GameState.QUESTION_OPEN));
+		assertTrue(registry.isJoinOpen(created));
+		assertTrue(!registry.isJoinOpen(opened));
 	}
 
 	@Test
@@ -128,15 +133,16 @@ class GameSessionRegistryTests {
 		GameSessionRegistry registry = createRegistry(
 				createCatalog(prepareQuizDirectory()), createRepository(), true);
 		registry.rehydrate();
-		GameSessionSnapshot created = registry.create("safety.yaml");
-		registry.transition(created.codehash(), GameCommand.START);
+		GameSessionSnapshot created = registry.create(SessionTestFixtures.OWNER_ACCOUNT_ID, "safety.yaml");
+		GameSessionSnapshot opened = registry.transition(created.codehash(), GameCommand.START);
 
 		PlayerConnection joined = registry.joinPlayer(created.codehash(), "Late");
 
 		assertEquals("Late", joined.player().name());
 		assertEquals(GameState.QUESTION_OPEN, joined.session().state());
-		assertTrue(registry.isJoinOpen(GameState.QUESTION_OPEN));
-		assertTrue(!registry.isJoinOpen(GameState.CLOSED));
+		assertTrue(registry.isJoinOpen(opened));
+		GameSessionSnapshot closed = registry.transition(created.codehash(), GameCommand.ABORT);
+		assertTrue(!registry.isJoinOpen(closed));
 	}
 
 	@Test
@@ -144,7 +150,7 @@ class GameSessionRegistryTests {
 		SqliteSnapshotRepository repository = createRepository();
 		GameSessionRegistry registry = createRegistry(createCatalog(prepareQuizDirectory()), repository);
 		registry.rehydrate();
-		GameSessionSnapshot created = registry.create("safety.yaml");
+		GameSessionSnapshot created = registry.create(SessionTestFixtures.OWNER_ACCOUNT_ID, "safety.yaml");
 
 		GameSessionSnapshot closed = registry.transition(created.codehash(), GameCommand.ABORT);
 
@@ -157,8 +163,9 @@ class GameSessionRegistryTests {
 	@Test
 	void shufflesAnswersPerSessionUnlessTheQuestionOptsOut() throws Exception {
 		Path quizDirectory = Files.createDirectories(temporaryDirectory.resolve("shuffled"));
+		Path accountDirectory = Files.createDirectories(quizDirectory.resolve(SessionTestFixtures.OWNER_ACCOUNT_ID));
 		Files.writeString(
-				quizDirectory.resolve("shuffled.yaml"),
+				accountDirectory.resolve("shuffled.yaml"),
 				shuffledQuizYaml(),
 				StandardCharsets.UTF_8);
 		GameSessionRegistry registry = createRegistry(createCatalog(quizDirectory), createRepository());
@@ -166,7 +173,7 @@ class GameSessionRegistryTests {
 
 		Set<List<String>> shuffledOrders = new HashSet<>();
 		for (int attempt = 0; attempt < 30; attempt++) {
-			GameSessionSnapshot created = registry.create("shuffled.yaml");
+			GameSessionSnapshot created = registry.create(SessionTestFixtures.OWNER_ACCOUNT_ID, "shuffled.yaml");
 			shuffledOrders.add(answerIds(created, 0));
 			assertEquals(List.of("f1", "f2", "f3", "f4", "f5", "f6"), answerIds(created, 1));
 		}
@@ -240,20 +247,19 @@ class GameSessionRegistryTests {
 
 	private Path prepareQuizDirectory() throws Exception {
 		Path quizDirectory = Files.createDirectories(temporaryDirectory.resolve("quizzes"));
+		Path accountDirectory = Files.createDirectories(quizDirectory.resolve(SessionTestFixtures.OWNER_ACCOUNT_ID));
 		Files.writeString(
-				quizDirectory.resolve("safety.yaml"),
+				accountDirectory.resolve("safety.yaml"),
 				SessionTestFixtures.yaml(),
 				StandardCharsets.UTF_8);
 		return quizDirectory;
 	}
 
 	private QuizCatalog createCatalog(Path quizDirectory) {
-		QuizCatalog catalog = new QuizCatalog(
+		return new QuizCatalog(
 				new QuizCatalogProperties(quizDirectory),
 				new QuizYamlParser(SessionTestFixtures.validationLimits()),
 				new QuizDefinitionValidator(SessionTestFixtures.validationLimits()));
-		catalog.loadAtStartup();
-		return catalog;
 	}
 
 	private SqliteSnapshotRepository createRepository() {
@@ -274,11 +280,16 @@ class GameSessionRegistryTests {
 			QuizCatalog catalog,
 			SqliteSnapshotRepository repository,
 			boolean allowJoinAfterStart) {
+		GameSessionProperties sessionProperties = new GameSessionProperties(
+				URI.create("https://quiz.example.test"), 10, 5_000L, allowJoinAfterStart);
+		AccountProperties accountProperties = new AccountProperties(temporaryDirectory.resolve("accounts.yml"), 8);
+		AccountService accountService = new AccountService(
+				new AccountStore(accountProperties, sessionProperties), accountProperties, sessionProperties);
 		return new GameSessionRegistry(
-				new GameSessionProperties(
-						URI.create("https://quiz.example.test"), 10, 5_000L, allowJoinAfterStart),
+				sessionProperties,
 				catalog,
 				new GameStateMachine(),
-				repository);
+				repository,
+				accountService);
 	}
 }

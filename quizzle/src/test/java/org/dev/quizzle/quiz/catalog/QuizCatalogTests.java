@@ -18,23 +18,24 @@ import org.dev.quizzle.config.QuizCatalogProperties;
 
 class QuizCatalogTests {
 
+	private static final String ACCOUNT_ID = "catalog-account";
+
 	@TempDir
 	Path temporaryDirectory;
 
 	@Test
 	void keepsWorkingQuizzesWhenOtherFilesAreBroken() throws IOException {
-		Files.writeString(temporaryDirectory.resolve("working.YML"), QuizTestFixtures.validYaml(), StandardCharsets.UTF_8);
+		Path accountDirectory = Files.createDirectories(temporaryDirectory.resolve(ACCOUNT_ID));
+		Files.writeString(accountDirectory.resolve("working.YML"), QuizTestFixtures.validYaml(), StandardCharsets.UTF_8);
 		Files.writeString(
-				temporaryDirectory.resolve("invalid.yaml"),
+				accountDirectory.resolve("invalid.yaml"),
 				QuizTestFixtures.validYaml().replace("correct: true", "correct: false"),
 				StandardCharsets.UTF_8);
-		Files.writeString(temporaryDirectory.resolve("malformed.yaml"), "title: [", StandardCharsets.UTF_8);
-		Files.writeString(temporaryDirectory.resolve("notes.txt"), "not a quiz", StandardCharsets.UTF_8);
+		Files.writeString(accountDirectory.resolve("malformed.yaml"), "title: [", StandardCharsets.UTF_8);
+		Files.writeString(accountDirectory.resolve("notes.txt"), "not a quiz", StandardCharsets.UTF_8);
 
 		QuizCatalog catalog = createCatalog(temporaryDirectory);
-		assertDoesNotThrow(catalog::loadAtStartup);
-
-		QuizCatalogSnapshot snapshot = catalog.snapshot();
+		QuizCatalogSnapshot snapshot = assertDoesNotThrow(() -> catalog.snapshotFor(ACCOUNT_ID));
 		assertEquals(1, snapshot.quizzes().size());
 		assertEquals("working.YML", snapshot.quizzes().getFirst().fileName());
 		assertEquals(2, snapshot.issues().size());
@@ -49,11 +50,27 @@ class QuizCatalogTests {
 		Path missingDirectory = temporaryDirectory.resolve("new-quizzes");
 		QuizCatalog catalog = createCatalog(missingDirectory);
 
-		assertDoesNotThrow(catalog::loadAtStartup);
+		QuizCatalogSnapshot snapshot = assertDoesNotThrow(() -> catalog.snapshotFor(ACCOUNT_ID));
 
-		assertTrue(Files.isDirectory(missingDirectory));
-		assertTrue(catalog.snapshot().quizzes().isEmpty());
-		assertTrue(catalog.snapshot().issues().isEmpty());
+		assertTrue(Files.isDirectory(missingDirectory.resolve(ACCOUNT_ID)));
+		assertTrue(snapshot.quizzes().isEmpty());
+		assertTrue(snapshot.issues().isEmpty());
+	}
+
+	@Test
+	void onlyLoadsQuizzesOwnedByTheRequestedAccount() throws IOException {
+		Path accountDirectory = Files.createDirectories(temporaryDirectory.resolve(ACCOUNT_ID));
+		Files.writeString(accountDirectory.resolve("owned.yaml"), QuizTestFixtures.validYaml());
+		Files.writeString(temporaryDirectory.resolve("shared.yaml"), QuizTestFixtures.validYaml());
+		Path otherDirectory = Files.createDirectories(temporaryDirectory.resolve("other-account"));
+		Files.writeString(otherDirectory.resolve("private.yaml"), QuizTestFixtures.validYaml());
+		QuizCatalog catalog = createCatalog(temporaryDirectory);
+
+		assertEquals(1, catalog.snapshotFor(ACCOUNT_ID).quizzes().size());
+		assertTrue(catalog.findByFileName(ACCOUNT_ID, "owned.yaml").isPresent());
+		assertTrue(catalog.findByFileName(ACCOUNT_ID, "private.yaml").isEmpty());
+		assertTrue(catalog.findByFileName(ACCOUNT_ID, "shared.yaml").isEmpty());
+		assertTrue(catalog.findByFileName("other-account", "owned.yaml").isEmpty());
 	}
 
 	private QuizCatalog createCatalog(Path directory) {

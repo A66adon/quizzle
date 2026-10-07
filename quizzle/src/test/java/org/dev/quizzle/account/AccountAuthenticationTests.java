@@ -3,6 +3,8 @@ package org.dev.quizzle.account;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -11,6 +13,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,12 +26,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import org.dev.quizzle.security.CsrfToken;
+import org.dev.quizzle.config.QuizCatalogProperties;
 
 @SpringBootTest(properties = {
-		"quiz.account.file=${java.io.tmpdir}/safety-quiz-accounts-${random.uuid}.yml",
-		"quiz.catalog.directory=./quizzes",
+		"quiz.account.file=./build/test-data/auth-accounts-${random.uuid}.yml",
+		"quiz.catalog.directory=./build/test-data/auth-quizzes-${random.uuid}",
 		"quiz.session.public-base-url=https://quiz.example.test",
-		"quiz.snapshot.database-path=${java.io.tmpdir}/safety-quiz-admin-${random.uuid}.db",
+		"quiz.snapshot.database-path=./build/test-data/auth-sessions-${random.uuid}.db",
 		"quiz.snapshot.interval-ms=3600000"
 })
 @AutoConfigureMockMvc
@@ -34,6 +40,9 @@ class AccountAuthenticationTests {
 
 	@Autowired
 	MockMvc mockMvc;
+
+	@Autowired
+	QuizCatalogProperties catalogProperties;
 
 	@Test
 	void protectsAdminPagesAndDataWithoutASession() throws Exception {
@@ -79,13 +88,15 @@ class AccountAuthenticationTests {
 
 	@Test
 	void rejectsAnIncorrectPasswordWithoutReflectingIt() throws Exception {
-		MockHttpSession session = registerAccount("wrong-and-private-test", "correct horse battery staple");
+		registerAccount("wrong-and-private-test", "correct horse battery staple");
+		MockHttpSession session = new MockHttpSession();
+		String token = obtainCsrfToken(session);
 
 		mockMvc.perform(post("/login")
 				.session(session)
 				.param("username", "wrong-and-private-test")
 				.param("password", "not-the-password")
-				.param("_csrf", CsrfToken.getOrCreate(session)))
+				.param("_csrf", token))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/login?error"))
 				.andExpect(content().string(not(containsString("not-the-password"))));
@@ -94,6 +105,9 @@ class AccountAuthenticationTests {
 	@Test
 	void authenticatedSessionCanReadOnlySafeCatalogData() throws Exception {
 		MockHttpSession session = login("phase-one-account", "correct horse battery staple");
+		Path quizDirectory = Files.createDirectories(
+				catalogProperties.directory().resolve(AccountSession.currentAccountId(session)));
+		Files.copy(Path.of("quizzes", "safety-basics.yaml"), quizDirectory.resolve("safety-basics.yaml"));
 
 		mockMvc.perform(get("/admin").session(session))
 				.andExpect(status().isOk())
@@ -132,14 +146,20 @@ class AccountAuthenticationTests {
 	private MockHttpSession registerAccount(String username, String password) throws Exception {
 		MockHttpSession session = new MockHttpSession();
 		String token = obtainCsrfToken(session);
-		mockMvc.perform(post("/register")
+		MvcResult result = mockMvc.perform(post("/register")
 				.session(session)
 				.param("username", username)
 				.param("password", password)
 				.param("_csrf", token))
 				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/login?registered"));
-		return session;
+				.andExpect(redirectedUrl("/admin?welcome"))
+				.andReturn();
+		MockHttpSession authenticatedSession = (MockHttpSession) result.getRequest().getSession(false);
+		assertNotNull(authenticatedSession);
+		assertTrue(session.isInvalid());
+		assertNotEquals(session.getId(), authenticatedSession.getId());
+		assertTrue(AccountSession.isAuthenticated(authenticatedSession));
+		return authenticatedSession;
 	}
 
 	private MockHttpSession login(String username, String password) throws Exception {

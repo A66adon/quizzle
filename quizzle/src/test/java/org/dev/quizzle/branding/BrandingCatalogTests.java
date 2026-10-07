@@ -115,17 +115,18 @@ class BrandingCatalogTests {
 	}
 
 	@Test
-	void resolvesAMarkImageThatSitsNextToTheBrandingFile() throws Exception {
+	void resolvesAMarkImageInTheBrandingImagesDirectory() throws Exception {
 		write("""
 				mark: "logo.png"
 				""");
-		Files.write(temporaryDirectory.resolve("logo.png"), new byte[] { 1, 2, 3 });
+		Path imageDirectory = Files.createDirectories(temporaryDirectory.resolve("images"));
+		Files.write(imageDirectory.resolve("logo.png"), new byte[] { 1, 2, 3 });
 
 		BrandingCatalog catalog = createCatalog();
 		catalog.loadAtStartup();
 
 		assertEquals(Branding.MarkKind.IMAGE_FILE, catalog.branding().markKind());
-		assertEquals(temporaryDirectory.resolve("logo.png"), catalog.markImageFile().orElseThrow());
+		assertEquals(imageDirectory.resolve("logo.png"), catalog.markImageFile().orElseThrow());
 	}
 
 	@Test

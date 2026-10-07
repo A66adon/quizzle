@@ -10,9 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,12 +29,14 @@ import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.ObjectMapper;
 
 import org.dev.quizzle.security.CsrfToken;
+import org.dev.quizzle.account.AccountSession;
+import org.dev.quizzle.config.QuizCatalogProperties;
 
 @SpringBootTest(properties = {
-		"quiz.account.file=${java.io.tmpdir}/safety-quiz-accounts-${random.uuid}.yml",
-		"quiz.catalog.directory=./quizzes",
+		"quiz.account.file=./build/test-data/admin-accounts-${random.uuid}.yml",
+		"quiz.catalog.directory=./build/test-data/admin-quizzes-${random.uuid}",
 		"quiz.session.public-base-url=https://quiz.example.test/events",
-		"quiz.snapshot.database-path=${java.io.tmpdir}/safety-quiz-sessions-${random.uuid}.db",
+		"quiz.snapshot.database-path=./build/test-data/admin-sessions-${random.uuid}.db",
 		"quiz.snapshot.interval-ms=3600000"
 })
 @AutoConfigureMockMvc
@@ -42,6 +47,9 @@ class AdminGameSessionTests {
 
 	@Autowired
 	ObjectMapper objectMapper;
+
+	@Autowired
+	QuizCatalogProperties catalogProperties;
 
 	@Test
 	void protectsCreationFromUnauthenticatedRequests() throws Exception {
@@ -135,24 +143,34 @@ class AdminGameSessionTests {
 	}
 
 	private MockHttpSession login() throws Exception {
+		String username = "admin-" + UUID.randomUUID().toString().substring(0, 16);
 		MockHttpSession session = new MockHttpSession();
 		mockMvc.perform(get("/register").session(session)).andExpect(status().isOk());
 		String csrfToken = CsrfToken.getOrCreate(session);
 
 		mockMvc.perform(post("/register")
 				.session(session)
-				.param("username", "phase-two-account")
-				.param("password", "phase-two-secret-password")
-				.param("_csrf", csrfToken))
-				.andExpect(status().is3xxRedirection());
-
-		MvcResult result = mockMvc.perform(post("/login")
-				.session(session)
-				.param("username", "phase-two-account")
+				.param("username", username)
 				.param("password", "phase-two-secret-password")
 				.param("_csrf", csrfToken))
 				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/admin?welcome"));
+
+		session = new MockHttpSession();
+		mockMvc.perform(get("/login").session(session)).andExpect(status().isOk());
+		csrfToken = CsrfToken.getOrCreate(session);
+		MvcResult result = mockMvc.perform(post("/login")
+				.session(session)
+				.param("username", username)
+				.param("password", "phase-two-secret-password")
+				.param("_csrf", csrfToken))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/admin"))
 				.andReturn();
-		return (MockHttpSession) result.getRequest().getSession(false);
+		MockHttpSession authenticatedSession = (MockHttpSession) result.getRequest().getSession(false);
+		Path quizDirectory = Files.createDirectories(
+				catalogProperties.directory().resolve(AccountSession.currentAccountId(authenticatedSession)));
+		Files.copy(Path.of("quizzes", "safety-basics.yaml"), quizDirectory.resolve("safety-basics.yaml"));
+		return authenticatedSession;
 	}
 }

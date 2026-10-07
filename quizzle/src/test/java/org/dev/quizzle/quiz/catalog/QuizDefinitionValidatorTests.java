@@ -21,13 +21,17 @@ class QuizDefinitionValidatorTests {
 	}
 
 	@Test
-	void rejectsBlankMetadataAndAnEmptyQuestionList() {
+	void rejectsBlankMetadata() {
 		List<String> errors = validator.validate(new QuizDefinition(" ", "", null, List.of()));
 
 		assertContains(errors, "title must not be blank");
 		assertContains(errors, "description must not be blank");
 		assertContains(errors, "author must not be blank");
-		assertContains(errors, "questions must contain at least one question");
+	}
+
+	@Test
+	void acceptsAnEmptyQuestionListForAWorkInProgress() {
+		assertTrue(validator.validate(new QuizDefinition("Safety", "Draft", "Author", List.of())).isEmpty());
 	}
 
 	@Test

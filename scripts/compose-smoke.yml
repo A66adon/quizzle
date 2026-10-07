@@ -1,0 +1,8 @@
+services:
+  quizzle:
+    container_name: quizzle-smoke-app
+    ports: !override
+      - "127.0.0.1:18080:8080"
+    environment:
+      PUBLIC_BASE_URL: http://localhost:18080
+      SESSION_COOKIE_SECURE: 'false'
