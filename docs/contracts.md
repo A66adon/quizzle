@@ -25,6 +25,9 @@ return 404, rather than disclosing another account's sessions or quizzes.
 `DELETE` on the same route deletes it. Updates submit `{quiz, version}`; stale writes return
 409 with `{error:"REVISION_CONFLICT", currentVersion}`. Import posts raw `application/yaml`
 to `/admin/api/quizzes/import`; export gets `/admin/api/quizzes/{fileName}/export`.
+Treat the returned `fileName` as an opaque, stable identity. New creates/imports use a readable
+title prefix plus the row UUID and `.yaml`; deleting and recreating the same title cannot reuse
+the old identity or let an old revision overwrite its replacement.
 
 `GET /admin/api/account/settings` reads account/game defaults. The settings controller also
 handles game defaults, password changes and account deletion. Settings include

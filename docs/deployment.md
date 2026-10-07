@@ -38,6 +38,12 @@ Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_AUTH
 `SMTP_STARTTLS`, `SMTP_SSL` and `SMTP_FROM`. Connection/read/write timeouts are finite. Use a provider-approved
 sender and SMTP submission over TLS in production. Missing mail configuration must fail clearly;
 a delivery failure does not activate an account. The user can request another verification email.
+Enabled STARTTLS is required, not opportunistic; TLS server hostname verification is enabled.
+Forgot/resend commit eligible tokens before scheduling delivery on a bounded executor (one core,
+two maximum threads, queue 100), so generic acknowledgements do not wait on SMTP. Queue rejection
+and delivery failures produce recipient/token-free operator events. Pending delivery jobs are
+in-memory: after an interrupted delivery, request a new link. Registration delivery remains
+synchronous so failure can show a safe actionable resend message.
 
 Verification/reset links are constructed only from `PUBLIC_BASE_URL`, not the incoming Host.
 Use a fixed production HTTPS origin without a path prefix, userinfo, query or fragment. Never publish token URLs,
