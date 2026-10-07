@@ -60,4 +60,14 @@ class AuthPolicyTests {
 		assertThrows(IllegalArgumentException.class,()->new AuthRateLimitProperties(0));
 		assertThrows(IllegalArgumentException.class,()->new AuthRateLimitProperties(1001));
 	}
+	@Test void blankEmailActionsHaveIndependentIpCapsRatherThanASharedGlobalEmailBucket() {
+		for(String action:java.util.List.of("verification","reset","callback")) {
+			var limiter=new AuthRateLimiter();
+			for(int i=0;i<60;i++) assertTrue(limiter.allow(action,"first-ip",""));
+			assertFalse(limiter.allow(action,"first-ip",""));
+			for(int i=0;i<60;i++) assertTrue(limiter.allow(action,"second-ip"," \u2003 "));
+			assertFalse(limiter.allow(action,"second-ip",null));
+			assertEquals(2,limiter.size());
+		}
+	}
 }
