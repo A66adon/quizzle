@@ -58,10 +58,9 @@ public class AccountService {
 		return transactions.execute(status -> {
 			Account account = store.lock(id);
 			requirePassword(account, currentPassword);
-			store.update(account.withPasswordHash(encoder.encode(newPassword)));
-			store.revokeCredentials(id);
+			long version=store.updatePassword(id,encoder.encode(newPassword));
 			store.invalidateTokens(id);
-			return store.credentialVersion(id);
+			return version;
 		});
 	}
 	public void requirePassword(Account account, String password) {
@@ -71,7 +70,10 @@ public class AccountService {
 	}
 	public void updateGameSettings(String id, boolean allowLateJoin, long delay) {
 		if (delay < 0 || delay > 120000) throw new AccountRegistrationException("Auto-advance delay must be between 0 and 120000 ms");
-		transactions.executeWithoutResult(status -> store.update(store.lock(id).withGameSettings(allowLateJoin, delay)));
+		transactions.executeWithoutResult(status -> {
+			store.lock(id);
+			store.updateGameSettings(id,allowLateJoin,delay);
+		});
 	}
 	public void deleteAccount(String id,String password,long providerAuthenticatedAt,Runnable closeSessions) {
 		transactions.executeWithoutResult(status -> {

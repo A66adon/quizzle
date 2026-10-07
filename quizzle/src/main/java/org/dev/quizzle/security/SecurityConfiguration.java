@@ -82,7 +82,7 @@ public class SecurityConfiguration {
 						.referrerPolicy(policy -> policy.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
 						.contentSecurityPolicy(csp -> csp.policyDirectives(
 								"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-								+ "img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")));
+								+ "img-src 'self' https: data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")));
 		http.addFilterBefore(new OncePerRequestFilter() {
 			@Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 					throws ServletException, IOException {

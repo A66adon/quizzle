@@ -42,14 +42,26 @@ public final class AccountStore {
 		return account;
 	}
 
-	public void update(Account account) {
+	public void updateGameSettings(String id, boolean allowLateJoin, long autoAdvanceDelayMs) {
 		int changed = jdbc.update("""
-				UPDATE accounts SET email=?,normalized_email=?,password_hash=?,status=?,roles=?::text[],
-				    allow_late_join=?,auto_advance_delay_ms=?,updated_at=now() WHERE id=?
-				""", account.email(), normalizeEmail(account.email()), account.passwordHash(),
-				account.status().name(), account.roles().toArray(String[]::new), account.allowLateJoin(),
-				account.autoAdvanceDelayMs(), UUID.fromString(account.id()));
-		if (changed != 1) throw new IllegalArgumentException("Account not found");
+				UPDATE accounts SET allow_late_join=?,auto_advance_delay_ms=?,updated_at=now() WHERE id=?
+				""", allowLateJoin, autoAdvanceDelayMs, UUID.fromString(id));
+		if (changed != 1) throw new AccountRegistrationException("Account not found");
+	}
+
+	public long updatePassword(String id, String passwordHash) {
+		return jdbc.queryForObject("""
+				UPDATE accounts SET password_hash=?,credential_version=credential_version+1,updated_at=now()
+				WHERE id=? RETURNING credential_version
+				""", Long.class, passwordHash, UUID.fromString(id));
+	}
+
+	public void activatePending(String id) {
+		int changed=jdbc.update("""
+				UPDATE accounts SET status='ACTIVE',updated_at=now()
+				WHERE id=? AND status='PENDING_VERIFICATION'
+				""",UUID.fromString(id));
+		if(changed!=1) throw new AccountRegistrationException("Account cannot be activated");
 	}
 
 	public void delete(String id) {

@@ -76,10 +76,9 @@ public final class AccountTokens {
 					: account.status() != Account.Status.ACTIVE || account.passwordHash() == null) return null;
 			int consumed = jdbc.update("UPDATE " + table + " SET used_at=now() WHERE token_digest=? AND used_at IS NULL AND expires_at>now()", digest(raw));
 			if (consumed != 1) return null;
-			if (verification) jdbc.update("UPDATE accounts SET status='ACTIVE',updated_at=now() WHERE id=?", ids.getFirst());
+			if (verification) store.activatePending(account.id());
 			else {
-				store.update(account.withPasswordHash(hash));
-				store.revokeCredentials(account.id());
+				store.updatePassword(account.id(),hash);
 				invalidate(account.id());
 			}
 			return new Changed(account,store.credentialVersion(account.id()));

@@ -53,7 +53,7 @@ public final class GoogleIdentityService {
 			}
 			if(account.status()==Account.Status.DISABLED) throw rejected();
 			if(account.status()==Account.Status.PENDING_VERIFICATION) {
-				jdbc.update("UPDATE accounts SET status='ACTIVE',updated_at=now() WHERE id=?",UUID.fromString(account.id()));
+				store.activatePending(account.id());
 				jdbc.update("DELETE FROM email_verification_tokens WHERE account_id=?",UUID.fromString(account.id()));
 			}
 			Instant authenticationTime=user.getIdToken().getAuthenticatedAt();

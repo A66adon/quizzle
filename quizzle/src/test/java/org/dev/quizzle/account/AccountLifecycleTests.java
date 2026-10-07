@@ -34,17 +34,18 @@ class AccountLifecycleTests {
 	}
 	@Test void changingLocalPasswordRevokesCredentialsAndOutstandingTokensAtomically() {
 		var account=account(new BCryptPasswordEncoder().encode("current-password"));
-		when(store.credentialVersion(account.id())).thenReturn(9L);
+		when(store.updatePassword(eq(account.id()),anyString())).thenReturn(9L);
 		assertThrows(AccountRegistrationException.class,()->service.changePassword(account.id(),"wrong","replacement-password"));
 		assertEquals(9L,service.changePassword(account.id(),"current-password","replacement-password"));
-		verify(store).revokeCredentials(account.id());verify(store).invalidateTokens(account.id());
+		verify(store).updatePassword(eq(account.id()),anyString());verify(store).invalidateTokens(account.id());
+		verify(store,never()).revokeCredentials(anyString());
 	}
 	@Test void validatesPersistedGameDefaultsBeforeMutating() {
 		var account=account(null);
 		assertThrows(AccountRegistrationException.class,()->service.updateGameSettings(account.id(),true,-1));
 		assertThrows(AccountRegistrationException.class,()->service.updateGameSettings(account.id(),true,120001));
 		service.updateGameSettings(account.id(),true,120000);
-		verify(store).update(account.withGameSettings(true,120000));
+		verify(store).updateGameSettings(account.id(),true,120000);
 	}
 	@Test void failedMailerConfigurationDoesNotPretendRegistrationCanWork() {
 		var providers=new org.springframework.beans.factory.support.StaticListableBeanFactory()

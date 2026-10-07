@@ -43,7 +43,10 @@ class AuthSecurityTests {
 		mvc.perform(get("/admin/api/quizzes")).andExpect(status().isUnauthorized());
 		mvc.perform(post("/register").param("email", "a@example.test")).andExpect(status().isForbidden());
 		mvc.perform(get("/auth/options")).andExpect(status().isOk()).andExpect(jsonPath("$.googleEnabled").value(false))
-				.andExpect(header().string("Referrer-Policy", "no-referrer")).andExpect(header().string("X-Frame-Options", "DENY"));
+				.andExpect(header().string("Referrer-Policy", "no-referrer")).andExpect(header().string("X-Frame-Options", "DENY"))
+				.andExpect(header().string("Content-Security-Policy",org.hamcrest.Matchers.containsString("img-src 'self' https: data: blob:")))
+				.andExpect(header().string("Content-Security-Policy",org.hamcrest.Matchers.containsString("script-src 'self' 'unsafe-inline'")))
+				.andExpect(header().string("Content-Security-Policy",org.hamcrest.Matchers.containsString("connect-src 'self'")));
 	}
 	@Test void rawSessionBoundCookieAcceptsFormAndRejectsAnotherSession() throws Exception {
 		var session = new MockHttpSession();

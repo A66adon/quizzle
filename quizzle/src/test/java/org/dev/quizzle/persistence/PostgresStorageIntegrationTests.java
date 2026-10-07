@@ -121,6 +121,42 @@ class PostgresStorageIntegrationTests extends PostgresIntegrationSupport {
 	}
 
 	@Test
+	void staleSettingsSnapshotCannotRestoreAnOldPasswordOrReactivateDisabledAccount() {
+		accounts.updatePassword(owner.id(),"old-hash");
+		Account stale=accounts.findById(owner.id()).orElseThrow();
+		long version=accounts.updatePassword(owner.id(),"replacement-hash");
+		jdbc.update("UPDATE accounts SET status='DISABLED' WHERE id=?",UUID.fromString(owner.id()));
+		accounts.updateGameSettings(stale.id(),true,1234);
+		Account stored=accounts.findById(owner.id()).orElseThrow();
+		assertEquals("replacement-hash",stored.passwordHash());
+		assertEquals(Account.Status.DISABLED,stored.status());
+		assertEquals(version,accounts.credentialVersion(owner.id()));
+		assertEquals(stale.email(),stored.email());
+		assertTrue(stored.allowLateJoin());
+		assertEquals(1234,stored.autoAdvanceDelayMs());
+		assertFalse(accounts.isCurrentActive(owner.id(),version));
+	}
+
+	@Test
+	void concurrentSettingsAndPasswordWritesRetainBothChanges() throws Exception {
+		long originalVersion=accounts.credentialVersion(owner.id());
+		try(var executor=Executors.newFixedThreadPool(2)) {
+			var gate=new java.util.concurrent.CountDownLatch(1);
+			var settings=executor.submit(()->{gate.await();accounts.updateGameSettings(owner.id(),true,4321);return true;});
+			var password=executor.submit(()->{gate.await();return accounts.updatePassword(owner.id(),"replacement-hash");});
+			gate.countDown();
+			assertTrue(settings.get(10,java.util.concurrent.TimeUnit.SECONDS));
+			assertEquals(originalVersion+1,password.get(10,java.util.concurrent.TimeUnit.SECONDS));
+		}
+		Account stored=accounts.findById(owner.id()).orElseThrow();
+		assertEquals("replacement-hash",stored.passwordHash());
+		assertTrue(stored.allowLateJoin());
+		assertEquals(4321,stored.autoAdvanceDelayMs());
+		assertEquals(Account.Status.ACTIVE,stored.status());
+		assertEquals(originalVersion+1,accounts.credentialVersion(owner.id()));
+	}
+
+	@Test
 	void storedLateJoinDefaultsAffectNewGamesAndRemainOwnerSpecific() {
 		String slug=editor.create(owner.id(),SessionTestFixtures.quiz());
 		String otherSlug=editor.create(other.id(),SessionTestFixtures.quiz());
