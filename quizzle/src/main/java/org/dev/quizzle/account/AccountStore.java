@@ -61,6 +61,10 @@ public final class AccountStore {
 				.stream().findFirst().orElseThrow(() -> new AccountRegistrationException("Account not found"));
 	}
 
+	public void lockEmail(String email) {
+		jdbc.queryForObject("SELECT pg_advisory_xact_lock(hashtextextended(?,0))", Object.class, "email:" + normalizeEmail(email));
+	}
+
 	public long credentialVersion(String id) {
 		return jdbc.queryForObject("SELECT credential_version FROM accounts WHERE id=?", Long.class, UUID.fromString(id));
 	}

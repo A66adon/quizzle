@@ -32,7 +32,7 @@ public class AccountService {
 		validateEmail(email); validatePassword(password);
 		Account account = new Account(UUID.randomUUID().toString(), email.strip(), encoder.encode(password),
 				false, List.of(), Instant.now().toEpochMilli(), sessions.allowJoinAfterStart(), sessions.autoAdvanceDelayMs());
-		try { return store.create(account); }
+		try { return transactions.execute(status -> { store.lockEmail(email); return store.create(account); }); }
 		catch (DuplicateKeyException exception) { throw new AccountRegistrationException("Registration unavailable. Try signing in or resending verification."); }
 	}
 	public Optional<AccountPrincipal> authenticatePrincipal(String email, String password) {
