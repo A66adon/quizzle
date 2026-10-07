@@ -1,8 +1,13 @@
-import type { Reporter, TestCase, TestResult, FullResult } from '@playwright/test/reporter';
+import type { Reporter, TestCase, TestResult, FullResult, FullConfig, Suite } from '@playwright/test/reporter';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 export default class SafeReporter implements Reporter {
   private results: object[] = [];
+  private readonly discoveryOnly = process.argv.includes('--list');
+  private discoveredTests = 0;
+  onBegin(_config: FullConfig, suite: Suite) {
+    this.discoveredTests = suite.allTests().length;
+  }
   onTestEnd(test: TestCase, result: TestResult) {
     console.log(`${result.status}: ${test.parent.project()?.name} / ${test.title}`);
     if (result.status !== 'passed') {
@@ -22,6 +27,10 @@ export default class SafeReporter implements Reporter {
     });
   }
   onEnd(result: FullResult) {
+    if (this.discoveryOnly) {
+      console.log(`Browser discovery only: ${this.discoveredTests} tests discovered; none executed.`);
+      return;
+    }
     console.log(`Browser suite: ${result.status}`);
     mkdirSync('safe-results', { recursive: true });
     writeFileSync('safe-results/results.json', JSON.stringify({ status: result.status, tests: this.results }, null, 2));
