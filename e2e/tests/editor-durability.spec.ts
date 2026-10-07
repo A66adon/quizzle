@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from '../support/fixtures';
-import { authenticated, createQuiz, quiz } from '../support/app';
+import { authenticated, createQuiz, csrf, quiz } from '../support/app';
 
 type Draft = {
   schemaVersion: number; accountId: string; fileName: string | null;
@@ -30,6 +30,35 @@ async function localDrafts(page: Page, prefix: string) {
     .filter(key => key.startsWith(keyPrefix))
     .map(key => JSON.parse(localStorage.getItem(key)!)), prefix);
 }
+
+test('deleted server quiz still permits local draft recovery and export without recreation', async ({ page }) => {
+  await authenticated(page);
+  const created = await createQuiz(page);
+  const { draft, prefix } = await draftRecord(page, created.fileName, created.version, 'Recover deleted quiz locally');
+  const key = `${prefix}${draft.writerId}`;
+  const stored = JSON.stringify(draft);
+  await store(page, { [key]: stored });
+  const path = `/admin/api/quizzes/${encodeURIComponent(created.fileName)}`;
+  expect((await page.request.delete(path, { headers: await csrf(page.context()) })).status()).toBe(204);
+  let saves = 0;
+  await page.route('**/admin/api/quizzes**', route => {
+    if (['POST', 'PUT'].includes(route.request().method())) saves++;
+    return route.continue();
+  });
+  await page.goto(`/editor?file=${encodeURIComponent(created.fileName)}`);
+  await expect(page.getByRole('dialog', { name: 'Recover local draft?' })).toBeVisible();
+  await expect(page.locator('#recovery-copy')).toContainText(/restore for local export only/i);
+  await page.getByRole('button', { name: 'Restore draft', exact: true }).click();
+  const conflict = page.getByRole('dialog', { name: 'Quiz revision conflict' });
+  await expect(conflict).toBeVisible();
+  await expect(page.locator('#conflict-copy')).toContainText(/cannot recreate or overwrite/i);
+  const exported = page.waitForEvent('download');
+  await conflict.getByRole('button', { name: 'Export local YAML', exact: true }).click();
+  expect((await exported).suggestedFilename()).toMatch(/\.ya?ml$/);
+  expect(saves).toBe(0);
+  expect((await page.request.get(path)).status()).toBe(404);
+  expect(await page.evaluate(item => localStorage.getItem(item), key)).toBe(stored);
+});
 
 test('successful acknowledgement dismisses but never deletes a recovered foreign writer record', async ({ page }) => {
   await authenticated(page);

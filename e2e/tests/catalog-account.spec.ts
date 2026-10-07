@@ -72,6 +72,20 @@ test('settings validation, password reauthentication and account deletion', asyn
     expect((await changed).ok()).toBe(true);
     await logout(page);
     await login(page, { ...user, password: next });
+    await page.getByRole('button', { name: 'Open settings', exact: true }).click();
+    await expect(page.getByLabel('Email', { exact: true })).toHaveValue(user.email);
+    await page.getByRole('button', { name: 'Delete account', exact: true }).click();
+    await expect(page.locator('#delete-account-form')).toBeVisible();
+    await page.getByLabel('Confirm current password', { exact: true }).fill('incorrect-password');
+    const rejectedDeletion = page.waitForResponse(response =>
+      new URL(response.url()).pathname === '/admin/api/account' && response.request().method() === 'DELETE');
+    await page.getByRole('button', { name: 'Confirm account deletion', exact: true }).click();
+    expect((await rejectedDeletion).status()).toBe(403);
+    await expect(page.locator('#delete-error')).toContainText(/current password/i);
+    await page.getByRole('button', { name: 'Keep account', exact: true }).click();
+    await expect(page.locator('#delete-account-form')).toBeHidden();
+    await expect(page.getByLabel('Confirm current password', { exact: true })).toHaveValue('');
+    expect((await page.request.get(`/admin/api/quizzes/${created.fileName}`)).ok()).toBe(true);
     await page.goto('/settings');
     await page.getByLabel('Current password to confirm deletion').fill(next);
     page.on('dialog', dialog => dialog.accept());
