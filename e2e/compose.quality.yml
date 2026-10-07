@@ -1,0 +1,17 @@
+services:
+  quizzle:
+    environment:
+      PUBLIC_BASE_URL: http://localhost:8080
+      SESSION_COOKIE_SECURE: "false"
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_AUTH: "false"
+      SMTP_STARTTLS: "false"
+      SMTP_SSL: "false"
+      SMTP_FROM: quality@example.test
+      GOOGLE_CLIENT_ID: ""
+      GOOGLE_CLIENT_SECRET: ""
+      ALLOWED_EMAIL_DOMAIN: ""
+    depends_on:
+      mailpit:
+        condition: service_started

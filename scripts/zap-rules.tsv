@@ -1,0 +1,7 @@
+# Rule	ID policy rationale. All unlisted rules remain WARN and fail CI (exit 2).
+10020	FAIL	Anti-clickjacking header must be present.
+10021	FAIL	X-Content-Type-Options must prevent MIME sniffing.
+10038	FAIL	Content Security Policy must be present.
+10010	FAIL	QUIZ_SESSION must be HttpOnly; zap-hooks.py filters only the exact JS-readable XSRF-TOKEN finding.
+10011	IGNORE	Only in this disposable HTTP stack: Secure cookies cannot work on HTTP; production HTTPS is tested separately.
+10035	WARN	HSTS is expected at the production TLS terminator; local HTTP cannot demonstrate it.

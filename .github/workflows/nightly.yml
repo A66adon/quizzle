@@ -1,0 +1,84 @@
+name: Nightly cross-browser, DAST and load
+on:
+  schedule:
+    - cron: '20 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    env:
+      BROWSER_PROJECT: ${{ matrix.browser }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.18.0'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install pinned browser dependencies
+        working-directory: e2e
+        run: npm ci && npm run typecheck && npx playwright install --with-deps "$BROWSER_PROJECT"
+      - name: Generate disposable password
+        run: echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+      - run: bash e2e/run-ci.sh full
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ matrix.browser }}-safe-failure-evidence
+          path: e2e/safe-results
+          retention-days: 3
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [single200, parallel5x40]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.18.0'
+      - name: Generate disposable password
+        run: echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+      - run: bash e2e/run-ci.sh "${{ matrix.scenario }}"
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ matrix.scenario }}-compact-results
+          path: |
+            load/results/*.json
+            load/results/*.txt
+            e2e/safe-results/server-diagnostics.json
+          retention-days: 7
+  dast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.18.0'
+      - working-directory: e2e
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Generate disposable password
+        run: echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+      - run: bash e2e/run-ci.sh zap
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: anonymous-zap-and-safe-auth-results
+          path: |
+            scripts/zap-results/safe-summary.json
+            e2e/safe-results
+          retention-days: 3
