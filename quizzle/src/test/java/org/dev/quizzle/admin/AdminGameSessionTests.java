@@ -142,7 +142,7 @@ class AdminGameSessionTests extends org.dev.quizzle.persistence.PostgresIntegrat
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"quizFileName\":\"" + adminSession.getAttribute("testQuizFileName") + "\"}"))
 				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.quizTitle").value("Workplace Safety Basics"))
+				.andExpect(jsonPath("$.quizTitle").value("Safety Basics"))
 				.andReturn();
 		return objectMapper.readTree(result.getResponse().getContentAsString()).get("codehash").asString();
 	}
