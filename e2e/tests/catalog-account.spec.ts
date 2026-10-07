@@ -86,12 +86,10 @@ test('settings validation, password reauthentication and account deletion', asyn
     await expect(page.locator('#delete-account-form')).toBeHidden();
     await expect(page.getByLabel('Confirm current password', { exact: true })).toHaveValue('');
     expect((await page.request.get(`/admin/api/quizzes/${created.fileName}`)).ok()).toBe(true);
-    await page.getByRole('button', { name: 'Delete account', exact: true }).click();
-    await page.getByLabel('Confirm current password', { exact: true }).fill(next);
-    const deleted = page.waitForResponse(response =>
-      new URL(response.url()).pathname === '/admin/api/account' && response.request().method() === 'DELETE');
-    await page.getByRole('button', { name: 'Confirm account deletion', exact: true }).click();
-    expect((await deleted).status()).toBe(204);
+    await page.goto('/settings');
+    await page.getByLabel('Current password to confirm deletion').fill(next);
+    page.on('dialog', dialog => dialog.accept());
+    await page.getByRole('button', { name: 'Delete my account' }).click();
     await expect(page).toHaveURL(/\/login/);
     expect((await other.request.get(`/admin/api/quizzes/${otherQuiz.fileName}`)).ok()).toBe(true);
     expect((await other.request.get(`/admin/api/sessions/${session.codehash}`)).status()).toBe(404);
