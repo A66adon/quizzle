@@ -53,8 +53,10 @@ public final class GoogleIdentityService {
 			}
 			if(account.status()==Account.Status.DISABLED) throw rejected();
 			if(account.status()==Account.Status.PENDING_VERIFICATION) {
+				// The verified provider proves email ownership, not ownership of a pre-registration's password.
+				store.updatePassword(account.id(),null);
 				store.activatePending(account.id());
-				jdbc.update("DELETE FROM email_verification_tokens WHERE account_id=?",UUID.fromString(account.id()));
+				store.invalidateTokens(account.id());
 			}
 			Instant authenticationTime=user.getIdToken().getAuthenticatedAt();
 			return new AccountPrincipal(account.id(),store.credentialVersion(account.id()),

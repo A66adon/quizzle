@@ -53,4 +53,27 @@ class AccountLifecycleTests {
 		assertThrows(IllegalArgumentException.class,()->new AccountMailer(providers,
 				new AuthProperties("",1440,30,"","",""),mock(GameSessionProperties.class),""));
 	}
+	@Test void failedDatabaseCommitDoesNotRunDestructiveLiveCleanup() {
+		var account=account(null);
+		var manager=mock(org.springframework.transaction.PlatformTransactionManager.class);
+		doThrow(new org.springframework.transaction.TransactionSystemException("Commit rejected")).when(manager).commit(any());
+		var service=new AccountService(store,new AccountProperties(8),new AuthProperties("",1440,30,"","","from@example.test"),
+				mock(GameSessionProperties.class),manager);
+		var close=mock(Runnable.class);
+		assertThrows(org.springframework.transaction.TransactionSystemException.class,()->service.deleteAccount(account.id(),null,
+				java.time.Instant.now().getEpochSecond(),close));
+		verify(close,never()).run();
+	}
+	@Test void successfulDeletionCommitsBeforeRunningLiveCleanup() {
+		var account=account(null);
+		var manager=mock(org.springframework.transaction.PlatformTransactionManager.class);
+		var service=new AccountService(store,new AccountProperties(8),new AuthProperties("",1440,30,"","","from@example.test"),
+				mock(GameSessionProperties.class),manager);
+		var close=mock(Runnable.class);
+		service.deleteAccount(account.id(),null,java.time.Instant.now().getEpochSecond(),close);
+		var order=inOrder(store,manager,close);
+		order.verify(store).delete(account.id());
+		order.verify(manager).commit(any());
+		order.verify(close).run();
+	}
 }

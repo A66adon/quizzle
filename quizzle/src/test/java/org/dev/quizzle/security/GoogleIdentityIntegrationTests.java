@@ -20,6 +20,8 @@ class GoogleIdentityIntegrationTests extends org.dev.quizzle.persistence.Postgre
 	@Autowired AccountService accounts;
 	@Autowired AccountStore store;
 	@Autowired JdbcTemplate jdbc;
+	@Autowired AccountTokens tokens;
+	@org.springframework.test.context.bean.override.mockito.MockitoBean AccountMailer mailer;
 	private DefaultOidcUser user(String sub,String email) {
 		return new DefaultOidcUser(List.of(),new OidcIdToken("test-only",Instant.now(),Instant.now().plusSeconds(60),
 				Map.of("sub",sub,"email",email,"email_verified",true,"iss","https://accounts.google.com","aud","client")));
@@ -49,5 +51,38 @@ class GoogleIdentityIntegrationTests extends org.dev.quizzle.persistence.Postgre
 			assertEquals(a.get(10,java.util.concurrent.TimeUnit.SECONDS).accountId(),b.get(10,java.util.concurrent.TimeUnit.SECONDS).accountId());
 			assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM external_identities WHERE provider_subject=?",Integer.class,sub));
 		}finally{pool.shutdownNow();}
+	}
+	@Test void victimGoogleLoginCannotActivateAnAttackersUnverifiedLocalPassword() {
+		String email=UUID.randomUUID()+"@example.test";
+		Account pending=accounts.register(email,"attacker-chosen-password");
+		org.mockito.Mockito.when(mailer.sendLink(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.anyString(),
+				org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+		assertTrue(tokens.verification(pending));
+		long before=store.credentialVersion(pending.id());
+		var victim=google.resolve(user(UUID.randomUUID().toString(),email));
+		assertEquals(pending.id(),victim.accountId());
+		Account stored=store.findById(pending.id()).orElseThrow();
+		assertEquals(Account.Status.ACTIVE,stored.status());
+		assertNull(stored.passwordHash());
+		assertEquals(before+1,victim.credentialVersion());
+		assertTrue(accounts.authenticate(email,"attacker-chosen-password").isEmpty());
+		assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM email_verification_tokens WHERE account_id=?",Integer.class,UUID.fromString(pending.id())));
+		tokens.forgot(email);
+		org.mockito.Mockito.verify(mailer,org.mockito.Mockito.never()).sendLinkLater(org.mockito.ArgumentMatchers.any(),
+				org.mockito.ArgumentMatchers.eq("/reset-password"),org.mockito.ArgumentMatchers.anyString());
+		assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM password_reset_tokens WHERE account_id=?",Integer.class,UUID.fromString(pending.id())));
+	}
+	@Test void googleLinkingPreservesAnAlreadyEmailVerifiedLocalPassword() {
+		String email=UUID.randomUUID()+"@example.test";
+		Account pending=accounts.register(email,"verified-local-password");
+		var captured=new java.util.concurrent.atomic.AtomicReference<String>();
+		org.mockito.Mockito.doAnswer(call->{captured.set(call.getArgument(2));return true;}).when(mailer)
+				.sendLink(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.eq("/verify-email"),org.mockito.ArgumentMatchers.anyString());
+		assertTrue(tokens.verification(pending));assertTrue(tokens.verify(captured.get()));
+		long before=store.credentialVersion(pending.id());
+		var linked=google.resolve(user(UUID.randomUUID().toString(),email));
+		assertEquals(pending.id(),linked.accountId());
+		assertEquals(before,linked.credentialVersion());
+		assertTrue(accounts.authenticate(email,"verified-local-password").isPresent());
 	}
 }

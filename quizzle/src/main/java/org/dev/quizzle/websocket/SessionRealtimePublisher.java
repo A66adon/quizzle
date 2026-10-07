@@ -56,11 +56,13 @@ public final class SessionRealtimePublisher {
 	}
 
 	public void publishAndDisconnect(GameSessionSnapshot snapshot) {
-		publish(snapshot);
-		for(var connection:connectionHub.allConnections()) {
-			if(connection.codehash().equals(snapshot.codehash())) {
-				connectionHub.closeQuietly(connection,new CloseStatus(4004,"Account deleted"));
-				connectionHub.unregister(connection.socket());
+		try {publish(snapshot);}
+		finally {
+			for(var connection:connectionHub.allConnections()) {
+				if(connection.codehash().equals(snapshot.codehash())) {
+					connectionHub.closeQuietly(connection,new CloseStatus(4004,"Account deleted"));
+					connectionHub.unregister(connection.socket());
+				}
 			}
 		}
 	}

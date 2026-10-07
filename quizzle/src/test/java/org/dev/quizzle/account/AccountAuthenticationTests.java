@@ -29,6 +29,9 @@ class AccountAuthenticationTests extends org.dev.quizzle.persistence.PostgresInt
 	@Autowired org.dev.quizzle.session.GameSessionRegistry registry;
 	@Autowired org.dev.quizzle.quiz.catalog.QuizEditorService editor;
 	@Autowired org.dev.quizzle.websocket.WebSocketConnectionHub connections;
+	@Autowired org.dev.quizzle.websocket.SessionRealtimePublisher publisher;
+	@org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+	org.dev.quizzle.persistence.PostgresSnapshotRepository snapshots;
 	@MockitoBean AccountMailer mailer;
 	private final String password="correct horse battery staple";
 
@@ -116,13 +119,51 @@ class AccountAuthenticationTests extends org.dev.quizzle.persistence.PostgresInt
 		when(socket.getId()).thenReturn("socket-"+UUID.randomUUID());when(socket.isOpen()).thenReturn(true);
 		var connection=connections.register(socket,room.codehash());connections.bindPlayer(connection,player.player().playerId());
 		var session=login(account);
+		clearInvocations(snapshots);
 		mvc.perform(delete("/admin/api/account").session(session).header("X-XSRF-TOKEN",CsrfToken.getOrCreate(session))
 				.contentType("application/json").content("{\"currentPassword\":\""+password+"\"}")).andExpect(status().isNoContent());
 		assertTrue(registry.find(room.codehash()).isEmpty());assertTrue(connections.find(socket).isEmpty());
+		verify(snapshots,never()).save(any());verify(snapshots,never()).delete(anyString());
 		verify(socket).close(any(org.springframework.web.socket.CloseStatus.class));
 		assertTrue(registry.find(otherRoom.codehash()).isPresent());assertTrue(store.findById(other.id()).isPresent());
 		assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM quizzes WHERE owner_account_id=?",Integer.class,UUID.fromString(account.id())));
 		assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM quizzes WHERE owner_account_id=?",Integer.class,UUID.fromString(other.id())));
 		registry.closeAllOwnedBy(other.id());
+	}
+	@Test void deferredDeletionCommitFailurePreservesDatabaseRoomAndSocket() throws Exception {
+		Account account=pending();assertTrue(tokens.verify(verification(account)));
+		String slug=editor.create(account.id(),org.dev.quizzle.session.SessionTestFixtures.quiz());
+		var room=registry.create(account.id(),slug);
+		var player=registry.joinPlayer(room.codehash(),"Participant");
+		var socket=mock(org.springframework.web.socket.WebSocketSession.class);
+		when(socket.getId()).thenReturn("rollback-socket-"+UUID.randomUUID());when(socket.isOpen()).thenReturn(true);
+		var connection=connections.register(socket,room.codehash());connections.bindPlayer(connection,player.player().playerId());
+		String function="deny_delete_"+UUID.randomUUID().toString().replace("-","");
+		String trigger="deny_delete_trigger_"+UUID.randomUUID().toString().replace("-","");
+		jdbc.execute("CREATE FUNCTION "+function+"() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Test-only deletion rollback'; END; $$");
+		try {
+			jdbc.execute("CREATE CONSTRAINT TRIGGER "+trigger+" AFTER DELETE ON accounts DEFERRABLE INITIALLY DEFERRED "
+					+"FOR EACH ROW WHEN (OLD.id='"+account.id()+"'::uuid) EXECUTE FUNCTION "+function+"()");
+			clearInvocations(snapshots);
+			RuntimeException failure=assertThrows(RuntimeException.class,()-> {
+				synchronized(registry) {
+					accounts.deleteAccount(account.id(),password,0,
+							()->registry.removeOwnedAfterDeletion(account.id(),publisher::publishAndDisconnect));
+				}
+			});
+			assertTrue(java.util.stream.Stream.iterate((Throwable)failure,java.util.Objects::nonNull,Throwable::getCause)
+					.anyMatch(cause->cause.getMessage()!=null && cause.getMessage().contains("Test-only deletion rollback")));
+			assertTrue(store.findById(account.id()).isPresent());
+			assertTrue(registry.find(room.codehash()).isPresent());
+			assertTrue(connections.find(socket).isPresent());
+			assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM session_snapshots WHERE codehash=?",Integer.class,room.codehash()));
+			assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM quizzes WHERE owner_account_id=?",Integer.class,UUID.fromString(account.id())));
+			verify(socket,never()).close(any(org.springframework.web.socket.CloseStatus.class));
+			verify(snapshots,never()).save(any());verify(snapshots,never()).delete(anyString());
+		} finally {
+			jdbc.execute("DROP TRIGGER IF EXISTS "+trigger+" ON accounts");
+			jdbc.execute("DROP FUNCTION "+function+"()");
+			registry.closeAllOwnedBy(account.id(),publisher::publishAndDisconnect);
+		}
 	}
 }

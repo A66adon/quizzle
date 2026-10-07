@@ -44,11 +44,12 @@ public final class QuizEditorService {
 		validate(quiz);
 		String slug = slugify(quiz.title());
 		for (int attempt = 0; attempt < 500; attempt++) {
-			String fileName = slug + (attempt == 0 ? "" : "-" + (attempt + 1)) + ".yaml";
+			UUID id=UUID.randomUUID();
+			String fileName = slug + "-" + id + ".yaml";
 			int created = jdbc.update("""
 					INSERT INTO quizzes(id,owner_account_id,slug,title,description,author,question_count,content)
 					VALUES (?,?,?,?,?,?,?,?::jsonb) ON CONFLICT(owner_account_id,slug) DO NOTHING
-					""", UUID.randomUUID(), UUID.fromString(accountId), fileName, quiz.title(),
+					""", id, UUID.fromString(accountId), fileName, quiz.title(),
 					quiz.description(), quiz.author(), quiz.questions().size(), mapper.writeValueAsString(quiz));
 			if (created == 1) return fileName;
 		}

@@ -45,6 +45,19 @@ class GameSessionRegistryTests {
 	}
 
 	@Test
+	void committedAccountDeletionEvictsAndPublishesClosedRoomsWithoutSnapshotWrites() throws Exception {
+		var repository=createRepository();
+		var registry=createRegistry(createCatalog(prepareQuizDirectory()),repository);
+		var room=registry.create(SessionTestFixtures.OWNER_ACCOUNT_ID,"safety.yaml");
+		org.mockito.Mockito.clearInvocations(repository);
+		var published=new java.util.concurrent.atomic.AtomicReference<GameSessionSnapshot>();
+		registry.removeOwnedAfterDeletion(SessionTestFixtures.OWNER_ACCOUNT_ID,published::set);
+		assertTrue(registry.find(room.codehash()).isEmpty());
+		assertEquals(GameState.CLOSED,published.get().state());
+		org.mockito.Mockito.verifyNoInteractions(repository);
+	}
+
+	@Test
 	void createsUniqueSessionsConcurrentlyAndSnapshotsEveryOne() throws Exception {
 		Path quizDirectory = prepareQuizDirectory();
 		PostgresSnapshotRepository repository = createRepository();

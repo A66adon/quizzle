@@ -157,6 +157,29 @@ class PostgresStorageIntegrationTests extends PostgresIntegrationSupport {
 	}
 
 	@Test
+	void deletedQuizIdentityCannotAddressASameTitleReplacementOrImport() throws Exception {
+		var original=SessionTestFixtures.quiz();
+		String staleFile=editor.create(owner.id(),original);
+		editor.delete(owner.id(),staleFile);
+		String replacement=editor.create(owner.id(),original);
+		assertNotEquals(staleFile,replacement);
+		assertThrows(QuizEditorException.class,()->editor.update(owner.id(),staleFile,
+				new QuizDefinition("Stale tab overwrite","Description","Author",List.of()),1));
+		assertEquals(original,editor.load(owner.id(),replacement));
+		assertEquals(1,editor.loadRevision(owner.id(),replacement).version());
+		editor.delete(owner.id(),replacement);
+		var imported=editor.importYaml(owner.id(),new QuizYamlWriter().write(original));
+		assertNotEquals(staleFile,imported.fileName());assertNotEquals(replacement,imported.fileName());
+		assertThrows(QuizEditorException.class,()->editor.update(owner.id(),replacement,
+				new QuizDefinition("Stale imported overwrite","Description","Author",List.of()),1));
+		assertEquals(original,editor.load(owner.id(),imported.fileName()));
+		assertEquals(1,editor.loadRevision(owner.id(),imported.fileName()).version());
+		assertEquals(jdbc.queryForObject("SELECT id::text FROM quizzes WHERE owner_account_id=? AND slug=?",String.class,
+						UUID.fromString(owner.id()),imported.fileName()),
+				imported.fileName().substring(imported.fileName().length()-41,imported.fileName().length()-5));
+	}
+
+	@Test
 	void storedLateJoinDefaultsAffectNewGamesAndRemainOwnerSpecific() {
 		String slug=editor.create(owner.id(),SessionTestFixtures.quiz());
 		String otherSlug=editor.create(other.id(),SessionTestFixtures.quiz());
@@ -185,7 +208,7 @@ class PostgresStorageIntegrationTests extends PostgresIntegrationSupport {
 				gate.await();
 				synchronized(registry) {
 					accountService.deleteAccount(owner.id(),null,java.time.Instant.now().getEpochSecond(),
-							()->registry.closeAllOwnedBy(owner.id()));
+							()->registry.removeOwnedAfterDeletion(owner.id(),snapshot -> {}));
 				}
 				return true;
 			});

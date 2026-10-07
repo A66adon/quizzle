@@ -58,4 +58,26 @@ class GoogleIdentityTests {
 		assertFalse(GoogleLogin.validReauthentication(expected,new AccountPrincipal("same-account",0,now.getEpochSecond()),token.apply(now.minusSeconds(61)),now));
 		assertFalse(GoogleLogin.validReauthentication(expected,new AccountPrincipal("same-account",0,now.getEpochSecond()),user(true,"user@example.test").getIdToken(),now));
 	}
+	@Test void googleActivationDiscardsAnUnverifiedPasswordButKeepsVerifiedLocalCredentials() {
+		for(Account.Status status:List.of(Account.Status.PENDING_VERIFICATION,Account.Status.ACTIVE)) {
+			var store=mock(AccountStore.class);
+			var account=new Account(java.util.UUID.randomUUID().toString(),"user@example.test","existing-hash",
+					status==Account.Status.ACTIVE,List.of(),1,false,5000,status);
+			when(store.findByEmail(account.email())).thenReturn(java.util.Optional.of(account));
+			when(store.lock(account.id())).thenReturn(account);
+			var google=new GoogleIdentityService(store,mock(AccountService.class),
+					mock(org.springframework.jdbc.core.JdbcTemplate.class),mock(GameSessionProperties.class),
+					mock(org.springframework.transaction.PlatformTransactionManager.class));
+			google.resolve(user(true,account.email()));
+			if(status==Account.Status.PENDING_VERIFICATION) {
+				var order=inOrder(store);
+				order.verify(store).updatePassword(account.id(),null);
+				order.verify(store).activatePending(account.id());
+				verify(store).invalidateTokens(account.id());
+			} else {
+				verify(store,never()).updatePassword(anyString(),any());
+				verify(store,never()).invalidateTokens(anyString());
+			}
+		}
+	}
 }

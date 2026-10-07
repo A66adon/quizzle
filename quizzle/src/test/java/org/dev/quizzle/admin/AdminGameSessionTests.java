@@ -140,7 +140,7 @@ class AdminGameSessionTests extends org.dev.quizzle.persistence.PostgresIntegrat
 				.session(adminSession)
 				.header(CsrfToken.HEADER_NAME, CsrfToken.getOrCreate(adminSession))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"quizFileName\":\"safety-basics.yaml\"}"))
+				.content("{\"quizFileName\":\"" + adminSession.getAttribute("testQuizFileName") + "\"}"))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.quizTitle").value("Workplace Safety Basics"))
 				.andReturn();
@@ -168,9 +168,10 @@ class AdminGameSessionTests extends org.dev.quizzle.persistence.PostgresIntegrat
 				.andExpect(redirectedUrl("/admin"))
 				.andReturn();
 		MockHttpSession authenticatedSession = (MockHttpSession) result.getRequest().getSession(false);
-		editorService.create(AccountSession.currentAccountId(authenticatedSession),
+		String fileName=editorService.create(AccountSession.currentAccountId(authenticatedSession),
 				parser.parse(Files.readString(Path.of("quizzes", "safety-basics.yaml"))
 						.replace("Workplace Safety Basics", "Safety Basics")));
+		authenticatedSession.setAttribute("testQuizFileName",fileName);
 		return authenticatedSession;
 	}
 }

@@ -96,7 +96,7 @@ public final class SettingsController {
 			// Serialize creation and deletion through the same registry monitor; no live room can escape the cascade.
 			synchronized(sessionRegistry) {
 				accountService.deleteAccount(accountId,request==null ? null : request.currentPassword(),
-						principal.providerAuthenticatedAt(),()->sessionRegistry.closeAllOwnedBy(accountId,publisher::publishAndDisconnect));
+						principal.providerAuthenticatedAt(),()->sessionRegistry.removeOwnedAfterDeletion(accountId,publisher::publishAndDisconnect));
 			}
 		} catch(AccountRegistrationException exception) {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Reauthentication is required");

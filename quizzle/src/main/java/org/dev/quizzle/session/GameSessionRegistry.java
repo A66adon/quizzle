@@ -421,7 +421,7 @@ public final class GameSessionRegistry {
 				.toList();
 	}
 
-	/** Force-closes every live game owned by this account (used when the account is deleted). */
+	/** Force-closes live games while their account still exists. */
 	public void closeAllOwnedBy(String ownerAccountId) {
 		closeAllOwnedBy(ownerAccountId,snapshot -> {});
 	}
@@ -433,6 +433,22 @@ public final class GameSessionRegistry {
 			} catch (SessionNotFoundException | InvalidGameTransitionException ignored) {
 				// Already closed or gone by the time we got here; nothing left to do.
 			}
+		}
+	}
+
+	/** The account cascade has already committed: only evict memory and notify connected clients. */
+	public synchronized void removeOwnedAfterDeletion(String ownerAccountId,java.util.function.Consumer<GameSessionSnapshot> closed) {
+		var removed=new ArrayList<GameSessionSnapshot>();
+		long now=System.currentTimeMillis();
+		for(var entry:sessions.entrySet()) {
+			GameSessionAggregate aggregate=entry.getValue();
+			if(!aggregate.snapshot().ownerAccountId().equals(ownerAccountId) || !sessions.remove(entry.getKey(),aggregate)) continue;
+			removed.add(aggregate.updateInMemory(current -> current.state()==GameState.CLOSED ? current
+					: current.withTransition(stateMachine.apply(current,GameCommand.ABORT,now),now)));
+		}
+		for(GameSessionSnapshot snapshot:removed) {
+			try {closed.accept(snapshot);}
+			catch(RuntimeException notificationFailure) {LOGGER.warn("Could not notify clients of deleted room {}",snapshot.codehash());}
 		}
 	}
 

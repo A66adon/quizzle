@@ -21,12 +21,15 @@ public class AccountService {
 	private final AuthProperties auth;
 	private final GameSessionProperties sessions;
 	private final TransactionTemplate transactions;
+	private final TransactionTemplate deletionTransactions;
 	private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 	private final String dummy = encoder.encode(UUID.randomUUID().toString());
 	public AccountService(AccountStore store, AccountProperties properties, AuthProperties auth,
 			GameSessionProperties sessions, org.springframework.transaction.PlatformTransactionManager manager) {
 		this.store = store; this.properties = properties; this.auth = auth; this.sessions = sessions;
 		this.transactions = new TransactionTemplate(manager);
+		this.deletionTransactions = new TransactionTemplate(manager);
+		this.deletionTransactions.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 	}
 	public Account register(String email, String password) {
 		validateEmail(email); validatePassword(password);
@@ -75,16 +78,16 @@ public class AccountService {
 			store.updateGameSettings(id,allowLateJoin,delay);
 		});
 	}
-	public void deleteAccount(String id,String password,long providerAuthenticatedAt,Runnable closeSessions) {
-		transactions.executeWithoutResult(status -> {
+	public void deleteAccount(String id,String password,long providerAuthenticatedAt,Runnable afterCommitCleanup) {
+		deletionTransactions.executeWithoutResult(status -> {
 			Account account=store.lock(id);
 			if(account.passwordHash()!=null) requirePassword(account,password);
 			else if(providerAuthenticatedAt<=0 || Instant.now().getEpochSecond()-providerAuthenticatedAt>300
 					|| providerAuthenticatedAt>Instant.now().getEpochSecond()+60)
 				throw new AccountRegistrationException("Recent Google reauthentication is required");
-			closeSessions.run();
 			store.delete(id);
 		});
+		afterCommitCleanup.run();
 	}
 	public Optional<Account> findById(String id) { return store.findById(id); }
 	public void validateEmail(String email) {
