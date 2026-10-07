@@ -58,6 +58,7 @@ class AccountMailerTests {
 		assertEquals(properties.getProperty("spring.mail.properties.mail.smtp.starttls.enable"),
 				properties.getProperty("spring.mail.properties.mail.smtp.starttls.required"));
 		assertEquals("${SMTP_SSL:false}",properties.getProperty("spring.mail.properties.mail.smtp.ssl.enable"));
+		assertEquals("true",properties.getProperty("spring.mail.properties.mail.smtp.ssl.checkserveridentity"));
 		assertEquals("${SMTP_PORT:587}",properties.getProperty("spring.mail.port"));
 		for(String timeout:List.of("connectiontimeout","timeout","writetimeout")) {
 			int milliseconds=Integer.parseInt(properties.getProperty("spring.mail.properties.mail.smtp."+timeout));
