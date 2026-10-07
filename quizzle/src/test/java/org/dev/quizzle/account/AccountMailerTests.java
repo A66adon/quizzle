@@ -39,8 +39,14 @@ class AccountMailerTests {
 		when(sender.createMimeMessage()).thenReturn(new MimeMessage(Session.getInstance(new Properties())));
 		doThrow(new MailSendException("private recipient and SMTP credentials")).when(sender).send(any(MimeMessage.class));
 		var mailer=mailer();
-		try {assertFalse(mailer.sendLink(account(),"/verify-email","private-token"));}
-		finally{mailer.stop();}
+		var logger=(ch.qos.logback.classic.Logger)org.slf4j.LoggerFactory.getLogger(AccountMailer.class);
+		var events=new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+		events.start();logger.addAppender(events);
+		try {
+			assertFalse(mailer.sendLink(account(),"/verify-email","private-token"));
+			assertEquals(List.of("ACCOUNT_MAIL_DELIVERY_FAILED"),events.list.stream().map(event->event.getFormattedMessage()).toList());
+			assertTrue(events.list.stream().allMatch(event->event.getThrowableProxy()==null));
+		} finally {mailer.stop();logger.detachAppender(events);events.stop();}
 	}
 	@Test void configuredStartTlsCannotDowngradeAndImplicitTlsRemainsOptional() throws Exception {
 		var properties=new Properties();
@@ -56,6 +62,36 @@ class AccountMailerTests {
 		for(String timeout:List.of("connectiontimeout","timeout","writetimeout")) {
 			int milliseconds=Integer.parseInt(properties.getProperty("spring.mail.properties.mail.smtp."+timeout));
 			assertTrue(milliseconds>0 && milliseconds<=10000);
+		}
+	}
+	@Test void aFullFiniteMailQueueFailsClosedWithOnlyASanitizedOperatorEvent() throws Exception {
+		when(sender.createMimeMessage()).thenAnswer(call->new MimeMessage(Session.getInstance(new Properties())));
+		var firstStarted=new java.util.concurrent.CountDownLatch(1);
+		var bothStarted=new java.util.concurrent.CountDownLatch(2);
+		var release=new java.util.concurrent.CountDownLatch(1);
+		var finished=new java.util.concurrent.CountDownLatch(102);
+		doAnswer(call->{
+			firstStarted.countDown();bothStarted.countDown();
+			if(!release.await(10,java.util.concurrent.TimeUnit.SECONDS)) throw new AssertionError("SMTP test gate was not released");
+			finished.countDown();return null;
+		}).when(sender).send(any(MimeMessage.class));
+		var mailer=mailer();
+		var logger=(ch.qos.logback.classic.Logger)org.slf4j.LoggerFactory.getLogger(AccountMailer.class);
+		var events=new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+		events.start();logger.addAppender(events);
+		try {
+			assertTrue(mailer.sendLinkLater(account(),"/verify-email","private-token"));
+			assertTrue(firstStarted.await(3,java.util.concurrent.TimeUnit.SECONDS));
+			for(int i=0;i<101;i++) assertTrue(mailer.sendLinkLater(account(),"/verify-email","private-token"));
+			assertTrue(bothStarted.await(3,java.util.concurrent.TimeUnit.SECONDS));
+			assertFalse(mailer.sendLinkLater(account(),"/verify-email","private-token"));
+			assertEquals(List.of("ACCOUNT_MAIL_QUEUE_REJECTED"),events.list.stream().map(event->event.getFormattedMessage()).toList());
+			assertTrue(events.list.stream().allMatch(event->event.getThrowableProxy()==null));
+		} finally {
+			release.countDown();mailer.stop();
+			boolean drained=finished.await(5,java.util.concurrent.TimeUnit.SECONDS);
+			logger.detachAppender(events);events.stop();
+			assertTrue(drained);
 		}
 	}
 }

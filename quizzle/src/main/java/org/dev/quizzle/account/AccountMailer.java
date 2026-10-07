@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public final class AccountMailer {
+	private static final org.slf4j.Logger LOGGER=org.slf4j.LoggerFactory.getLogger(AccountMailer.class);
 	private final JavaMailSender sender;
 	private final String from;
 	private final String baseUrl;
@@ -44,7 +45,10 @@ public final class AccountMailer {
 	}
 	private boolean enqueue(Runnable work) {
 		try {background.execute(work);return true;}
-		catch(java.util.concurrent.RejectedExecutionException full) {return false;}
+		catch(java.util.concurrent.RejectedExecutionException full) {
+			LOGGER.warn("ACCOUNT_MAIL_QUEUE_REJECTED");
+			return false;
+		}
 	}
 	@jakarta.annotation.PreDestroy
 	public void stop() {background.shutdown();}
@@ -57,6 +61,7 @@ public final class AccountMailer {
 			return true;
 		} catch (MailException | jakarta.mail.MessagingException exception) {
 			// Deliberately do not log exceptions: SMTP diagnostics may contain recipients or credentials.
+			LOGGER.warn("ACCOUNT_MAIL_DELIVERY_FAILED");
 			return false;
 		}
 	}
