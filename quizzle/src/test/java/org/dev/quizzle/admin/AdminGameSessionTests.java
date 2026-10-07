@@ -52,9 +52,13 @@ class AdminGameSessionTests extends org.dev.quizzle.persistence.PostgresIntegrat
 	@Autowired
 	QuizYamlParser parser;
 
+	@Autowired org.dev.quizzle.account.AccountService accountService;
+	@Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+
 	@Test
 	void protectsCreationFromUnauthenticatedRequests() throws Exception {
 		mockMvc.perform(post("/admin/api/sessions")
+				.with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"quizFileName\":\"safety-basics.yaml\"}"))
 				.andExpect(status().isUnauthorized());
@@ -144,25 +148,20 @@ class AdminGameSessionTests extends org.dev.quizzle.persistence.PostgresIntegrat
 	}
 
 	private MockHttpSession login() throws Exception {
-		String username = "admin-" + UUID.randomUUID().toString().substring(0, 16);
+		String username = "admin-" + UUID.randomUUID().toString().substring(0, 16)+"@example.test";
 		MockHttpSession session = new MockHttpSession();
 		mockMvc.perform(get("/register").session(session)).andExpect(status().isOk());
 		String csrfToken = CsrfToken.getOrCreate(session);
 
-		mockMvc.perform(post("/register")
-				.session(session)
-				.param("username", username)
-				.param("password", "phase-two-secret-password")
-				.param("_csrf", csrfToken))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/admin?welcome"));
+		var account=accountService.register(username,"phase-two-secret-password");
+		jdbc.update("UPDATE accounts SET status='ACTIVE' WHERE id=?",UUID.fromString(account.id()));
 
 		session = new MockHttpSession();
 		mockMvc.perform(get("/login").session(session)).andExpect(status().isOk());
 		csrfToken = CsrfToken.getOrCreate(session);
 		MvcResult result = mockMvc.perform(post("/login")
 				.session(session)
-				.param("username", username)
+				.param("email", username)
 				.param("password", "phase-two-secret-password")
 				.param("_csrf", csrfToken))
 				.andExpect(status().is3xxRedirection())

@@ -12,8 +12,9 @@ public final class AuthRateLimiter {
 	public synchronized boolean allow(String action, String ip, String email) {
 		long now = System.currentTimeMillis();
 		buckets.entrySet().removeIf(entry -> now - entry.getValue().start >= WINDOW_MS);
-		return take(action + ":ip:" + ip, 60, now)
-				& take(action + ":email:" + org.dev.quizzle.account.AccountStore.normalizeEmail(email), 10, now);
+		String normalized=org.dev.quizzle.account.AccountStore.normalizeEmail(email);
+		boolean ipAllowed=take(action + ":ip:" + ip, 60, now);
+		return ipAllowed & (normalized.isEmpty() || take(action + ":email:" + org.dev.quizzle.account.AccountTokens.digest(normalized), 10, now));
 	}
 	private boolean take(String key, int limit, long now) {
 		Bucket bucket = buckets.get(key);

@@ -45,7 +45,8 @@ public class SecurityConfiguration {
 	@Bean
 	SecurityFilterChain security(HttpSecurity http, AuthenticationProvider localAuthentication,
 			AccountStore store, AuthRateLimiter limiter, org.dev.quizzle.config.AuthProperties properties,
-			org.springframework.beans.factory.ObjectProvider<GoogleIdentityService> googleIdentityService) throws Exception {
+			org.springframework.beans.factory.ObjectProvider<GoogleIdentityService> googleIdentityService,
+			@org.springframework.beans.factory.annotation.Value("${server.servlet.session.cookie.secure:false}") boolean secureCookie) throws Exception {
 		if(properties.googleEnabled()) GoogleLogin.configure(http,GoogleLogin.registrations(properties),googleIdentityService.getObject());
 		http.addFilterBefore(new OncePerRequestFilter() {
 			@Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -58,7 +59,7 @@ public class SecurityConfiguration {
 			}
 		},org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.class);
 		http.authenticationProvider(localAuthentication)
-				.csrf(csrf -> csrf.csrfTokenRepository(new SessionCsrfRepository())
+				.csrf(csrf -> csrf.csrfTokenRepository(new SessionCsrfRepository(secureCookie))
 						.csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/admin", "/admin/**", "/admin.html", "/editor", "/editor.html",
@@ -105,7 +106,7 @@ public class SecurityConfiguration {
 				Object value = request.getAttribute("_csrf");
 				if (value instanceof org.springframework.security.web.csrf.CsrfToken token) {
 					response.addHeader("Set-Cookie", org.springframework.http.ResponseCookie.from("XSRF-TOKEN", token.getToken())
-							.path("/").httpOnly(false).secure(request.isSecure()).sameSite("Lax").build().toString());
+							.path("/").httpOnly(false).secure(secureCookie || request.isSecure()).sameSite("Lax").build().toString());
 				}
 				chain.doFilter(request, response);
 			}

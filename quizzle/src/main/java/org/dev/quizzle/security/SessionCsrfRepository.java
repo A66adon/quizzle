@@ -8,6 +8,8 @@ import org.springframework.security.web.csrf.DefaultCsrfToken;
 
 /** The readable cookie is a mirror, not the authority: validation uses the server session. */
 public final class SessionCsrfRepository implements CsrfTokenRepository {
+	private final boolean secure;
+	public SessionCsrfRepository(boolean secure) {this.secure=secure;}
 	@Override
 	public org.springframework.security.web.csrf.CsrfToken generateToken(HttpServletRequest request) {
 		return new DefaultCsrfToken(CsrfToken.HEADER_NAME, "_csrf", CsrfToken.getOrCreate(request.getSession()));
@@ -20,7 +22,7 @@ public final class SessionCsrfRepository implements CsrfTokenRepository {
 			if (session != null) session.removeAttribute(CsrfToken.SESSION_ATTRIBUTE);
 		} else request.getSession().setAttribute(CsrfToken.SESSION_ATTRIBUTE, token.getToken());
 		response.addHeader("Set-Cookie", ResponseCookie.from("XSRF-TOKEN", token == null ? "" : token.getToken())
-				.path("/").httpOnly(false).secure(request.isSecure()).sameSite("Lax")
+				.path("/").httpOnly(false).secure(secure || request.isSecure()).sameSite("Lax")
 				.maxAge(token == null ? 0 : -1).build().toString());
 	}
 	@Override

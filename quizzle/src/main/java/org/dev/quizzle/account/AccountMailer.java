@@ -14,6 +14,10 @@ public final class AccountMailer {
 	private final JavaMailSender sender;
 	private final String from;
 	private final String baseUrl;
+	private final java.util.concurrent.ThreadPoolExecutor background=new java.util.concurrent.ThreadPoolExecutor(
+			1,2,30,java.util.concurrent.TimeUnit.SECONDS,new java.util.concurrent.ArrayBlockingQueue<>(100),
+			runnable -> {Thread thread=new Thread(runnable,"account-mail");thread.setDaemon(true);return thread;},
+			new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
 	public AccountMailer(ObjectProvider<JavaMailSender> sender, AuthProperties properties,
 			GameSessionProperties sessions, @Value("${spring.mail.host:}") String host) {
 		if (host.isBlank() || properties.mailFrom() == null || !properties.mailFrom().matches("^[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+$"))
@@ -32,9 +36,18 @@ public final class AccountMailer {
 						+ "\">Continue</a></p><p>If you did not request this, ignore this message.</p>");
 	}
 	public void passwordChanged(Account account) {
-		send(account.email(), "Quizzle password changed", "Your Quizzle password was changed. If this was not you, contact your operator.",
-				"<p>Your Quizzle password was changed. If this was not you, contact your operator.</p>");
+		enqueue(()->send(account.email(), "Quizzle password changed", "Your Quizzle password was changed. If this was not you, contact your operator.",
+				"<p>Your Quizzle password was changed. If this was not you, contact your operator.</p>"));
 	}
+	public boolean sendLinkLater(Account account,String path,String token) {
+		return enqueue(()->sendLink(account,path,token));
+	}
+	private boolean enqueue(Runnable work) {
+		try {background.execute(work);return true;}
+		catch(java.util.concurrent.RejectedExecutionException full) {return false;}
+	}
+	@jakarta.annotation.PreDestroy
+	public void stop() {background.shutdown();}
 	private boolean send(String to, String subject, String text, String html) {
 		try {
 			var message = sender.createMimeMessage();

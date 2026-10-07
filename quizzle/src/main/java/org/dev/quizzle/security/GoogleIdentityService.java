@@ -30,7 +30,7 @@ public final class GoogleIdentityService {
 			throw rejected();
 		try { accounts.validateEmail(email); }
 		catch (AccountRegistrationException exception) { throw rejected(); }
-		return transactions.execute(status -> {
+		try {return transactions.execute(status -> {
 			String normalized = AccountStore.normalizeEmail(email);
 			jdbc.queryForObject("SELECT pg_advisory_xact_lock(hashtextextended(?,0))", Object.class, "google:" + user.getSubject());
 			store.lockEmail(normalized);
@@ -59,7 +59,7 @@ public final class GoogleIdentityService {
 			Instant authenticationTime=user.getIdToken().getAuthenticatedAt();
 			return new AccountPrincipal(account.id(),store.credentialVersion(account.id()),
 					authenticationTime==null ? 0 : authenticationTime.getEpochSecond());
-		});
+		});} catch(AccountRegistrationException | org.springframework.dao.DuplicateKeyException concurrentIdentityChange) {throw rejected();}
 	}
 	private static OAuth2AuthenticationException rejected() {
 		return new OAuth2AuthenticationException(new OAuth2Error("invalid_identity"), "Google sign-in could not be completed");

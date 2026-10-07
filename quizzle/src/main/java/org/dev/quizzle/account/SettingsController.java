@@ -26,12 +26,21 @@ public final class SettingsController {
 
 	private final AccountService accountService;
 	private final GameSessionRegistry sessionRegistry;
+	private final org.dev.quizzle.websocket.SessionRealtimePublisher publisher;
+	private final AccountStore store;
+	private final AccountMailer mailer;
+	private final org.dev.quizzle.security.AccountSessions accountSessions;
 
 	public SettingsController(
 			AccountService accountService,
-			GameSessionRegistry sessionRegistry) {
+			GameSessionRegistry sessionRegistry, org.dev.quizzle.websocket.SessionRealtimePublisher publisher,
+			AccountStore store, AccountMailer mailer, org.dev.quizzle.security.AccountSessions accountSessions) {
 		this.accountService = accountService;
 		this.sessionRegistry = sessionRegistry;
+		this.publisher=publisher;
+		this.store=store;
+		this.mailer=mailer;
+		this.accountSessions=accountSessions;
 	}
 
 	@GetMapping("/settings")
@@ -62,7 +71,14 @@ public final class SettingsController {
 		}
 		String accountId = AccountSession.currentAccountId(session);
 		try {
-			accountService.changePassword(accountId, request.currentPassword(), request.newPassword());
+			long version=accountService.changePassword(accountId, request.currentPassword(), request.newPassword());
+			var context=(org.springframework.security.core.context.SecurityContext)session.getAttribute(
+					org.springframework.security.web.context.HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+			context.setAuthentication(org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
+					new org.dev.quizzle.security.AccountPrincipal(accountId,version,0),null,
+					java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))));
+			accountSessions.revoke(accountId,version,session.getId());
+			mailer.passwordChanged(requireAccount(session));
 		} catch (AccountRegistrationException exception) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
 		}
@@ -70,11 +86,23 @@ public final class SettingsController {
 
 	@DeleteMapping
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void deleteAccount(HttpSession session, HttpServletResponse response) {
+	public void deleteAccount(HttpSession session, HttpServletResponse response,
+			@RequestBody(required=false) DeleteAccountRequest request) {
 		String accountId = AccountSession.currentAccountId(session);
-		sessionRegistry.closeAllOwnedBy(accountId);
-		accountService.deleteAccount(accountId);
+		var context=(org.springframework.security.core.context.SecurityContext)session.getAttribute(
+				org.springframework.security.web.context.HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+		var principal=(org.dev.quizzle.security.AccountPrincipal)context.getAuthentication().getPrincipal();
+		try {
+			// Serialize creation and deletion through the same registry monitor; no live room can escape the cascade.
+			synchronized(sessionRegistry) {
+				accountService.deleteAccount(accountId,request==null ? null : request.currentPassword(),
+						principal.providerAuthenticatedAt(),()->sessionRegistry.closeAllOwnedBy(accountId,publisher::publishAndDisconnect));
+			}
+		} catch(AccountRegistrationException exception) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Reauthentication is required");
+		}
 		session.invalidate();
+		accountSessions.revoke(accountId,Long.MAX_VALUE,null);
 		response.setHeader("Clear-Site-Data", "\"cache\"");
 	}
 
@@ -84,10 +112,10 @@ public final class SettingsController {
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 	}
 
-	public record SettingsResponse(String accountId, String email, String username,
+	public record SettingsResponse(String accountId, String email, boolean hasLocalPassword,
 			boolean allowLateJoin, long autoAdvanceDelayMs) {
 		static SettingsResponse from(Account account) {
-			return new SettingsResponse(account.id(), account.email(), account.email(),
+			return new SettingsResponse(account.id(), account.email(), account.passwordHash()!=null,
 					account.allowLateJoin(), account.autoAdvanceDelayMs());
 		}
 	}
@@ -97,4 +125,5 @@ public final class SettingsController {
 
 	public record ChangePasswordRequest(String currentPassword, String newPassword) {
 	}
+	public record DeleteAccountRequest(String currentPassword) {}
 }

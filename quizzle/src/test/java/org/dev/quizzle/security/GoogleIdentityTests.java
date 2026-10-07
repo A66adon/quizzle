@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import java.time.Instant;
 import java.util.Map;
+import java.util.List;
 import org.dev.quizzle.account.*;
 import org.dev.quizzle.config.*;
 import org.junit.jupiter.api.Test;
@@ -34,5 +35,27 @@ class GoogleIdentityTests {
 	static DefaultOidcUser user(boolean verified,String email) {
 		return new DefaultOidcUser(java.util.List.of(),new OidcIdToken("not-a-real-token",Instant.now(),Instant.now().plusSeconds(60),
 				Map.of("sub","immutable-sub","email",email,"email_verified",verified,"iss","https://accounts.google.com","aud","id")));
+	}
+	@Test void frameworkValidatorRejectsWrongIssuerAndAudience() {
+		var registration=GoogleLogin.registrations(new AuthProperties("",1440,30,"client","secret","from@example.test"))
+				.findByRegistrationId("google");
+		var validator=new org.springframework.security.oauth2.client.oidc.authentication.OidcIdTokenValidator(registration);
+		java.util.function.BiFunction<String,String,org.springframework.security.oauth2.jwt.Jwt> token=(issuer,audience)->
+				org.springframework.security.oauth2.jwt.Jwt.withTokenValue("test-only").header("alg","RS256")
+						.issuer(issuer).subject("immutable").audience(List.of(audience))
+						.issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(60)).build();
+		assertFalse(validator.validate(token.apply("https://accounts.google.com","client")).hasErrors());
+		assertTrue(validator.validate(token.apply("https://evil.test","client")).hasErrors());
+		assertTrue(validator.validate(token.apply("https://accounts.google.com","other-client")).hasErrors());
+	}
+	@Test void recentReauthenticationRejectsAccountSwitchOldOrMissingProviderAuthenticationTime() {
+		Instant now=Instant.now();
+		var expected=new GoogleLogin.Reauth("same-account","/settings",now.getEpochSecond());
+		java.util.function.Function<Instant,OidcIdToken> token=time->new OidcIdToken("test-only",now,now.plusSeconds(60),
+				Map.of("sub","immutable","auth_time",time));
+		assertTrue(GoogleLogin.validReauthentication(expected,new AccountPrincipal("same-account",0,now.getEpochSecond()),token.apply(now),now));
+		assertFalse(GoogleLogin.validReauthentication(expected,new AccountPrincipal("other-account",0,now.getEpochSecond()),token.apply(now),now));
+		assertFalse(GoogleLogin.validReauthentication(expected,new AccountPrincipal("same-account",0,now.getEpochSecond()),token.apply(now.minusSeconds(61)),now));
+		assertFalse(GoogleLogin.validReauthentication(expected,new AccountPrincipal("same-account",0,now.getEpochSecond()),user(true,"user@example.test").getIdToken(),now));
 	}
 }

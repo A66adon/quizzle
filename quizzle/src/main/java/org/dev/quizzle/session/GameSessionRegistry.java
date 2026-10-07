@@ -85,7 +85,7 @@ public final class GameSessionRegistry {
 		LOGGER.info("Session registry ready: {} restored", restoredCount);
 	}
 
-	public GameSessionSnapshot create(String ownerAccountId, String quizFileName) {
+	public synchronized GameSessionSnapshot create(String ownerAccountId, String quizFileName) {
 		LoadedQuiz loadedQuiz = quizCatalog.findByFileName(ownerAccountId, quizFileName)
 				.orElseThrow(() -> new QuizNotFoundException(quizFileName));
 		QuizDefinition quiz = withShuffledAnswers(loadedQuiz.quiz());
@@ -420,9 +420,13 @@ public final class GameSessionRegistry {
 
 	/** Force-closes every live game owned by this account (used when the account is deleted). */
 	public void closeAllOwnedBy(String ownerAccountId) {
+		closeAllOwnedBy(ownerAccountId,snapshot -> {});
+	}
+
+	public synchronized void closeAllOwnedBy(String ownerAccountId,java.util.function.Consumer<GameSessionSnapshot> closed) {
 		for (String codehash : list(ownerAccountId).stream().map(GameSessionSnapshot::codehash).toList()) {
 			try {
-				transition(codehash, GameCommand.ABORT);
+				closed.accept(transition(codehash, GameCommand.ABORT));
 			} catch (SessionNotFoundException | InvalidGameTransitionException ignored) {
 				// Already closed or gone by the time we got here; nothing left to do.
 			}

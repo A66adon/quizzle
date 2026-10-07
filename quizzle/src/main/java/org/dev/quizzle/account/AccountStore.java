@@ -79,6 +79,11 @@ public final class AccountStore {
 		jdbc.update("UPDATE accounts SET credential_version=credential_version+1,updated_at=now() WHERE id=?", UUID.fromString(id));
 	}
 
+	public void invalidateTokens(String id) {
+		jdbc.update("DELETE FROM email_verification_tokens WHERE account_id=?",UUID.fromString(id));
+		jdbc.update("DELETE FROM password_reset_tokens WHERE account_id=?",UUID.fromString(id));
+	}
+
 	public static String normalizeEmail(String email) {
 		return email == null ? "" : email.strip().toLowerCase(Locale.ROOT);
 	}

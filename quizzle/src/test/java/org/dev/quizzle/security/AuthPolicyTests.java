@@ -34,4 +34,15 @@ class AuthPolicyTests {
 		assertNotEquals("private", AccountTokens.digest("private"));
 		assertEquals(AccountTokens.digest("private"), AccountTokens.digest("private"));
 	}
+	@Test void revokesActualOldSessionsButRetainsCurrentAndNewCredentialSessions() {
+		var sessions=new AccountSessions();
+		var old=new org.springframework.mock.web.MockHttpSession();
+		var current=new org.springframework.mock.web.MockHttpSession();
+		org.dev.quizzle.account.AccountSession.authenticate(old,"account");
+		org.dev.quizzle.account.AccountSession.authenticate(current,"account");
+		sessions.sessionCreated(new jakarta.servlet.http.HttpSessionEvent(old));
+		sessions.sessionCreated(new jakarta.servlet.http.HttpSessionEvent(current));
+		sessions.revoke("account",1,current.getId());
+		assertTrue(old.isInvalid());assertFalse(current.isInvalid());
+	}
 }

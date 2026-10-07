@@ -1,183 +1,128 @@
 package org.dev.quizzle.account;
 
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
-
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import java.util.UUID;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
+import org.dev.quizzle.security.CsrfToken;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-import org.dev.quizzle.security.CsrfToken;
-import org.dev.quizzle.quiz.catalog.QuizEditorService;
-import org.dev.quizzle.quiz.catalog.QuizYamlParser;
-
-@SpringBootTest(properties = {
-		"quiz.session.public-base-url=https://quiz.example.test",
-		"quiz.snapshot.interval-ms=3600000"
-})
+@SpringBootTest(properties={"quiz.snapshot.interval-ms=3600000"})
 @AutoConfigureMockMvc
 class AccountAuthenticationTests extends org.dev.quizzle.persistence.PostgresIntegrationSupport {
+	@Autowired MockMvc mvc;
+	@Autowired AccountService accounts;
+	@Autowired AccountStore store;
+	@Autowired AccountTokens tokens;
+	@Autowired JdbcTemplate jdbc;
+	@Autowired org.dev.quizzle.session.GameSessionRegistry registry;
+	@Autowired org.dev.quizzle.quiz.catalog.QuizEditorService editor;
+	@Autowired org.dev.quizzle.websocket.WebSocketConnectionHub connections;
+	@MockitoBean AccountMailer mailer;
+	private final String password="correct horse battery staple";
 
-	@Autowired
-	MockMvc mockMvc;
-
-	@Autowired
-	QuizEditorService editorService;
-
-	@Autowired
-	QuizYamlParser parser;
-
-	@Test
-	void protectsAdminPagesAndDataWithoutASession() throws Exception {
-		mockMvc.perform(get("/admin"))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/login"));
-		mockMvc.perform(get("/admin.html"))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/login"));
-		mockMvc.perform(get("/admin/api/quizzes"))
-				.andExpect(status().isUnauthorized())
-				.andExpect(header().string("Cache-Control", "no-store"));
+	private Account pending() {return accounts.register(UUID.randomUUID()+"@example.test",password);}
+	private String verification(Account account) {
+		AtomicReference<String> captured=new AtomicReference<>();
+		doAnswer(call->{captured.set(call.getArgument(2));return true;}).when(mailer).sendLink(eq(account),eq("/verify-email"),anyString());
+		assertTrue(tokens.verification(account));
+		return captured.get();
 	}
-
-	@Test
-	void rejectsRegistrationWithAnInvalidUsername() throws Exception {
-		MockHttpSession session = new MockHttpSession();
-		String token = obtainCsrfToken(session);
-
-		mockMvc.perform(post("/register")
-				.session(session)
-				.param("username", "no spaces allowed")
-				.param("password", "correct horse battery staple")
-				.param("_csrf", token))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(header().string("Location", containsString("/register?error=")));
+	private String resetToken(Account account) {
+		AtomicReference<String> captured=new AtomicReference<>();
+		doAnswer(call->{captured.set(call.getArgument(2));return true;}).when(mailer).sendLinkLater(any(),eq("/reset-password"),anyString());
+		tokens.forgot(account.email()); return captured.get();
 	}
-
-	@Test
-	void rejectsADuplicateUsername() throws Exception {
-		registerAccount("taken-name", "correct horse battery staple");
-		MockHttpSession session = new MockHttpSession();
-		String token = obtainCsrfToken(session);
-
-		mockMvc.perform(post("/register")
-				.session(session)
-				.param("username", "taken-name")
-				.param("password", "correct horse battery staple")
-				.param("_csrf", token))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(header().string("Location", containsString("/register?error=")));
+	private MockHttpSession login(Account account) throws Exception {
+		var session=new MockHttpSession(); mvc.perform(get("/login").session(session));
+		return (MockHttpSession)mvc.perform(post("/login").session(session).param("_csrf",CsrfToken.getOrCreate(session))
+				.param("email",account.email()).param("password",password)).andExpect(redirectedUrl("/admin"))
+				.andReturn().getRequest().getSession();
 	}
-
-	@Test
-	void rejectsAnIncorrectPasswordWithoutReflectingIt() throws Exception {
-		registerAccount("wrong-and-private-test", "correct horse battery staple");
-		MockHttpSession session = new MockHttpSession();
-		String token = obtainCsrfToken(session);
-
-		mockMvc.perform(post("/login")
-				.session(session)
-				.param("username", "wrong-and-private-test")
-				.param("password", "not-the-password")
-				.param("_csrf", token))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/login?error"))
-				.andExpect(content().string(not(containsString("not-the-password"))));
+	@Test void pendingCannotLoginUntilSingleUseVerification() {
+		Account account=pending(); assertTrue(accounts.authenticate(account.email(),password).isEmpty());
+		String raw=verification(account);
+		assertEquals(AccountTokens.digest(raw),jdbc.queryForObject("SELECT token_digest FROM email_verification_tokens WHERE account_id=?",String.class,UUID.fromString(account.id())));
+		assertTrue(tokens.verify(raw)); assertFalse(tokens.verify(raw));
+		assertTrue(accounts.authenticate(account.email(),password).isPresent());
 	}
-
-	@Test
-	void authenticatedSessionCanReadOnlySafeCatalogData() throws Exception {
-		MockHttpSession session = login("phase-one-account", "correct horse battery staple");
-		editorService.create(AccountSession.currentAccountId(session),
-				parser.parse(Files.readString(Path.of("quizzes", "safety-basics.yaml"))
-						.replace("Workplace Safety Basics", "Safety Basics")));
-
-		mockMvc.perform(get("/admin").session(session))
-				.andExpect(status().isOk())
-				.andExpect(forwardedUrl("/admin.html"));
-		mockMvc.perform(get("/admin.html").session(session))
-				.andExpect(status().isOk())
-				.andExpect(content().string(containsString("Quiz sessions")));
-		mockMvc.perform(get("/admin/api/quizzes").session(session))
-				.andExpect(status().isOk())
-				.andExpect(header().string("Cache-Control", "no-store"))
-				.andExpect(jsonPath("$.quizzes[?(@.fileName=='safety-basics.yaml')].questionCount").value(2))
-				.andExpect(jsonPath("$.quizzes[*].questions").doesNotExist())
-				.andExpect(content().string(not(containsString("phase-one-secret"))))
-				.andExpect(content().string(not(containsString("correct"))));
+	@Test void resendInvalidatesOlderTokenAndExpiredTokensFail() {
+		Account account=pending(); String old=verification(account); String current=verification(account);
+		assertFalse(tokens.verify(old));
+		jdbc.update("UPDATE email_verification_tokens SET expires_at=now()-interval '1 second' WHERE account_id=?",UUID.fromString(account.id()));
+		assertFalse(tokens.verify(current));
 	}
-
-	@Test
-	void logoutInvalidatesTheAccountSession() throws Exception {
-		MockHttpSession session = login("phase-one-logout", "correct horse battery staple");
-
-		mockMvc.perform(post("/logout")
-				.session(session)
-				.param("_csrf", CsrfToken.getOrCreate(session)))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/login"))
-				.andExpect(header().string("Clear-Site-Data", "\"cache\""));
-		mockMvc.perform(get("/admin/api/quizzes"))
-				.andExpect(status().isUnauthorized());
+	@Test void concurrentVerificationConsumesOnlyOnce() throws Exception {
+		String raw=verification(pending()); var pool=Executors.newFixedThreadPool(2);
+		try {
+			var gate=new CountDownLatch(1);
+			Callable<Boolean> consume=()->{gate.await();return tokens.verify(raw);};
+			Future<Boolean> first=pool.submit(consume),second=pool.submit(consume);gate.countDown();
+			assertNotEquals(first.get(10,TimeUnit.SECONDS),second.get(10,TimeUnit.SECONDS));
+		} finally {pool.shutdownNow();}
 	}
-
-	private String obtainCsrfToken(MockHttpSession session) throws Exception {
-		mockMvc.perform(get("/register").session(session)).andExpect(status().isOk());
-		return CsrfToken.getOrCreate(session);
+	@Test void resetRevokesAllSessionsAndTokensAndNeverAuthenticates() throws Exception {
+		Account account=pending();assertTrue(tokens.verify(verification(account)));
+		var session=login(account);String raw=resetToken(account);
+		assertNotNull(raw);assertTrue(tokens.reset(raw,"replacement-password"));assertFalse(tokens.reset(raw,"replacement-password"));
+		assertTrue(accounts.authenticate(account.email(),password).isEmpty());
+		assertTrue(accounts.authenticate(account.email(),"replacement-password").isPresent());
+		mvc.perform(get("/admin/api/account/settings").session(session)).andExpect(status().isUnauthorized());
+		verify(mailer).passwordChanged(any());
 	}
-
-	private MockHttpSession registerAccount(String username, String password) throws Exception {
-		MockHttpSession session = new MockHttpSession();
-		String token = obtainCsrfToken(session);
-		MvcResult result = mockMvc.perform(post("/register")
-				.session(session)
-				.param("username", username)
-				.param("password", password)
-				.param("_csrf", token))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/admin?welcome"))
-				.andReturn();
-		MockHttpSession authenticatedSession = (MockHttpSession) result.getRequest().getSession(false);
-		assertNotNull(authenticatedSession);
-		assertTrue(session.isInvalid());
-		assertNotEquals(session.getId(), authenticatedSession.getId());
-		assertTrue(AccountSession.isAuthenticated(authenticatedSession));
-		return authenticatedSession;
+	@Test void oauthOnlyAndUnknownForgotHaveIdenticalHttpResponsesWithoutResetMail() throws Exception {
+		Account oauth=new Account(UUID.randomUUID().toString(),"oauth-"+UUID.randomUUID()+"@example.test",null,true,java.util.List.of(),1,false,5000);
+		store.create(oauth);
+		for(String email:new String[]{oauth.email(),"missing@example.test"}) {
+			var session=new MockHttpSession();mvc.perform(get("/forgot-password").session(session));
+			mvc.perform(post("/forgot-password").session(session).param("_csrf",CsrfToken.getOrCreate(session)).param("email",email))
+					.andExpect(redirectedUrl("/forgot-password?sent"));
+		}
+		verify(mailer,never()).sendLinkLater(any(),eq("/reset-password"),anyString());
 	}
-
-	private MockHttpSession login(String username, String password) throws Exception {
-		registerAccount(username, password);
-
-		MockHttpSession session = new MockHttpSession();
-		String token = obtainCsrfToken(session);
-		MvcResult result = mockMvc.perform(post("/login")
-				.session(session)
-				.param("username", username)
-				.param("password", password)
-				.param("_csrf", token))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/admin"))
-				.andReturn();
-		MockHttpSession authenticatedSession = (MockHttpSession) result.getRequest().getSession(false);
-		assertNotNull(authenticatedSession);
-		return authenticatedSession;
+	@Test void passwordChangeRetainsCurrentSessionRevokesOthersAndDeleteRequiresProof() throws Exception {
+		Account account=pending();assertTrue(tokens.verify(verification(account)));
+		var current=login(account);var other=login(account);
+		mvc.perform(post("/admin/api/account/change-password").session(current).header("X-XSRF-TOKEN",CsrfToken.getOrCreate(current))
+				.contentType("application/json").content("{\"currentPassword\":\""+password+"\",\"newPassword\":\"replacement-password\"}"))
+				.andExpect(status().isNoContent());
+		mvc.perform(get("/admin/api/account/settings").session(current)).andExpect(status().isOk()).andExpect(jsonPath("$.hasLocalPassword").value(true));
+		mvc.perform(get("/admin/api/account/settings").session(other)).andExpect(status().isUnauthorized());
+		mvc.perform(delete("/admin/api/account").session(current).header("X-XSRF-TOKEN",CsrfToken.getOrCreate(current)))
+				.andExpect(status().isForbidden());
+		mvc.perform(delete("/admin/api/account").session(current).header("X-XSRF-TOKEN",CsrfToken.getOrCreate(current))
+				.contentType("application/json").content("{\"currentPassword\":\"replacement-password\"}")).andExpect(status().isNoContent());
+		assertTrue(store.findById(account.id()).isEmpty());
+	}
+	@Test void deletionClosesOwnedRoomsDisconnectsSocketsAndLeavesAnotherOwnerUntouched() throws Exception {
+		Account account=pending(),other=pending();
+		assertTrue(tokens.verify(verification(account)));assertTrue(tokens.verify(verification(other)));
+		String slug=editor.create(account.id(),org.dev.quizzle.session.SessionTestFixtures.quiz());
+		String otherSlug=editor.create(other.id(),org.dev.quizzle.session.SessionTestFixtures.quiz());
+		var room=registry.create(account.id(),slug);var otherRoom=registry.create(other.id(),otherSlug);
+		var player=registry.joinPlayer(room.codehash(),"Participant");
+		var socket=mock(org.springframework.web.socket.WebSocketSession.class);
+		when(socket.getId()).thenReturn("socket-"+UUID.randomUUID());when(socket.isOpen()).thenReturn(true);
+		var connection=connections.register(socket,room.codehash());connections.bindPlayer(connection,player.player().playerId());
+		var session=login(account);
+		mvc.perform(delete("/admin/api/account").session(session).header("X-XSRF-TOKEN",CsrfToken.getOrCreate(session))
+				.contentType("application/json").content("{\"currentPassword\":\""+password+"\"}")).andExpect(status().isNoContent());
+		assertTrue(registry.find(room.codehash()).isEmpty());assertTrue(connections.find(socket).isEmpty());
+		verify(socket).close(any(org.springframework.web.socket.CloseStatus.class));
+		assertTrue(registry.find(otherRoom.codehash()).isPresent());assertTrue(store.findById(other.id()).isPresent());
+		assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM quizzes WHERE owner_account_id=?",Integer.class,UUID.fromString(account.id())));
+		assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM quizzes WHERE owner_account_id=?",Integer.class,UUID.fromString(other.id())));
+		registry.closeAllOwnedBy(other.id());
 	}
 }

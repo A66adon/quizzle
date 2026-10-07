@@ -42,7 +42,9 @@ public class AccountService {
 		return transactions.execute(status -> {
 			var found = store.findByEmail(email);
 			if (found.isEmpty()) { encoder.matches(password, dummy); return Optional.empty(); }
-			Account account = store.lock(found.get().id());
+			Account account;
+			try {account=store.lock(found.get().id());}
+			catch(AccountRegistrationException deleted) {encoder.matches(password,dummy);return Optional.empty();}
 			boolean valid = encoder.matches(password, account.passwordHash() == null ? dummy : account.passwordHash());
 			return valid && account.status() == Account.Status.ACTIVE && account.passwordHash() != null
 					? Optional.of(new AccountPrincipal(account.id(), store.credentialVersion(account.id()), 0)) : Optional.empty();
@@ -51,13 +53,15 @@ public class AccountService {
 	public Optional<Account> authenticate(String email, String password) {
 		return authenticatePrincipal(email, password).flatMap(principal -> store.findById(principal.accountId()));
 	}
-	public void changePassword(String id, String currentPassword, String newPassword) {
+	public long changePassword(String id, String currentPassword, String newPassword) {
 		validatePassword(newPassword);
-		transactions.executeWithoutResult(status -> {
+		return transactions.execute(status -> {
 			Account account = store.lock(id);
 			requirePassword(account, currentPassword);
 			store.update(account.withPasswordHash(encoder.encode(newPassword)));
 			store.revokeCredentials(id);
+			store.invalidateTokens(id);
+			return store.credentialVersion(id);
 		});
 	}
 	public void requirePassword(Account account, String password) {
@@ -69,11 +73,24 @@ public class AccountService {
 		if (delay < 0 || delay > 120000) throw new AccountRegistrationException("Auto-advance delay must be between 0 and 120000 ms");
 		transactions.executeWithoutResult(status -> store.update(store.lock(id).withGameSettings(allowLateJoin, delay)));
 	}
-	public void deleteAccount(String id) { store.delete(id); }
+	public void deleteAccount(String id,String password,long providerAuthenticatedAt,Runnable closeSessions) {
+		transactions.executeWithoutResult(status -> {
+			Account account=store.lock(id);
+			if(account.passwordHash()!=null) requirePassword(account,password);
+			else if(providerAuthenticatedAt<=0 || Instant.now().getEpochSecond()-providerAuthenticatedAt>300
+					|| providerAuthenticatedAt>Instant.now().getEpochSecond()+60)
+				throw new AccountRegistrationException("Recent Google reauthentication is required");
+			closeSessions.run();
+			store.delete(id);
+		});
+	}
 	public Optional<Account> findById(String id) { return store.findById(id); }
 	public void validateEmail(String email) {
 		String normalized = AccountStore.normalizeEmail(email);
 		if (normalized.length() > 254 || !normalized.matches("^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\\.[a-z]{2,}$")
+				|| normalized.startsWith(".") || normalized.contains("..") || normalized.contains(".@")
+				|| normalized.indexOf('@')>64
+				|| !normalized.substring(normalized.indexOf('@')+1).matches("[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+")
 				|| (!auth.allowedEmailDomain().isEmpty() && !normalized.substring(normalized.lastIndexOf('@') + 1).equals(auth.allowedEmailDomain())))
 			throw new AccountRegistrationException("Enter a valid email address" + (auth.allowedEmailDomain().isEmpty() ? "" : " in the allowed domain"));
 	}

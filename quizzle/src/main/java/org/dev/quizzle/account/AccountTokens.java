@@ -23,22 +23,25 @@ public final class AccountTokens {
 	private final AuthProperties properties;
 	private final TransactionTemplate transactions;
 	private final SecureRandom random = new SecureRandom();
+	private final org.dev.quizzle.security.AccountSessions sessions;
 	public AccountTokens(JdbcTemplate jdbc, AccountStore store, AccountService service, AccountMailer mailer,
-			AuthProperties properties, org.springframework.transaction.PlatformTransactionManager manager) {
+			AuthProperties properties, org.springframework.transaction.PlatformTransactionManager manager,
+			org.dev.quizzle.security.AccountSessions sessions) {
 		this.jdbc = jdbc; this.store = store; this.service = service; this.mailer = mailer; this.properties = properties;
 		transactions = new TransactionTemplate(manager);
+		this.sessions=sessions;
 	}
-	public boolean verification(Account account) { return issue(account, true); }
+	public boolean verification(Account account) { return issue(account, true, false); }
 	public void resend(String email) {
 		service.dummyWork();
-		store.findByEmail(email).filter(account -> account.status() == Account.Status.PENDING_VERIFICATION).ifPresent(this::verification);
+		store.findByEmail(email).filter(account -> account.status() == Account.Status.PENDING_VERIFICATION).ifPresent(account->issue(account,true,true));
 	}
 	public void forgot(String email) {
 		service.dummyWork();
 		store.findByEmail(email).filter(account -> account.status() == Account.Status.ACTIVE && account.passwordHash() != null)
-				.ifPresent(account -> issue(account, false));
+				.ifPresent(account -> issue(account, false, true));
 	}
-	private boolean issue(Account account, boolean verification) {
+	private boolean issue(Account account, boolean verification,boolean background) {
 		byte[] bytes = new byte[32]; random.nextBytes(bytes);
 		String raw = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
 		String table = table(verification);
@@ -52,7 +55,8 @@ public final class AccountTokens {
 					Timestamp.from(Instant.now().plusSeconds((verification ? properties.verificationTtlMinutes() : properties.resetTtlMinutes()) * 60L)));
 			return true;
 		});
-		return Boolean.TRUE.equals(issued) && mailer.sendLink(account, verification ? "/verify-email" : "/reset-password", raw);
+		String path=verification ? "/verify-email" : "/reset-password";
+		return Boolean.TRUE.equals(issued) && (background ? mailer.sendLinkLater(account,path,raw) : mailer.sendLink(account,path,raw));
 	}
 	public boolean verify(String raw) { return consume(raw, null, true); }
 	public boolean reset(String raw, String password) {
@@ -62,7 +66,7 @@ public final class AccountTokens {
 	private boolean consume(String raw, String hash, boolean verification) {
 		if (raw == null || !raw.matches("[A-Za-z0-9_-]{43}")) return false;
 		String table = table(verification);
-		Account changed = transactions.execute(status -> {
+		Changed changed = transactions.execute(status -> {
 			var ids = jdbc.queryForList("SELECT account_id FROM " + table + " WHERE token_digest=?", UUID.class, digest(raw));
 			if (ids.isEmpty()) return null;
 			Account account;
@@ -78,9 +82,12 @@ public final class AccountTokens {
 				store.revokeCredentials(account.id());
 				invalidate(account.id());
 			}
-			return account;
+			return new Changed(account,store.credentialVersion(account.id()));
 		});
-		if (changed != null && !verification) mailer.passwordChanged(changed);
+		if (changed != null && !verification) {
+			sessions.revoke(changed.account().id(),changed.version(),null);
+			mailer.passwordChanged(changed.account());
+		}
 		return changed != null;
 	}
 	public void invalidate(String id) {
@@ -93,6 +100,7 @@ public final class AccountTokens {
 			jdbc.update("DELETE FROM " + table + " WHERE id IN (SELECT id FROM " + table + " WHERE expires_at<now() OR used_at IS NOT NULL LIMIT 1000)");
 	}
 	private static String table(boolean verification) { return verification ? "email_verification_tokens" : "password_reset_tokens"; }
+	private record Changed(Account account,long version) {}
 	public static String digest(String raw) {
 		try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8))); }
 		catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }

@@ -67,10 +67,7 @@ public final class GoogleLogin {
 					Object expected=session.getAttribute(REAUTH); session.removeAttribute(REAUTH);
 					String destination="/admin";
 					if(expected instanceof Reauth reauth) {
-						Instant authTime=user.getIdToken().getAuthenticatedAt();
-						if(!reauth.accountId().equals(user.principal.accountId()) || authTime==null
-								|| authTime.getEpochSecond()<reauth.initiatedAt()-60 || authTime.isAfter(Instant.now().plusSeconds(60))
-								|| Instant.now().getEpochSecond()-reauth.initiatedAt()>600) {
+						if(!validReauthentication(reauth,user.principal,user.getIdToken(),Instant.now())) {
 							SecurityContextHolder.clearContext(); session.invalidate(); response.sendRedirect("/login?error"); return;
 						}
 						destination=SecurityConfiguration.safeReturnTo(reauth.returnTo());
@@ -82,6 +79,12 @@ public final class GoogleLogin {
 					session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,context);
 					response.sendRedirect(destination);
 				}));
+	}
+	static boolean validReauthentication(Reauth expected,AccountPrincipal principal,OidcIdToken token,Instant now) {
+		Instant authTime=token.getAuthenticatedAt();
+		return expected.accountId().equals(principal.accountId()) && authTime!=null
+				&& authTime.getEpochSecond()>=expected.initiatedAt()-60 && !authTime.isAfter(now.plusSeconds(60))
+				&& now.getEpochSecond()-expected.initiatedAt()<=600;
 	}
 	private static final class LinkedUser implements OidcUser {
 		private final OidcUser delegate;

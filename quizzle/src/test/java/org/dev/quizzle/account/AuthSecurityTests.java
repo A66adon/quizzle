@@ -66,6 +66,7 @@ class AuthSecurityTests {
 				.param("email", "a@example.test").param("password", "password").param("returnTo", "//evil.test"))
 				.andExpect(redirectedUrl("/admin")).andReturn();
 		org.junit.jupiter.api.Assertions.assertNotEquals(previous, result.getRequest().getSession().getId());
+		org.junit.jupiter.api.Assertions.assertEquals("account",AccountSession.currentAccountId(result.getRequest().getSession()));
 	}
 	@Test void legacyAttributeIsNotAnAuthenticationBypass() {
 		var session = new MockHttpSession(); session.setAttribute(AccountSession.class.getName() + ".accountId", "evil");

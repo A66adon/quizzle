@@ -49,7 +49,7 @@ class PostgresStorageIntegrationTests extends PostgresIntegrationSupport {
 
 	@Test
 	void migratesEmptyPostgresqlAndEnforcesAllConstraints() {
-		assertEquals("1", flyway.info().current().getVersion().getVersion());
+		assertEquals("2", flyway.info().current().getVersion().getVersion());
 		assertTrue(flyway.validateWithResult().validationSuccessful);
 		assertEquals(7, jdbc.queryForObject("""
 				SELECT count(*) FROM information_schema.tables WHERE table_schema='public'
@@ -106,6 +106,47 @@ class PostgresStorageIntegrationTests extends PostgresIntegrationSupport {
 	private boolean tryCreate(String email) {
 		try { account(email); return true; }
 		catch (DuplicateKeyException expected) { return false; }
+	}
+
+	@Test
+	void storedLateJoinDefaultsAffectNewGamesAndRemainOwnerSpecific() {
+		String slug=editor.create(owner.id(),SessionTestFixtures.quiz());
+		String otherSlug=editor.create(other.id(),SessionTestFixtures.quiz());
+		accountService.updateGameSettings(owner.id(),true,1200);
+		var registry=new GameSessionRegistry(sessionProperties,catalog,new GameStateMachine(),snapshots,accountService);
+		var owned=registry.create(owner.id(),slug);var foreign=registry.create(other.id(),otherSlug);
+		registry.transition(owned.codehash(),GameCommand.START);registry.transition(foreign.codehash(),GameCommand.START);
+		assertDoesNotThrow(()->registry.joinPlayer(owned.codehash(),"Late participant"));
+		assertThrows(GameSessionRegistry.JoinNotAllowedException.class,()->registry.joinPlayer(foreign.codehash(),"Late participant"));
+		assertEquals(1200,accounts.findById(owner.id()).orElseThrow().autoAdvanceDelayMs());
+	}
+
+	@Test
+	void accountDeletionAndCreationCannotLeaveAnOrphanLiveRoom() throws Exception {
+		String slug=editor.create(owner.id(),SessionTestFixtures.quiz());
+		var registry=new GameSessionRegistry(sessionProperties,catalog,new GameStateMachine(),snapshots,accountService);
+		try(var executor=Executors.newFixedThreadPool(2)) {
+			var gate=new java.util.concurrent.CountDownLatch(1);
+			var create=executor.submit(()-> {
+				gate.await();
+				try {registry.create(owner.id(),slug);}
+				catch(GameSessionRegistry.QuizNotFoundException deletedBeforeCreate) {}
+				return true;
+			});
+			var delete=executor.submit(()-> {
+				gate.await();
+				synchronized(registry) {
+					accountService.deleteAccount(owner.id(),null,java.time.Instant.now().getEpochSecond(),
+							()->registry.closeAllOwnedBy(owner.id()));
+				}
+				return true;
+			});
+			gate.countDown();
+			assertTrue(create.get(10,java.util.concurrent.TimeUnit.SECONDS));
+			assertTrue(delete.get(10,java.util.concurrent.TimeUnit.SECONDS));
+		}
+		assertTrue(registry.list(owner.id()).isEmpty());assertTrue(accounts.findById(owner.id()).isEmpty());
+		assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM session_snapshots WHERE owner_account_id=?",Integer.class,UUID.fromString(owner.id())));
 	}
 
 	@Test
