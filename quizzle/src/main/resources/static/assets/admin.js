@@ -29,6 +29,9 @@
 	const cancelEmptyQuiz = document.querySelector("#cancel-empty-quiz");
 	const editEmptyQuiz = document.querySelector("#edit-empty-quiz");
 	const MIN_SESSION_TITLE_FONT_PX = 13;
+	const importButton = document.querySelector("#import-yaml");
+	const importFileInput = document.querySelector("#import-yaml-file");
+	const MAX_IMPORT_BYTES = 1_048_576;
 	let sessions = [];
 	let accountEmail = "";
 	let pendingDeleteSession = null;
@@ -55,6 +58,36 @@
 		if (confirmDeleteSession.disabled) event.preventDefault();
 	});
 	window.addEventListener("resize", scheduleSessionTitleFit);
+	importButton.addEventListener("click", () => importFileInput.click());
+	importFileInput.addEventListener("change", async () => {
+		const file = importFileInput.files[0];
+		if (!file) return;
+		actionStatus.hidden = false;
+		delete actionStatus.dataset.error;
+		if (file.size === 0 || file.size > MAX_IMPORT_BYTES) {
+			actionStatus.textContent = "Choose a non-empty YAML file no larger than 1 MiB.";
+			actionStatus.dataset.error = "true";
+			importFileInput.value = "";
+			return;
+		}
+		importButton.disabled = true;
+		actionStatus.textContent = "Importing YAML…";
+		try {
+			const created = await requestJson("/admin/api/quizzes/import", {
+				method: "POST",
+				headers: { "Content-Type": "application/yaml" },
+				body: await file.text()
+			});
+			if (!created?.fileName) throw new Error("The server did not return an imported quiz.");
+			window.location.assign(`/editor?file=${encodeURIComponent(created.fileName)}`);
+		} catch (error) {
+			actionStatus.textContent = error.message || "Import failed. Check the YAML and try again.";
+			actionStatus.dataset.error = "true";
+		} finally {
+			importButton.disabled = false;
+			importFileInput.value = "";
+		}
+	});
 
 	// Registration signs the new account straight in, so the confirmation lands here.
 	function announceWelcome() {
@@ -72,7 +105,7 @@
 				requestJson("/admin/api/sessions"),
 				requestJson("/admin/api/account/settings").catch(() => null)
 			]);
-			accountEmail = settings && settings.username ? String(settings.username).toLowerCase() : "";
+			accountEmail = settings && settings.email ? String(settings.email).toLowerCase() : "";
 			sessions = Array.isArray(loadedSessions) ? loadedSessions : [];
 			renderCatalog(catalog);
 			renderSessions();
@@ -94,15 +127,19 @@
 			}
 		});
 		if (response.status === 401) {
-			window.location.replace("/login");
+			window.location.replace(`/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`);
 			throw new Error("Session expired");
 		}
 		if (!response.ok) {
-			const error = new Error(`Request failed with status ${response.status}`);
+			const error = new Error(response.status === 400
+				? "The quiz data is invalid. Check the YAML fields, limits, and correct answers."
+				: response.status === 413 ? "The YAML file exceeds the server size limit."
+					: response.status === 403 ? "This action was not authorized. Reauthenticate, or refresh the page if your security token expired."
+						: `Request failed with status ${response.status}`);
 			error.status = response.status;
 			throw error;
 		}
-		return response.json();
+		return response.status === 204 ? null : response.json();
 	}
 
 	function renderCatalog(catalog) {
@@ -332,16 +369,26 @@
 	const autoAdvanceUp = document.querySelector("#auto-advance-up");
 	const currentPasswordInput = document.querySelector("#current-password");
 	const newPasswordInput = document.querySelector("#new-password");
-	const passwordUsernameInput = document.querySelector("#password-username");
+	const passwordEmailInput = document.querySelector("#password-email");
+	const passwordForm = document.querySelector("#password-form");
+	const oauthReauth = document.querySelector("#oauth-reauth");
 	const passwordError = document.querySelector("#password-error");
 	const savePasswordButton = document.querySelector("#save-password");
 	const deleteError = document.querySelector("#delete-error");
 	const deleteAccountButton = document.querySelector("#delete-account");
+	const deleteAccountForm = document.querySelector("#delete-account-form");
+	const deleteCurrentPassword = document.querySelector("#delete-current-password");
+	const confirmDeleteAccount = document.querySelector("#confirm-delete-account");
+	const cancelDeleteAccount = document.querySelector("#cancel-delete-account");
+	let hasLocalPassword = false;
+	let settingsSavePromise = null;
 
 	const AUTO_ADVANCE_PRESETS_SECONDS = [1, 3, 5, 10];
 	let autoAdvanceIndex = 1;
+	let autoAdvanceDelayMs = 3000;
 	let settingsDirty = false;
 	let settingsLoaded = false;
+	let settingsLoading = false;
 
 	settingsGear.addEventListener("click", toggleSettingsPanel);
 	document.addEventListener("pointerdown", event => {
@@ -360,11 +407,29 @@
 	allowLateJoinInput.addEventListener("change", () => {
 		settingsDirty = true;
 	});
-	document.querySelector("#password-form").addEventListener("submit", event => {
+	passwordForm.addEventListener("submit", event => {
 		event.preventDefault();
 		savePassword();
 	});
-	deleteAccountButton.addEventListener("click", deleteAccount);
+	deleteAccountButton.addEventListener("click", () => {
+		if (!settingsLoaded) return;
+		hideSettingsMessage(deleteError);
+		deleteAccountForm.hidden = false;
+		deleteAccountButton.hidden = true;
+		if (hasLocalPassword) deleteCurrentPassword.focus();
+		else confirmDeleteAccount.focus();
+	});
+	cancelDeleteAccount.addEventListener("click", () => {
+		deleteCurrentPassword.value = "";
+		deleteAccountForm.hidden = true;
+		deleteAccountButton.hidden = false;
+		hideSettingsMessage(deleteError);
+		deleteAccountButton.focus();
+	});
+	deleteAccountForm.addEventListener("submit", event => {
+		event.preventDefault();
+		deleteAccount();
+	});
 
 	function toggleSettingsPanel() {
 		if (settingsPanel.hidden) {
@@ -404,16 +469,36 @@
 	}
 
 	async function loadSettingsPanel() {
+		if (settingsLoading) return;
+		settingsLoading = true;
+		deleteAccountButton.disabled = true;
+		savePasswordButton.disabled = true;
 		try {
 			const settings = await requestJson("/admin/api/account/settings");
+			if (!Number.isInteger(settings.autoAdvanceDelayMs)
+				|| settings.autoAdvanceDelayMs < 0 || settings.autoAdvanceDelayMs > 120000) {
+				throw new Error("The server returned an invalid auto advance delay.");
+			}
 			settingsLoaded = true;
-			passwordUsernameInput.value = settings.username || "";
+			passwordEmailInput.value = settings.email || "";
+			hasLocalPassword = settings.hasLocalPassword === true;
+			passwordForm.hidden = !hasLocalPassword;
+			oauthReauth.hidden = hasLocalPassword;
+			document.querySelector("#delete-password-field").hidden = !hasLocalPassword;
+			deleteCurrentPassword.required = hasLocalPassword;
 			allowLateJoinInput.checked = Boolean(settings.allowLateJoin);
-			const seconds = Math.round((settings.autoAdvanceDelayMs || 0) / 1000);
-			autoAdvanceIndex = nearestPresetIndex(seconds);
+			autoAdvanceDelayMs = settings.autoAdvanceDelayMs;
+			autoAdvanceIndex = nearestPresetIndex(autoAdvanceDelayMs / 1000);
 			renderAutoAdvance();
+			deleteAccountButton.disabled = false;
+			savePasswordButton.disabled = false;
+			allowLateJoinInput.disabled = false;
+			autoAdvanceDown.disabled = false;
+			autoAdvanceUp.disabled = false;
 		} catch (error) {
 			showSettingsMessage(settingsError, "Could not load your settings.");
+		} finally {
+			settingsLoading = false;
 		}
 	}
 
@@ -428,13 +513,14 @@
 	function stepAutoAdvance(direction) {
 		autoAdvanceIndex = (autoAdvanceIndex + direction + AUTO_ADVANCE_PRESETS_SECONDS.length)
 			% AUTO_ADVANCE_PRESETS_SECONDS.length;
+		autoAdvanceDelayMs = AUTO_ADVANCE_PRESETS_SECONDS[autoAdvanceIndex] * 1000;
 		settingsDirty = true;
 		renderAutoAdvance();
 		pulse(autoAdvanceValue);
 	}
 
 	function renderAutoAdvance() {
-		autoAdvanceValue.textContent = `${AUTO_ADVANCE_PRESETS_SECONDS[autoAdvanceIndex]}s`;
+		autoAdvanceValue.textContent = `${autoAdvanceDelayMs / 1000}s`;
 	}
 
 	// One short pulse so the stepped value reads as a control that answered the press.
@@ -446,22 +532,34 @@
 	}
 
 	async function saveGameDefaults() {
-		settingsDirty = false;
+		if (settingsSavePromise) return settingsSavePromise;
+		settingsSavePromise = savePendingDefaults().finally(() => { settingsSavePromise = null; });
+		return settingsSavePromise;
+	}
+
+	async function savePendingDefaults() {
 		try {
-			await requestJson("/admin/api/account/settings", {
-				method: "PUT",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
+			while (settingsDirty) {
+				const submitted = {
 					allowLateJoin: allowLateJoinInput.checked,
-					autoAdvanceDelayMs: AUTO_ADVANCE_PRESETS_SECONDS[autoAdvanceIndex] * 1000
-				})
-			});
+					autoAdvanceDelayMs
+				};
+				settingsDirty = false;
+				await requestJson("/admin/api/account/settings", {
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(submitted)
+				});
+			}
+			hideSettingsMessage(settingsError);
 		} catch (error) {
-			showSettingsMessage(settingsError, "Settings could not be saved.");
+			settingsDirty = true;
+			showSettingsMessage(settingsError, `${error.message || "Settings could not be saved."} Reopen and close settings to retry.`);
 		}
 	}
 
 	async function savePassword() {
+		if (!settingsLoaded || !hasLocalPassword || savePasswordButton.disabled) return;
 		hideSettingsMessage(passwordError);
 		if (!newPasswordInput.value || newPasswordInput.value.length < 8) {
 			showSettingsMessage(passwordError, "The new password must be at least 8 characters.");
@@ -481,24 +579,42 @@
 			newPasswordInput.value = "";
 			if (window.showToast) window.showToast("Password updated.");
 		} catch (error) {
-			showSettingsMessage(passwordError, "The current password is incorrect, or the new password is too short.");
+			showSettingsMessage(passwordError, error.status === 400
+				? "The current password is incorrect, or the new password does not meet the requirements."
+				: error.message || "The password could not be updated. Try again.");
 		} finally {
 			savePasswordButton.disabled = false;
 		}
 	}
 
 	async function deleteAccount() {
+		if (!settingsLoaded || confirmDeleteAccount.disabled) return;
 		hideSettingsMessage(deleteError);
-		if (!window.confirm("Delete your account, all of your quizzes, and close any running games? This cannot be undone.")) {
+		if (hasLocalPassword && !deleteCurrentPassword.value) {
+			showSettingsMessage(deleteError, "Enter your current password to confirm account deletion.");
+			deleteCurrentPassword.focus();
 			return;
 		}
-		deleteAccountButton.disabled = true;
+		confirmDeleteAccount.disabled = true;
+		cancelDeleteAccount.disabled = true;
 		try {
-			await requestJson("/admin/api/account", { method: "DELETE" });
+			await requestJson("/admin/api/account", {
+				method: "DELETE",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(hasLocalPassword ? { currentPassword: deleteCurrentPassword.value } : {})
+			});
+			deleteCurrentPassword.value = "";
 			window.location.assign("/login");
 		} catch (error) {
-			showSettingsMessage(deleteError, "The account could not be deleted.");
-			deleteAccountButton.disabled = false;
+			showSettingsMessage(deleteError, error.status === 403
+				? hasLocalPassword
+					? "Deletion was not authorized. Check your current password, or refresh if your security token expired."
+					: "Deletion requires recent Google authentication. Use Reauthenticate with Google above, then try again."
+				: error.status === 400 ? "Check your current password and try again."
+					: error.message || "The account could not be deleted. Try again.");
+		} finally {
+			confirmDeleteAccount.disabled = false;
+			cancelDeleteAccount.disabled = false;
 		}
 	}
 
@@ -511,4 +627,3 @@
 		element.hidden = true;
 	}
 })();
-

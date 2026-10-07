@@ -8,7 +8,8 @@
 	<script>
 		(function () {
 			var s = document.documentElement.dataset.themeScope || "app";
-			var v = localStorage.getItem("quizzle-theme-" + s);
+			var v;
+			try { v = localStorage.getItem("quizzle-theme-" + s); } catch (error) {}
 			var t = (v === "dark" || v === "light")
 				? v
 				: (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
@@ -45,24 +46,24 @@
 						<p class="form-error" id="settings-error" role="alert" hidden></p>
 
 						<label class="checkbox-label settings-row">
-							<input type="checkbox" id="allow-late-join">
+							<input type="checkbox" id="allow-late-join" disabled>
 							Allow late joiners
 						</label>
 
 						<div class="settings-row settings-preset-row">
 							<span id="auto-advance-label">Auto advance delay</span>
 							<div class="preset-stepper" role="group" aria-labelledby="auto-advance-label">
-								<button type="button" id="auto-advance-down" class="text-button" aria-label="Shorter auto advance delay">◀</button>
+								<button type="button" id="auto-advance-down" class="text-button" aria-label="Shorter auto advance delay" disabled>◀</button>
 								<strong id="auto-advance-value" aria-live="polite">3s</strong>
-								<button type="button" id="auto-advance-up" class="text-button" aria-label="Longer auto advance delay">▶</button>
+								<button type="button" id="auto-advance-up" class="text-button" aria-label="Longer auto advance delay" disabled>▶</button>
 							</div>
 						</div>
 
-						<form class="settings-row settings-password" id="password-form">
+						<form class="settings-row settings-password" id="password-form" hidden>
 							<h3>Change password</h3>
 							<p class="form-error" id="password-error" role="alert" hidden></p>
-							<label class="visually-hidden" for="password-username">Username</label>
-							<input class="visually-hidden" type="text" id="password-username" name="username"
+							<label class="visually-hidden" for="password-email">Email</label>
+							<input class="visually-hidden" type="email" id="password-email" name="email"
 								autocomplete="username" tabindex="-1" readonly>
 							<label for="current-password">Current password</label>
 							<input type="password" id="current-password" autocomplete="current-password">
@@ -70,10 +71,25 @@
 							<input type="password" id="new-password" autocomplete="new-password" minlength="8">
 							<button type="submit" id="save-password" class="primary-button settings-action">Update password</button>
 						</form>
+						<p id="oauth-reauth" class="settings-row small" hidden>
+							This account signs in with Google and has no local password.
+							<a href="/reauthenticate?returnTo=/admin">Reauthenticate with Google</a> before deleting your account.
+						</p>
 
 						<div class="settings-row">
 							<p class="form-error" id="delete-error" role="alert" hidden></p>
-							<button type="button" id="delete-account" class="settings-action settings-delete-action">Delete account</button>
+							<button type="button" id="delete-account" class="settings-action settings-delete-action" disabled>Delete account</button>
+							<form id="delete-account-form" class="settings-password" aria-describedby="delete-account-copy" hidden>
+								<p id="delete-account-copy" class="small">Delete your account, all your quizzes, and close your running games? This cannot be undone.</p>
+								<div id="delete-password-field">
+									<label for="delete-current-password">Confirm current password</label>
+									<input type="password" id="delete-current-password" name="currentPassword" autocomplete="current-password">
+								</div>
+								<div class="dialog-actions">
+									<button type="button" id="cancel-delete-account" class="text-button">Keep account</button>
+									<button type="submit" id="confirm-delete-account" class="settings-action settings-delete-action">Confirm account deletion</button>
+								</div>
+							</form>
 						</div>
 					</div>
 				</section>
@@ -119,6 +135,8 @@
 					<p id="loaded-at" class="catalog-loaded-at small muted"></p>
 				</div>
 				<div class="quiz-heading-actions">
+					<button id="import-yaml" class="text-button" type="button">Import YAML</button>
+					<input id="import-yaml-file" type="file" accept=".yaml,.yml,application/yaml,text/yaml" hidden aria-label="Choose YAML quiz">
 					<div class="summary-pill" aria-live="polite">
 						<strong id="quiz-count">—</strong>
 						<span>ready</span>

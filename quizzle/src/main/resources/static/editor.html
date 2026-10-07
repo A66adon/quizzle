@@ -8,7 +8,8 @@
 	<script>
 		(function () {
 			var s = document.documentElement.dataset.themeScope || "app";
-			var v = localStorage.getItem("quizzle-theme-" + s);
+			var v;
+			try { v = localStorage.getItem("quizzle-theme-" + s); } catch (error) {}
 			var t = (v === "dark" || v === "light")
 				? v
 				: (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
@@ -44,6 +45,14 @@
 	</header>
 
 	<main class="presenter-shell editor-shell">
+		<div class="editor-durability-bar" aria-label="Quiz persistence">
+			<p id="save-status" role="status" aria-live="polite" aria-atomic="true">Loading…</p>
+			<div class="editor-export-actions">
+				<button id="export-server" class="text-button" type="button" hidden>Export saved YAML</button>
+				<button class="text-button" type="button" data-export-local>Export local YAML</button>
+			</div>
+		</div>
+		<p id="draft-warning" class="form-error editor-message" role="alert" hidden></p>
 		<section id="details-view" class="view" aria-labelledby="details-heading" hidden>
 			<div class="lobby-layout">
 				<article class="join-card editor-qr-card">
@@ -143,7 +152,7 @@
 			<h2 id="delete-quiz-title">Delete this quiz?</h2>
 			<p class="delete-session-copy">
 				<strong id="delete-quiz-name"></strong>
-				<span>The quiz file is removed for good and this cannot be undone.</span>
+				<span>The quiz is removed for good and this cannot be undone.</span>
 			</p>
 			<p id="delete-quiz-error" class="form-error" role="alert" hidden></p>
 			<div class="delete-dialog-actions">
@@ -158,13 +167,36 @@
 			<p class="eyebrow">Unsaved changes</p>
 			<h2 id="leave-title">Leave without saving?</h2>
 			<p class="delete-session-copy">
-				<span>This quiz has changes that were not saved yet. They are lost if you leave now.</span>
+				<span>This quiz has changes that were not saved to the server. A local draft is kept when browser storage is available. Export your local YAML first if storage is unavailable.</span>
 			</p>
 			<div class="delete-dialog-actions">
 				<button id="stay-here" class="text-button" type="button" autofocus>Stay</button>
 				<button id="leave-without-saving" class="dialog-delete-button" type="button">Leave without saving</button>
 			</div>
 		</form>
+	</dialog>
+
+	<dialog id="recovery-dialog" class="confirm-dialog delete-session-dialog" aria-labelledby="recovery-title" aria-describedby="recovery-copy">
+		<h2 id="recovery-title">Recover local draft?</h2>
+		<p id="recovery-copy" class="delete-session-copy"></p>
+		<div class="dialog-actions editor-recovery-actions">
+			<button id="restore-draft" class="primary-button" type="button" autofocus>Restore draft</button>
+			<button id="discard-draft" class="ghost-button" type="button" title="Dismiss these drafts in this tab without deleting another tab's data">Discard drafts</button>
+			<button class="text-button" type="button" data-export-local>Export local YAML</button>
+		</div>
+	</dialog>
+
+	<dialog id="conflict-dialog" class="confirm-dialog delete-session-dialog" aria-labelledby="conflict-title" aria-describedby="conflict-copy">
+		<h2 id="conflict-title">Quiz revision conflict</h2>
+		<p id="conflict-copy" class="delete-session-copy"></p>
+		<p id="conflict-error" class="form-error" role="alert" hidden></p>
+		<p class="muted small">Keeping local changes does not overwrite the server. Reloading preserves the local draft for recovery; export it first for a portable copy.</p>
+		<div class="dialog-actions editor-recovery-actions">
+			<button id="keep-local" class="primary-button" type="button" autofocus>Keep local</button>
+			<button id="reload-server" class="ghost-button" type="button">Reload server</button>
+			<button class="text-button" type="button" data-export-local>Export local YAML</button>
+			<a id="session-sign-in" class="text-button" href="/login" hidden>Sign in again</a>
+		</div>
 	</dialog>
 
 	<template id="editor-answer-template">
