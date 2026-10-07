@@ -1,5 +1,5 @@
 import { test, expect } from '../support/fixtures';
-import { authenticated, createQuiz, login, logout } from '../support/app';
+import { authenticated, createQuiz, csrf, login, logout } from '../support/app';
 
 test('manual revision save survives reload @smoke', async ({ page }) => {
   await authenticated(page);
@@ -59,27 +59,73 @@ test('failed autosave preserves local draft and offers reload recovery @smoke', 
   await expect(page.locator('#quiz-title')).toHaveValue('Recovered offline safety draft');
 });
 
-test('two editor tabs preserve both sides of a revision conflict', async ({ page }) => {
+test('another editor writer proactively pauses saving without overwriting its newer revision', async ({ page }) => {
   await authenticated(page);
   const created = await createQuiz(page);
   await page.goto(`/editor?file=${encodeURIComponent(created.fileName)}`);
   await expect(page.locator('#save-status')).toContainText(/saved/i);
+  let localSaves = 0;
+  page.on('request', request => {
+    if (request.method() === 'PUT' && new URL(request.url()).pathname.startsWith('/admin/api/quizzes/')) localSaves++;
+  });
   const otherTab = await page.context().newPage();
-  await otherTab.goto(`/editor?file=${encodeURIComponent(created.fileName)}`);
-  await expect(otherTab.locator('#save-status')).toContainText(/^Saved/);
-  await otherTab.getByLabel('Title', { exact: true }).fill('Newer server revision');
-  await otherTab.getByRole('button', { name: 'Save', exact: true }).filter({ visible: true }).click();
-  await expect(otherTab.locator('#save-status')).toContainText(/^Saved/);
-  const conflict = page.waitForResponse(response =>
-    response.request().method() === 'PUT' && response.url().includes('/admin/api/quizzes/'));
-  await page.getByLabel('Title', { exact: true }).fill('Stale local revision');
-  expect((await conflict).status()).toBe(409);
-  await expect(page.getByRole('dialog', { name: 'Quiz revision conflict' })).toBeVisible();
-  const stored = await (await page.request.get(`/admin/api/quizzes/${created.fileName}`)).json();
-  expect(stored.quiz.title).toBe('Newer server revision');
-  await page.getByRole('button', { name: 'Keep local' }).click();
-  await expect(page.locator('#quiz-title')).toHaveValue('Stale local revision');
-  await otherTab.close();
+  try {
+    await otherTab.goto(`/editor?file=${encodeURIComponent(created.fileName)}`);
+    await expect(otherTab.locator('#save-status')).toContainText(/^Saved/);
+    await otherTab.getByLabel('Title', { exact: true }).fill('Newer server revision');
+    const conflict = page.getByRole('dialog', { name: 'Quiz revision conflict' });
+    await expect(conflict).toBeVisible();
+    await expect(page.locator('#conflict-copy')).toContainText(/another tab changed a local draft/i);
+    await expect(page.locator('#save-status')).toContainText(/^Conflict/);
+    await otherTab.getByRole('button', { name: 'Save', exact: true }).filter({ visible: true }).click();
+    await expect(otherTab.locator('#save-status')).toContainText(/^Saved/);
+    await page.getByRole('button', { name: 'Keep local', exact: true }).click();
+    await page.getByLabel('Title', { exact: true }).fill('Stale local revision');
+    await expect(page.locator('#save-status')).toContainText(/^Conflict/);
+    await page.getByRole('button', { name: 'Save', exact: true }).filter({ visible: true }).click();
+    await expect(conflict).toBeVisible();
+    await expect(page.locator('#quiz-title')).toHaveValue('Stale local revision');
+    expect(localSaves, 'Storage conflict prevents both autosave and manual PUT').toBe(0);
+    const stored = await (await page.request.get(`/admin/api/quizzes/${created.fileName}`)).json();
+    expect(stored.quiz.title).toBe('Newer server revision');
+    expect(stored.version).toBe(created.version + 1);
+  } finally { await otherTab.close(); }
+});
+
+test('editor receives HTTP 409 for a stale revision without shared-storage events', async ({ page, browser }) => {
+  const user = await authenticated(page);
+  const created = await createQuiz(page);
+  const path = `/admin/api/quizzes/${encodeURIComponent(created.fileName)}`;
+  await page.goto(`/editor?file=${encodeURIComponent(created.fileName)}`);
+  await expect(page.locator('#save-status')).toContainText(/^Saved/);
+  const independentContext = await browser.newContext();
+  try {
+    const other = await independentContext.newPage();
+    await login(other, user);
+    const updated = await other.request.put(path, {
+      headers: await csrf(independentContext),
+      data: { quiz: { ...created.quiz, title: 'Independent newer server revision' }, version: created.version }
+    });
+    expect(updated.ok()).toBe(true);
+    const revision = await updated.json();
+    expect(revision.version).toBe(created.version + 1);
+    const conflictDialog = page.getByRole('dialog', { name: 'Quiz revision conflict' });
+    await expect(conflictDialog).not.toBeVisible();
+    const staleResponse = page.waitForResponse(response =>
+      response.request().method() === 'PUT' && new URL(response.url()).pathname === path);
+    await page.getByLabel('Title', { exact: true }).fill('Local draft rejected by server revision');
+    const rejected = await staleResponse;
+    expect(rejected.status()).toBe(409);
+    expect(await rejected.json()).toEqual({ error: 'REVISION_CONFLICT', currentVersion: revision.version });
+    await expect(conflictDialog).toBeVisible();
+    await expect(page.locator('#save-status')).toContainText(/^Conflict/);
+    await expect(conflictDialog.getByRole('button', { name: 'Export local YAML', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: 'Keep local', exact: true }).click();
+    await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Local draft rejected by server revision');
+    const stored = await (await page.request.get(path)).json();
+    expect(stored.version).toBe(revision.version);
+    expect(stored.quiz.title).toBe('Independent newer server revision');
+  } finally { await independentContext.close(); }
 });
 
 test('settings persist through logout and login @smoke', async ({ page }) => {
