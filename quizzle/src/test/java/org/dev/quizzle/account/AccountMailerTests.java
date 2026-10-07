@@ -42,4 +42,20 @@ class AccountMailerTests {
 		try {assertFalse(mailer.sendLink(account(),"/verify-email","private-token"));}
 		finally{mailer.stop();}
 	}
+	@Test void configuredStartTlsCannotDowngradeAndImplicitTlsRemainsOptional() throws Exception {
+		var properties=new Properties();
+		try(var input=AccountMailerTests.class.getResourceAsStream("/application.properties")) {
+			assertNotNull(input);
+			properties.load(input);
+		}
+		assertEquals("${SMTP_STARTTLS:true}",properties.getProperty("spring.mail.properties.mail.smtp.starttls.enable"));
+		assertEquals(properties.getProperty("spring.mail.properties.mail.smtp.starttls.enable"),
+				properties.getProperty("spring.mail.properties.mail.smtp.starttls.required"));
+		assertEquals("${SMTP_SSL:false}",properties.getProperty("spring.mail.properties.mail.smtp.ssl.enable"));
+		assertEquals("${SMTP_PORT:587}",properties.getProperty("spring.mail.port"));
+		for(String timeout:List.of("connectiontimeout","timeout","writetimeout")) {
+			int milliseconds=Integer.parseInt(properties.getProperty("spring.mail.properties.mail.smtp."+timeout));
+			assertTrue(milliseconds>0 && milliseconds<=10000);
+		}
+	}
 }
