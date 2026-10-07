@@ -13,7 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public final class AccountStore {
+public class AccountStore {
 	private final JdbcTemplate jdbc;
 
 	public AccountStore(JdbcTemplate jdbc) {

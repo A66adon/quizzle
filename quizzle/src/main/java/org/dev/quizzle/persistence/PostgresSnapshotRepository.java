@@ -10,7 +10,7 @@ import org.dev.quizzle.session.GameSessionSnapshot;
 import tools.jackson.databind.ObjectMapper;
 
 @Repository
-public final class PostgresSnapshotRepository {
+public class PostgresSnapshotRepository {
 	private static final int SCHEMA_VERSION = 2;
 	private final JdbcTemplate jdbc;
 	private final ObjectMapper mapper;
