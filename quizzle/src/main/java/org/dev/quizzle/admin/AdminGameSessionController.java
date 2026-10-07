@@ -79,6 +79,8 @@ public final class AdminGameSessionController {
 			return toResponse(sessionRegistry.create(accountId(session), request.quizFileName()));
 		} catch (QuizNotFoundException exception) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+		} catch (GameSessionRegistry.UnplayableQuizException exception) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
 		}
 	}
 

@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.mock.web.MockHttpSession;
 
 @WebMvcTest(AccountAuthController.class)
-@Import({SecurityConfiguration.class, AuthSecurityTests.Config.class})
+@Import({SecurityConfiguration.class, AuthSecurityTests.Config.class, AuthSecurityTests.ProtectedProbe.class})
 class AuthSecurityTests {
 	@Autowired MockMvc mvc;
 	@MockitoBean AccountService service;
@@ -29,6 +29,13 @@ class AuthSecurityTests {
 		@Bean AuthRateLimiter limiter() { return new AuthRateLimiter(); }
 		@Bean AuthProperties auth() { return new AuthProperties("", 1440, 30, "", "", "test@example.test"); }
 		@Bean AccountProperties properties() { return new AccountProperties(8); }
+	}
+	@org.springframework.web.bind.annotation.RestController
+	static class ProtectedProbe {
+		@org.springframework.web.bind.annotation.GetMapping("/admin/api/security-probe")
+		public java.util.Map<String,String> account(jakarta.servlet.http.HttpSession session) {
+			return java.util.Map.of("accountId",AccountSession.currentAccountId(session));
+		}
 	}
 	@Test void protectsHtmlAndApiAndRejectsCsrf() throws Exception {
 		for (String path : new String[]{"/admin", "/admin.html", "/editor", "/editor.html", "/settings", "/settings.html"})
@@ -71,5 +78,24 @@ class AuthSecurityTests {
 	@Test void legacyAttributeIsNotAnAuthenticationBypass() {
 		var session = new MockHttpSession(); session.setAttribute(AccountSession.class.getName() + ".accountId", "evil");
 		org.junit.jupiter.api.Assertions.assertFalse(AccountSession.isAuthenticated(session));
+	}
+	@Test void onlyExactActiveCredentialVersionCanCrossProtectedRequestBoundary() throws Exception {
+		when(store.isCurrentActive("account",2)).thenReturn(true);
+		for(long version:new long[]{1,2,3}) {
+			var session=new MockHttpSession();
+			var context=org.springframework.security.core.context.SecurityContextHolder.createEmptyContext();
+			context.setAuthentication(org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
+					new AccountPrincipal("account",version,0),null,
+					java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))));
+			session.setAttribute(org.springframework.security.web.context.HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,context);
+			var request=mvc.perform(get("/admin/api/security-probe").session(session));
+			if(version==2) {
+				request.andExpect(status().isOk()).andExpect(jsonPath("$.accountId").value("account"));
+				org.junit.jupiter.api.Assertions.assertFalse(session.isInvalid());
+			} else {
+				request.andExpect(status().isUnauthorized());
+				org.junit.jupiter.api.Assertions.assertTrue(session.isInvalid());
+			}
+		}
 	}
 }

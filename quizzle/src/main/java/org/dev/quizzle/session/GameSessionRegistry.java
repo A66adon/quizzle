@@ -88,6 +88,9 @@ public final class GameSessionRegistry {
 	public synchronized GameSessionSnapshot create(String ownerAccountId, String quizFileName) {
 		LoadedQuiz loadedQuiz = quizCatalog.findByFileName(ownerAccountId, quizFileName)
 				.orElseThrow(() -> new QuizNotFoundException(quizFileName));
+		if (loadedQuiz.quiz().questions().isEmpty()) {
+			throw new UnplayableQuizException();
+		}
 		QuizDefinition quiz = withShuffledAnswers(loadedQuiz.quiz());
 
 		for (int attempt = 0; attempt < MAX_CODEHASH_ATTEMPTS; attempt++) {
@@ -505,6 +508,12 @@ public final class GameSessionRegistry {
 			codehash[index] = CODEHASH_ALPHABET[secureRandom.nextInt(CODEHASH_ALPHABET.length)];
 		}
 		return new String(codehash);
+	}
+
+	public static final class UnplayableQuizException extends IllegalArgumentException {
+		public UnplayableQuizException() {
+			super("A quiz needs at least one question before creating a live session");
+		}
 	}
 
 	public static final class QuizNotFoundException extends RuntimeException {

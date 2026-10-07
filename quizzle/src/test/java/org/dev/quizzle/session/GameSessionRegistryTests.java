@@ -32,6 +32,19 @@ class GameSessionRegistryTests {
 	Path temporaryDirectory = Path.of("build", "registry-fixtures");
 
 	@Test
+	void rejectsEmptyDraftBeforeAllocatingOrPersistingALiveGame() {
+		var catalog=org.mockito.Mockito.mock(QuizCatalog.class);
+		org.mockito.Mockito.when(catalog.findByFileName(SessionTestFixtures.OWNER_ACCOUNT_ID,"draft.yaml"))
+				.thenReturn(java.util.Optional.of(new org.dev.quizzle.quiz.catalog.LoadedQuiz("draft.yaml",
+						new org.dev.quizzle.quiz.model.QuizDefinition("Draft","Description","Author",List.of()))));
+		var repository=createRepository();
+		var registry=createRegistry(catalog,repository);
+		assertThrows(IllegalArgumentException.class,()->registry.create(SessionTestFixtures.OWNER_ACCOUNT_ID,"draft.yaml"));
+		assertTrue(registry.list().isEmpty());
+		org.mockito.Mockito.verify(repository,org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+	}
+
+	@Test
 	void createsUniqueSessionsConcurrentlyAndSnapshotsEveryOne() throws Exception {
 		Path quizDirectory = prepareQuizDirectory();
 		PostgresSnapshotRepository repository = createRepository();

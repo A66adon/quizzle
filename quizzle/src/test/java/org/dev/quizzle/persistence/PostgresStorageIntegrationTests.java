@@ -109,6 +109,18 @@ class PostgresStorageIntegrationTests extends PostgresIntegrationSupport {
 	}
 
 	@Test
+	void credentialVersionMustMatchExactlyAndAccountMustRemainActive() {
+		assertTrue(accounts.isCurrentActive(owner.id(),0));
+		accounts.revokeCredentials(owner.id());
+		assertEquals(1,accounts.credentialVersion(owner.id()));
+		assertFalse(accounts.isCurrentActive(owner.id(),0));
+		assertTrue(accounts.isCurrentActive(owner.id(),1));
+		assertFalse(accounts.isCurrentActive(owner.id(),2));
+		jdbc.update("UPDATE accounts SET status='DISABLED' WHERE id=?",UUID.fromString(owner.id()));
+		assertFalse(accounts.isCurrentActive(owner.id(),1));
+	}
+
+	@Test
 	void storedLateJoinDefaultsAffectNewGamesAndRemainOwnerSpecific() {
 		String slug=editor.create(owner.id(),SessionTestFixtures.quiz());
 		String otherSlug=editor.create(other.id(),SessionTestFixtures.quiz());
@@ -170,6 +182,10 @@ class PostgresStorageIntegrationTests extends PostgresIntegrationSupport {
 		assertEquals(1, imported.version());
 		assertEquals(quiz, parser.parse(editor.exportYaml(owner.id(), imported.fileName())));
 		String draft = editor.create(owner.id(), new QuizDefinition("Draft", "Description", "Author", List.of()));
+		assertEquals(0, editor.load(owner.id(), draft).questions().size());
+		var registry = new GameSessionRegistry(sessionProperties, catalog, new GameStateMachine(), snapshots, accountService);
+		assertThrows(GameSessionRegistry.UnplayableQuizException.class, () -> registry.create(owner.id(), draft));
+		assertTrue(registry.list(owner.id()).isEmpty());
 		assertEquals(0, editor.load(owner.id(), draft).questions().size());
 		assertTrue(catalog.snapshotFor(other.id()).quizzes().isEmpty());
 		assertEquals(3, catalog.snapshotFor(owner.id()).quizzes().size());
