@@ -36,7 +36,9 @@ test('deleted server quiz still permits local draft recovery and export without 
   const created = await createQuiz(page);
   const { draft, prefix } = await draftRecord(page, created.fileName, created.version, 'Recover deleted quiz locally');
   const key = `${prefix}${draft.writerId}`;
-  const stored = JSON.stringify(draft);
+  const stored = JSON.stringify({
+    ...draft, sent: { raw: draft.raw, quiz: JSON.parse(draft.raw), version: draft.baseVersion, method: 'PUT' }
+  });
   await store(page, { [key]: stored });
   const path = `/admin/api/quizzes/${encodeURIComponent(created.fileName)}`;
   expect((await page.request.delete(path, { headers: await csrf(page.context()) })).status()).toBe(204);
@@ -58,6 +60,11 @@ test('deleted server quiz still permits local draft recovery and export without 
   expect(saves).toBe(0);
   expect((await page.request.get(path)).status()).toBe(404);
   expect(await page.evaluate(item => localStorage.getItem(item), key)).toBe(stored);
+  const restored = (await localDrafts(page, prefix)).find(item => item.writerId !== draft.writerId);
+  expect(restored.baseVersion).toBe(created.version);
+  expect(restored.sent.version).toBe(created.version);
+  expect(restored.sent.method).toBe('PUT');
+  expect(restored.sent.raw).toBe(draft.raw);
 });
 
 test('successful acknowledgement dismisses but never deletes a recovered foreign writer record', async ({ page }) => {
