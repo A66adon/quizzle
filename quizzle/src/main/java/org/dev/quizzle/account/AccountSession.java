@@ -4,13 +4,15 @@ import jakarta.servlet.http.HttpSession;
 
 public final class AccountSession {
 
-	private static final String ACCOUNT_ID_ATTRIBUTE = AccountSession.class.getName() + ".accountId";
-
 	private AccountSession() {
 	}
 
 	public static void authenticate(HttpSession session, String accountId) {
-		session.setAttribute(ACCOUNT_ID_ATTRIBUTE, accountId);
+		var context = org.springframework.security.core.context.SecurityContextHolder.createEmptyContext();
+		context.setAuthentication(org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
+				new org.dev.quizzle.security.AccountPrincipal(accountId, 0, 0), null,
+				java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))));
+		session.setAttribute(org.springframework.security.web.context.HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
 	}
 
 	public static boolean isAuthenticated(HttpSession session) {
@@ -18,6 +20,12 @@ public final class AccountSession {
 	}
 
 	public static String currentAccountId(HttpSession session) {
-		return session == null ? null : (String) session.getAttribute(ACCOUNT_ID_ATTRIBUTE);
+		if (session == null) return null;
+		Object stored = session.getAttribute(org.springframework.security.web.context.HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+		if (!(stored instanceof org.springframework.security.core.context.SecurityContext context)) return null;
+		var authentication = context.getAuthentication();
+		return authentication != null && authentication.isAuthenticated()
+				&& authentication.getPrincipal() instanceof org.dev.quizzle.security.AccountPrincipal principal
+				? principal.accountId() : null;
 	}
 }

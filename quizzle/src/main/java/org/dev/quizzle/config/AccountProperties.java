@@ -6,8 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record AccountProperties(int minPasswordLength) {
 
 	public AccountProperties {
-		if (minPasswordLength <= 0) {
-			minPasswordLength = 8;
-		}
+		if (minPasswordLength < 8 || minPasswordLength > 72)
+			throw new IllegalArgumentException("ACCOUNT_MIN_PASSWORD_LENGTH must be between 8 and 72");
 	}
 }

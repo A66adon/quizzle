@@ -56,6 +56,25 @@ public final class AccountStore {
 		jdbc.update("DELETE FROM accounts WHERE id = ?", UUID.fromString(id));
 	}
 
+	public Account lock(String id) {
+		return jdbc.query("SELECT * FROM accounts WHERE id=? FOR UPDATE", this::map, UUID.fromString(id))
+				.stream().findFirst().orElseThrow(() -> new AccountRegistrationException("Account not found"));
+	}
+
+	public long credentialVersion(String id) {
+		return jdbc.queryForObject("SELECT credential_version FROM accounts WHERE id=?", Long.class, UUID.fromString(id));
+	}
+
+	public boolean isCurrentActive(String id, long version) {
+		return Boolean.TRUE.equals(jdbc.queryForObject(
+				"SELECT EXISTS(SELECT 1 FROM accounts WHERE id=? AND status='ACTIVE' AND credential_version=?)",
+				Boolean.class, UUID.fromString(id), version));
+	}
+
+	public void revokeCredentials(String id) {
+		jdbc.update("UPDATE accounts SET credential_version=credential_version+1,updated_at=now() WHERE id=?", UUID.fromString(id));
+	}
+
 	public static String normalizeEmail(String email) {
 		return email == null ? "" : email.strip().toLowerCase(Locale.ROOT);
 	}
