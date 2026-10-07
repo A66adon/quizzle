@@ -57,6 +57,7 @@ its production rate limits. No tests disable authentication or throttling.
 | Auth full | Superseding verification resend, tampered links, identical known/unknown forgot acknowledgement |
 | Editor smoke | Manual save/revision and reload; failed PUT autosave retains/restores local draft |
 | Editor full | 409 preserves newer server content and stale local draft; dirty navigation Stay/Leave; recovery Discard |
+| Editor durability | Malformed/foreign draft preservation, tab-local dismissal and changed-record recovery, delayed valid/invalid edits, serialized PUT revisions, mismatched revision/content acknowledgements, uncertain POST blocks duplicate retries, incomplete description prevents network save |
 | Catalog full | Validation, optimistic conflict code/current version, YAML import/export round trip, delete, cross-account read/delete isolation |
 | Settings | Values persist across relogin; invalid settings do not mutate; current-password requirement, password change, account deletion cannot affect another owner |
 | Game | Real UI JOIN/ANSWER/ACK, result vote counts, FINAL_RESULTS; full flow adds reload reconnect, three questions and newly created games obeying both persisted late-join settings |
