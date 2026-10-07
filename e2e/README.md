@@ -16,6 +16,26 @@ The quality override sets generic SMTP to Mailpit:1025 with auth/TLS disabled,
 Production defaults are not changed. `COOKIE_SECURE` is not the Spring binding:
 the actual environment variable is `SESSION_COOKIE_SECURE`.
 
+### Environment contract
+
+| Variable | Disposable quality value or purpose |
+|---|---|
+| `POSTGRES_PASSWORD` | Required, generated per run; never use a production password |
+| `PUBLIC_BASE_URL` | `http://localhost:8080`, origin used for captured authentication links |
+| `SESSION_COOKIE_SECURE` | `false` for this local HTTP stack only |
+| `SMTP_HOST` / `SMTP_PORT` | `mailpit` / `1025` |
+| `SMTP_AUTH` / `SMTP_STARTTLS` / `SMTP_SSL` | All `false`; explicit values prevent production SMTP overrides leaking into CI |
+| `SMTP_FROM` | `quality@example.test` |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `ALLOWED_EMAIL_DOMAIN` | Empty in the disposable override |
+| `BASE_URL` / `MAILPIT_URL` | Client origins, default `http://localhost:8080` / `http://localhost:8025` |
+| `E2E_EMAIL_DOMAIN` | Synthetic recipient domain, default `example.test` |
+| `BROWSER_PROJECT` | Wrapper's full-suite project, default `chromium`; nightly selects `firefox` and `webkit` in separate stacks |
+
+`POSTGRES_PASSWORD` is supplied to the runner; application variables above are
+set by `compose.quality.yml`, not by modifying root deployment defaults.
+`BASE_URL` and `MAILPIT_URL` are exported by the runner for browser/load clients.
+For an already running isolated stack, supply client origins directly.
+
 ## Commands
 
 From the repository root, with Node **22.18.0**, Java 21 for backend checks,

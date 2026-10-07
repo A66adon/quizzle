@@ -42,6 +42,10 @@ ANSWER_ACCEPTED and stay connected until FINAL_RESULTS. Results are generated
 automatically by the last connected accepted answer. No “health endpoint load”
 or synthetic ACK substitute is used.
 
+The 200 participant sockets do not register accounts or authenticate locally:
+only presenters do, once per game (one or five accounts in the default modes).
+Increasing the participant count does not require raising authentication limits.
+
 Planned join/question attempts remain in success-rate denominators on failed
 handshake, disconnect, missing STATE, timeout, and unsent questions. HTTP and WS
 application errors have separate rates, both below 1%; join/ACK success >=99%,
