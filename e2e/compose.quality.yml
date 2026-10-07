@@ -12,6 +12,7 @@ services:
       GOOGLE_CLIENT_ID: ""
       GOOGLE_CLIENT_SECRET: ""
       ALLOWED_EMAIL_DOMAIN: ""
+      AUTH_RATE_LIMIT_IP_LIMIT: "600"
     depends_on:
       mailpit:
         condition: service_started

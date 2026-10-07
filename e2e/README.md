@@ -27,6 +27,7 @@ the actual environment variable is `SESSION_COOKIE_SECURE`.
 | `SMTP_AUTH` / `SMTP_STARTTLS` / `SMTP_SSL` | All `false`; explicit values prevent production SMTP overrides leaking into CI |
 | `SMTP_FROM` | `quality@example.test` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `ALLOWED_EMAIL_DOMAIN` | Empty in the disposable override |
+| `AUTH_RATE_LIMIT_IP_LIMIT` | `600` requests per IP/action/15 minutes, only in the disposable quality override |
 | `BASE_URL` / `MAILPIT_URL` | Client origins, default `http://localhost:8080` / `http://localhost:8025` |
 | `E2E_EMAIL_DOMAIN` | Synthetic recipient domain, default `example.test` |
 | `BROWSER_PROJECT` | Wrapper's full-suite project, default `chromium`; nightly selects `firefox` and `webkit` in separate stacks |
@@ -64,10 +65,17 @@ BASE_URL=http://localhost:8080 MAILPIT_URL=http://localhost:8025 npm run test:fu
 `E2E_EMAIL_DOMAIN` defaults to `example.test`; set it to the configured allowed
 domain when testing a restricted stack. The full command runs all three browsers.
 Nightly CI runs one browser per fresh stack, avoiding shared authentication
-rate-limit buckets and reducing runtime. Tests generate unique synthetic accounts,
+rate-limit buckets and reducing runtime. The disposable override explicitly sets
+`AUTH_RATE_LIMIT_IP_LIMIT=600` (property `quiz.auth.rate-limit.ip-limit`) so the
+many synthetic accounts behind loopback do not exhaust the production default
+of 60 requests per IP/action/15 minutes. The backend validates the finite range
+1–1000; the 10-request normalized-email/action cap and 10,000-key fail-closed
+bucket bound remain unchanged. No test disables throttling or spoofs forwarded
+IP headers. Tests generate unique synthetic accounts,
 quizzes and contexts; mail polling selects the exact recipient and expected origin.
 Do not run repeated full suites against one long-lived stack without respecting
-its production rate limits. No tests disable authentication or throttling.
+its configured finite rate limits. Without the disposable override, production
+limits apply. No root deployment defaults are weakened.
 
 ## Coverage and contracts
 
