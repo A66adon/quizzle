@@ -128,6 +128,32 @@ test('editor receives HTTP 409 for a stale revision without shared-storage event
   } finally { await independentContext.close(); }
 });
 
+test('admin late-join change preserves an exact non-preset auto-advance delay', async ({ page }) => {
+  await authenticated(page);
+  const path = '/admin/api/account/settings';
+  const seeded = await page.request.put(path, {
+    headers: await csrf(page.context()), data: { allowLateJoin: false, autoAdvanceDelayMs: 7123 }
+  });
+  expect(seeded.ok()).toBe(true);
+  await page.goto('/admin');
+  await page.getByRole('button', { name: 'Open settings', exact: true }).click();
+  await expect(page.locator('#auto-advance-value')).toHaveText('7.123s');
+  await page.getByLabel('Allow late joiners', { exact: true }).check();
+  const saved = page.waitForResponse(response =>
+    response.request().method() === 'PUT' && new URL(response.url()).pathname === path);
+  await page.getByRole('button', { name: 'Close settings', exact: true }).click();
+  const response = await saved;
+  expect(response.ok()).toBe(true);
+  expect(response.request().postDataJSON()).toEqual({ allowLateJoin: true, autoAdvanceDelayMs: 7123 });
+  const persisted = await (await page.request.get(path)).json();
+  expect(persisted.allowLateJoin).toBe(true);
+  expect(persisted.autoAdvanceDelayMs).toBe(7123);
+  await page.reload();
+  await page.getByRole('button', { name: 'Open settings', exact: true }).click();
+  await expect(page.locator('#auto-advance-value')).toHaveText('7.123s');
+  await expect(page.getByLabel('Allow late joiners', { exact: true })).toBeChecked();
+});
+
 test('settings persist through logout and login @smoke', async ({ page }) => {
   const user = await authenticated(page);
   const settings = await (await page.request.get('/admin/api/account/settings')).json();

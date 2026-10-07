@@ -76,10 +76,10 @@ its production rate limits. No tests disable authentication or throttling.
 | Auth smoke | Pending registration, captured SMTP verification, unverified rejection, single use, login/logout; reset revokes existing sessions, rejects old password and token reuse, no automatic login |
 | Auth full | Superseding verification resend, tampered links, identical known/unknown forgot acknowledgement |
 | Editor smoke | Manual save/revision and reload; failed PUT autosave retains/restores local draft |
-| Editor full | 409 preserves newer server content and stale local draft; dirty navigation Stay/Leave; recovery Discard |
+| Editor full | Shared-tab storage changes proactively pause saving with no PUT; independent-context server update triggers real editor HTTP 409 and preserves newer server content/local draft; dirty navigation Stay/Leave; recovery Discard |
 | Editor durability | Malformed/foreign draft preservation, tab-local dismissal and changed-record recovery, deleted-server draft recovery/export without recreation, delayed valid/invalid edits, serialized PUT revisions, mismatched revision/content acknowledgements, uncertain POST blocks duplicate retries, incomplete description prevents network save |
 | Catalog full | Validation, optimistic conflict code/current version, YAML import/export round trip, delete, cross-account read/delete isolation |
-| Settings | Values persist across relogin; invalid settings do not mutate; current-password requirement, password change, admin inline deletion rejects wrong password and cancels without deletion, account deletion cannot affect another owner |
+| Settings | Values persist across relogin; admin late-join changes preserve exact non-preset delay (`7123ms` / `7.123s`) across save/reload; invalid settings do not mutate; current-password requirement, password change, admin inline deletion rejects wrong password and cancels without deletion, account deletion cannot affect another owner |
 | Game | Real UI JOIN/ANSWER/ACK, result vote counts, FINAL_RESULTS; full flow adds reload reconnect, three questions and newly created games obeying both persisted late-join settings |
 | Layout/axe | 390x844 and 1440x900, light/dark: login, registration, admin, editor, settings, presenter, participant; no horizontal overflow, primary control reachability and 40px touch targets, editor dialog bounds; serious/critical WCAG A/AA violations fail |
 | Security | Anonymous API 401, authenticated missing/invalid CSRF 403, successful authorized delete, auth-page headers |
